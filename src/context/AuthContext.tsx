@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -192,7 +191,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     lastName?: string
   ) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -202,8 +201,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         }
       });
-      
       if (error) {
+        console.error("Sign up failed:", error, data);
         toast({
           title: "Sign up failed",
           description: error.message,
@@ -211,12 +210,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         throw error;
       } else {
+        console.log("Sign up success:", data);
         toast({
           title: "Sign up successful",
           description: "Please check your email for a confirmation link.",
         });
       }
     } catch (error: any) {
+      console.error("Sign up exception:", error);
       toast({
         title: "Sign up failed",
         description: error.message || "An unexpected error occurred",

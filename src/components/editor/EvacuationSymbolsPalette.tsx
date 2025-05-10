@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,11 +7,15 @@ import { useToast } from "@/hooks/use-toast";
 interface EvacuationSymbolsPaletteProps {
   activeSymbolType: string | null;
   onSymbolSelect: (type: string) => void;
+  onNext: () => void;
+  onBack: () => void;
 }
 
 export const EvacuationSymbolsPalette = ({
   activeSymbolType,
-  onSymbolSelect
+  onSymbolSelect,
+  onNext,
+  onBack
 }: EvacuationSymbolsPaletteProps) => {
   const { toast } = useToast();
   
@@ -45,7 +48,7 @@ export const EvacuationSymbolsPalette = ({
   };
 
   return (
-    <Card className="bg-white">
+    <Card className="relative h-full flex flex-col max-w-3xl mx-auto bg-white">
       <CardHeader>
         <CardTitle className="text-lg">Evacuation Symbols</CardTitle>
         {activeSymbolType && (
@@ -54,36 +57,42 @@ export const EvacuationSymbolsPalette = ({
           </p>
         )}
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-2">
-          {symbols.map((symbol) => (
-            <Button
-              key={symbol.id}
-              variant={activeSymbolType === symbol.id ? "default" : "outline"}
-              className="h-16 flex-col relative group"
-              onClick={() => handleSymbolSelect(symbol.id)}
-            >
-              <div className="mb-1">{symbol.icon}</div>
-              <span className="text-xs">{symbol.name}</span>
-              
-              <div className={`absolute inset-0 rounded-md border-2 transition-opacity ${
-                activeSymbolType === symbol.id ? 'border-primary opacity-100' : 'border-transparent opacity-0 group-hover:opacity-50 group-hover:border-primary'
-              }`}></div>
-            </Button>
-          ))}
-        </div>
-        
-        {activeSymbolType && (
-          <div className="mt-4 bg-blue-50 p-3 rounded-md text-sm">
-            <p className="font-medium text-blue-700">
-              {symbols.find(s => s.id === activeSymbolType)?.name} selected
-            </p>
-            <p className="text-blue-600 text-xs mt-1">
-              Click on the canvas to place the symbol. Click the button again to deselect.
-            </p>
+      <CardContent className="p-4 flex-1 flex flex-col min-h-[500px]">
+        <div className="flex-1 relative min-h-[500px] flex flex-col">
+          <div className="grid grid-cols-2 gap-2">
+            {symbols.map((symbol) => (
+              <Button
+                key={symbol.id}
+                variant={activeSymbolType === symbol.id ? "default" : "outline"}
+                className="h-16 flex-col relative group"
+                onClick={() => handleSymbolSelect(symbol.id)}
+              >
+                <div className="mb-1">{symbol.icon}</div>
+                <span className="text-xs">{symbol.name}</span>
+                
+                <div className={`absolute inset-0 rounded-md border-2 transition-opacity ${
+                  activeSymbolType === symbol.id ? 'border-primary opacity-100' : 'border-transparent opacity-0 group-hover:opacity-50 group-hover:border-primary'
+                }`}></div>
+              </Button>
+            ))}
           </div>
-        )}
+          
+          {activeSymbolType && (
+            <div className="mt-4 bg-blue-50 p-3 rounded-md text-sm">
+              <p className="font-medium text-blue-700">
+                {symbols.find(s => s.id === activeSymbolType)?.name} selected
+              </p>
+              <p className="text-blue-600 text-xs mt-1">
+                Click on the canvas to place the symbol. Click the button again to deselect.
+              </p>
+            </div>
+          )}
+        </div>
       </CardContent>
+      <div className="flex justify-between gap-4 px-6 pb-6 pt-2 mt-auto bg-white z-10 border-t">
+        <Button variant="outline" onClick={onBack} disabled={!onBack}>Back</Button>
+        <Button onClick={onNext}>Next</Button>
+      </div>
     </Card>
   );
 };

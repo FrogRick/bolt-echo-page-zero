@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,55 +67,6 @@ export const WorkflowSteps = ({
   return (
     <div className="flex flex-col bg-white p-4 rounded-lg shadow-sm">
       <h2 className="text-xl font-semibold mb-4 text-center">Evacuation Plan Workflow</h2>
-      
-      <div className="flex justify-center mb-4">
-        <div className="grid grid-cols-5 gap-2">
-          {steps.map((step, index) => {
-            if (step.optional && !hasManualWalls) return null;
-            
-            const isActive = step.id === currentStage;
-            const isPast = step.completed;
-            const isClickable = isPast || isActive;
-            
-            return (
-              <div 
-                key={step.id} 
-                className={`flex flex-col items-center p-2 rounded ${isClickable ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'} transition-all ${
-                  isActive 
-                    ? 'bg-primary/10 border border-primary' 
-                    : isPast 
-                      ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' 
-                      : 'bg-gray-50 text-gray-400'
-                }`}
-                onClick={() => {
-                  if (isClickable) {
-                    onStageChange(step.id as WorkflowStage);
-                  }
-                }}
-                title={isClickable ? `Go to ${step.title}` : "Complete previous steps first"}
-              >
-                <div className={`rounded-full p-2 ${
-                  isActive 
-                    ? 'bg-primary text-white' 
-                    : isPast 
-                      ? 'bg-gray-200 text-gray-600' 
-                      : 'bg-gray-100 text-gray-400'
-                }`}>
-                  <step.icon className="h-4 w-4" />
-                </div>
-                <span className="text-xs mt-1 font-medium">{step.title}</span>
-                <div className="h-1 w-full mt-2">
-                  {index < steps.length - 1 && (
-                    <div className={`h-0.5 w-full ${
-                      isPast ? 'bg-primary' : 'bg-gray-200'
-                    }`} />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
       
       <div className="mt-auto flex justify-between">
         <Button

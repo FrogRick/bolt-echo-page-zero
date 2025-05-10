@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { BuildingsTable } from "@/types/supabase";
 import { BuildingActionMenu } from "@/components/BuildingActionMenu";
+import { GenericCard } from "@/components/ui/GenericCard";
 
 type Project = {
   id: string;
@@ -415,52 +415,15 @@ const HomePage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProjects.map(project => (
                 <div key={project.id} className="relative">
-                  <Link 
-                    to={`/editor/${project.id}`}
-                    className={deletingProjectIds.includes(project.id) ? 'pointer-events-none' : ''}
-                  >
-                    <Card className="project-card h-[180px] overflow-hidden max-w-[95%] relative">
-                      {deletingProjectIds.includes(project.id) && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-lg">
-                          <div className="flex flex-col items-center">
-                            <Loader2 className="h-8 w-8 text-white animate-spin mb-2" />
-                            <p className="text-white font-medium">Deleting...</p>
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex h-full">
-                        <div className="flex-1 min-w-0">
-                          <CardHeader className="pb-2">
-                            <CardTitle>{project.name}</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            {project.location && 
-                              <div className="text-sm text-gray-700 space-y-1 mb-2">
-                                <p className="font-medium whitespace-pre-line">
-                                  {project.location.address.split(',').join('\n')}
-                                </p>
-                              </div>
-                            }
-                            <p className="text-sm text-gray-500">
-                              Last updated: {project.updatedAt.toLocaleDateString()}
-                            </p>
-                          </CardContent>
-                        </div>
-                        {project.location && 
-                          <div className="w-[35%] pr-8 flex items-center">
-                            <div className="h-[120px] w-[120px] rounded-lg overflow-hidden mr-4">
-                              <img 
-                                src={`https://api.mapbox.com/styles/v1/mapbox/light-v11/static/pin-s+19e16c(0,0)/${0},${0},15,0/120x120?access_token=${MAPBOX_TOKEN}`} 
-                                alt="Location map" 
-                                className="object-cover h-full w-full rounded-lg" 
+                  <GenericCard
+                    title={project.name}
+                    subtitle={project.location?.address || "No address"}
+                    icon={<Building className="w-8 h-8 text-primary" />}
+                    timestamp={{ label: `Last updated: ${project.updatedAt.toLocaleDateString()}` }}
+                    onClick={() => navigate(`/editor/${project.id}`)}
+                    loading={deletingProjectIds.includes(project.id)}
+                    type="building"
                               />
-                            </div>
-                          </div>
-                        }
-                      </div>
-                    </Card>
-                  </Link>
-                  
                   <BuildingActionMenu 
                     project={project}
                     onDelete={() => setProjectToDelete(project)}

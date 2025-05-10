@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -136,7 +135,7 @@ const AccountPage = () => {
               </div>
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-500">Status</p>
-                <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${subscription.status === "active" ? "bg-green-100 text-green-800" : subscription.status === "trialing" ? "bg-blue-100 text-blue-800" : "bg-yellow-100 text-yellow-800"}`}>
+                <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${subscription.status === "active" ? "bg-[#1cdd86]/10 text-[#1cdd86]" : subscription.status === "trialing" ? "bg-blue-100 text-blue-800" : "bg-yellow-100 text-yellow-800"}`}>
                   {subscription.status}
                 </div>
               </div>

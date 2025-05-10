@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -146,7 +145,7 @@ const SubscriptionPage = () => {
                 <ul className="space-y-2">
                   {currentTier?.features.map((feature, index) => (
                     <li key={index} className="flex items-center">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
+                      <CheckCircle2 className="h-4 w-4 text-[#1cdd86] mr-2" />
                       <span className="text-sm">{feature}</span>
                     </li>
                   ))}

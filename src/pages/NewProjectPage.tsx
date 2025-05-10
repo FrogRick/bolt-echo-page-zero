@@ -14,8 +14,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Plus, Minus } from "lucide-react";
+
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZnJldGgwMyIsImEiOiJjajI2a29mYzAwMDJqMnducnZmNnMzejB1In0.oRpO5T3aTpkP1QO8WjsiSw";
-const NewProjectPage = () => {
+
+export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => void }) {
   const [projectName, setProjectName] = useState("");
   const [address, setAddress] = useState("");
   const [addressInput, setAddressInput] = useState("");
@@ -32,17 +34,12 @@ const NewProjectPage = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const marker = useRef<mapboxgl.Marker | null>(null);
-  const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+
   useEffect(() => {
     if (!mapContainer.current) return;
     navigator.geolocation.getCurrentPosition(position => {
-      const {
-        latitude,
-        longitude
-      } = position.coords;
+      const { latitude, longitude } = position.coords;
       mapboxgl.accessToken = MAPBOX_TOKEN;
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
@@ -55,10 +52,7 @@ const NewProjectPage = () => {
       const markerRoot = createRoot(markerElement);
       markerRoot.render(<BuildingMarker />);
       marker.current = new mapboxgl.Marker(markerElement).setLngLat([longitude, latitude]).addTo(map.current);
-      setLocation({
-        lng: longitude,
-        lat: latitude
-      });
+      setLocation({ lng: longitude, lat: latitude });
       fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_TOKEN}`).then(res => res.json()).then(data => {
         if (data.features?.[0]?.place_name) {
           setAddress(data.features[0].place_name);
@@ -85,18 +79,13 @@ const NewProjectPage = () => {
       map.current?.remove();
     };
   }, []);
+
   useEffect(() => {
     if (!map.current) return;
     map.current.on('click', e => {
-      const {
-        lng,
-        lat
-      } = e.lngLat;
+      const { lng, lat } = e.lngLat;
       marker.current?.setLngLat([lng, lat]);
-      setLocation({
-        lng,
-        lat
-      });
+      setLocation({ lng, lat });
       fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}`).then(res => res.json()).then(data => {
         if (data.features?.[0]?.place_name) {
           setAddress(data.features[0].place_name);
@@ -105,6 +94,7 @@ const NewProjectPage = () => {
       });
     });
   }, []);
+
   useEffect(() => {
     if (!addressInput) {
       setSuggestions([]);
@@ -124,21 +114,17 @@ const NewProjectPage = () => {
     }, 300);
     return () => clearTimeout(timer);
   }, [addressInput]);
-  const handleSelectAddress = (suggestion: {
-    place_name: string;
-    center: [number, number];
-  }) => {
+
+  const handleSelectAddress = (suggestion: { place_name: string; center: [number, number]; }) => {
     setAddress(suggestion.place_name);
     setAddressInput(suggestion.place_name);
     setOpen(false);
     const [lng, lat] = suggestion.center;
     marker.current?.setLngLat([lng, lat]);
-    setLocation({
-      lng,
-      lat
-    });
+    setLocation({ lng, lat });
     map.current?.setCenter([lng, lat]);
   };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectName.trim()) {
@@ -179,14 +165,19 @@ const NewProjectPage = () => {
       title: "Building created",
       description: `"${projectName}" has been created successfully.`
     });
-    navigate(`/editor/${newProject.id}`);
+    setIsSubmitting(false);
+    if (onSuccess) {
+      onSuccess(newProject.id);
+    }
   };
+
   const handleZoomIn = () => {
     map.current?.zoomIn();
   };
   const handleZoomOut = () => {
     map.current?.zoomOut();
   };
+
   return <div className="max-w-2xl mx-auto">
       <Card>
         <CardHeader>
@@ -243,5 +234,9 @@ const NewProjectPage = () => {
         </CardContent>
       </Card>
     </div>;
-};
-export default NewProjectPage;
+}
+
+export default function NewProjectPage() {
+  const navigate = useNavigate();
+  return <NewBuildingForm onSuccess={id => navigate(`/editor/${id}`)} />;
+}

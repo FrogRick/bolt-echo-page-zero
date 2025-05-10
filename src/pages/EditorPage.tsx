@@ -52,7 +52,8 @@ const EditorPage = () => {
         });
 
         // Make sure the current stage is set correctly
-        editorState.setCurrentStage('choose_mode');
+        editorState.setUseManualWalls(true);
+        editorState.setCurrentStage('draw_walls');
 
         // Make sure we're initialized after uploading
         setIsInitialized(true);
@@ -74,18 +75,19 @@ const EditorPage = () => {
         console.log("Found PDFs in project, loading the first one");
         // Load the first PDF
         const firstPdf = project.pdfs[0];
+        if (!firstPdf.data || !firstPdf.data.startsWith("data:")) {
+          console.error("PDF data is missing or not a valid DataURL:", firstPdf.data);
+          return;
+        }
         const byteString = atob(firstPdf.data.split(',')[1]);
         const mimeString = firstPdf.data.split(',')[0].split(':')[1].split(';')[0];
         const ab = new ArrayBuffer(byteString.length);
         const ia = new Uint8Array(ab);
-        
         for (let i = 0; i < byteString.length; i++) {
           ia[i] = byteString.charCodeAt(i);
         }
-        
         const blob = new Blob([ab], { type: mimeString });
         const file = new File([blob], firstPdf.name, { type: mimeString });
-        
         editorState.setPdfFile(file);
       }
 
@@ -94,9 +96,14 @@ const EditorPage = () => {
         console.log("Setting initialized to true");
         setIsInitialized(true);
 
-        // Make sure we start at the first workflow stage when loading a project
-        if (editorState.currentStage === undefined || editorState.currentStage === null) {
-          editorState.setCurrentStage('choose_mode');
+        // Om currentStage är undefined, null eller 'choose_mode', gå till 'draw_walls'
+        if (
+          editorState.currentStage === undefined ||
+          editorState.currentStage === null ||
+          editorState.currentStage === 'choose_mode'
+        ) {
+          editorState.setUseManualWalls(true);
+          editorState.setCurrentStage('draw_walls');
         }
       } else {
         console.log("No PDFs found in project");
@@ -118,22 +125,8 @@ const EditorPage = () => {
       </div>;
   }
 
-  // Show PDF uploader if no PDFs are uploaded yet
-  if (project && (!project.pdfs || project.pdfs.length === 0) && !editorState.pdfFile) {
-    return <div className="container mx-auto py-8 px-4 max-w-4xl">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h1 className="text-2xl font-bold mb-6 text-center">Upload Floor Plan</h1>
-          <p className="text-gray-600 mb-6 text-center">
-            To start creating your evacuation plan, please upload a PDF of your floor plan.
-          </p>
-          <PDFUploader onUpload={handlePDFUpload} multipleUploads={true} />
-        </div>
-        <Toaster />
-      </div>;
-  }
-
   return <>
-      <EditorContainer {...editorState} />
+      <EditorContainer {...editorState} onPDFUpload={handlePDFUpload} />
       <Toaster />
     </>;
 };
