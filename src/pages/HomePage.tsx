@@ -17,24 +17,26 @@ import { useToast } from "@/hooks/use-toast";
 import MapView from "@/components/MapView";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { BuildingsTable, Project } from "@/types/supabase";
+import { BuildingsTable } from "@/types/supabase";
 import { BuildingActionMenu } from "@/components/BuildingActionMenu";
 import { GenericCard } from "@/components/ui/GenericCard";
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZnJldGgwMyIsImEiOiJjajI2a29mYzAwMDJqMnducnZmNnMzejB1In0.oRpO5T3aTpkP1QO8WjsiSw";
 
 // Define local types for component state to avoid circular references
-type ProjectDisplayData = {
+interface ProjectLocation {
+  lat: number;
+  lng: number;
+  address: string;
+}
+
+interface ProjectDisplayData {
   id: string;
   name: string;
   createdAt: Date;
   updatedAt: Date;
-  location?: {
-    lat: number;
-    lng: number;
-    address: string;
-  };
-};
+  location?: ProjectLocation;
+}
 
 const HomePage = () => {
   const [projects, setProjects] = useState<ProjectDisplayData[]>([]);
@@ -72,7 +74,7 @@ const HomePage = () => {
             const { data: buildings, error } = await supabase
               .from('buildings')
               .select('*')
-              .eq('owner_id', user.id) // Changed from 'user_id' to 'owner_id'
+              .eq('owner_id', user.id)
               .order('updated_at', { ascending: false });
               
             if (error) {
@@ -82,7 +84,7 @@ const HomePage = () => {
             }
             
             if (buildings && buildings.length > 0) {
-              // Convert Supabase data to Project format
+              // Convert Supabase data to ProjectDisplayData format
               const supabaseProjects: ProjectDisplayData[] = buildings.map((building: BuildingsTable) => ({
                 id: building.id,
                 name: building.name,
@@ -424,7 +426,7 @@ const HomePage = () => {
                     onClick={() => navigate(`/editor/${project.id}`)}
                     loading={deletingProjectIds.includes(project.id)}
                     type="building"
-                              />
+                  />
                   <BuildingActionMenu 
                     project={project}
                     onDelete={() => setProjectToDelete(project)}

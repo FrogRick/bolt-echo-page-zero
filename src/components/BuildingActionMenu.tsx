@@ -1,5 +1,14 @@
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
+
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  MoreVertical, 
+  Copy, 
+  Trash, 
+  FileEdit, 
+  Building,
+  Share
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,218 +17,255 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+import { Button } from "@/components/ui/button";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
 } from "@/components/ui/dialog";
-import { MoreHorizontal, Edit, Trash2, Move, Loader2, MessageSquare } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { OrganizationSelect } from "./OrganizationSelect";
-import { BuildingNotes } from "./BuildingNotes";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import { OrganizationSelect } from './OrganizationSelect';
 
-// Update the type definition to match what we're using in HomePage.tsx
-type ProjectData = {
+// Define local type to match the one used in HomePage
+interface ProjectLocation {
+  lat: number;
+  lng: number;
+  address: string;
+}
+
+interface ProjectDisplayData {
   id: string;
   name: string;
   createdAt: Date;
   updatedAt: Date;
-  location?: {
-    lat: number;
-    lng: number;
-    address: string;
-  };
-};
+  location?: ProjectLocation;
+}
 
 interface BuildingActionMenuProps {
-  project: ProjectData;
+  project: ProjectDisplayData;
   onDelete: () => void;
   className?: string;
   disabled?: boolean;
 }
 
-export function BuildingActionMenu({ project, onDelete, className, disabled }: BuildingActionMenuProps) {
-  const { user } = useAuth();
+export function BuildingActionMenu({ project, onDelete, className, disabled = false }: BuildingActionMenuProps) {
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
-  const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
-  const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
-  const [newName, setNewName] = useState(project.name);
+  const { user } = useAuth();
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleRename = async () => {
-    if (!user || !newName.trim()) return;
-    
-    setIsLoading(true);
+  
+  const handleDuplicate = () => {
     try {
-      // Use a direct update with service role instead of RLS (would need API endpoint)
-      // For now, doing a simple update might still work if RLS allows updates
-      const { error } = await supabase
-        .from('buildings')
-        .update({ name: newName.trim() })
-        .eq('id', project.id);
-        
-      if (error) throw error;
+      // Create a new project based on the current one
+      const newProject = {
+        ...project,
+        id: crypto.randomUUID(),
+        name: `${project.name} (Copy)`,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      // Add to localStorage
+      const existingProjectsJson = localStorage.getItem("evacuation-projects");
+      const existingProjects = existingProjectsJson ? JSON.parse(existingProjectsJson) : [];
+      existingProjects.unshift(newProject);
+      localStorage.setItem("evacuation-projects", JSON.stringify(existingProjects));
+      
+      // If user is logged in, also duplicate in Supabase
+      if (user) {
+        duplicateInSupabase(newProject);
+      }
       
       toast({
-        title: "Building renamed",
-        description: `Building has been renamed to "${newName.trim()}"`
+        title: "Building duplicated",
+        description: "A copy of the building has been created"
       });
       
-      // Force reload to refresh the list
+      // Reload the current page to show the new project
       window.location.reload();
-    } catch (error: any) {
+    } catch (error) {
+      console.error("Failed to duplicate project", error);
       toast({
-        title: "Error renaming building",
-        description: error.message || "Failed to rename building",
+        title: "Error duplicating building",
+        description: "Could not create a copy. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const duplicateInSupabase = async (newProject: ProjectDisplayData) => {
+    try {
+      if (!user) return;
+      
+      // Prepare the data for Supabase (convert from our Project type to the Supabase format)
+      const buildingData = {
+        id: newProject.id,
+        name: newProject.name,
+        owner_id: user.id,
+        address: newProject.location?.address,
+        lat: newProject.location?.lat,
+        lng: newProject.location?.lng,
+      };
+      
+      // Insert the new building
+      const { data, error } = await supabase
+        .from('buildings')
+        .insert(buildingData);
+        
+      if (error) {
+        console.error("Failed to duplicate building in Supabase:", error);
+      }
+    } catch (dbError) {
+      console.error("Database error during duplication:", dbError);
+    }
+  };
+  
+  const handleShareWithOrg = async () => {
+    if (!selectedOrgId) {
+      toast({
+        title: "No organization selected",
+        description: "Please select an organization to share with",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setShareLoading(true);
+    try {
+      // First check if the building exists in Supabase
+      const { data: existingBuilding, error: fetchError } = await supabase
+        .from('buildings')
+        .select('*')
+        .eq('id', project.id)
+        .single();
+        
+      if (fetchError || !existingBuilding) {
+        // Building doesn't exist in Supabase yet, create it first
+        const buildingData = {
+          id: project.id,
+          name: project.name,
+          owner_id: user?.id,
+          created_at: project.createdAt.toISOString(),
+          updated_at: project.updatedAt.toISOString(),
+          address: project.location?.address,
+          lat: project.location?.lat,
+          lng: project.location?.lng
+        };
+        
+        const { error: insertError } = await supabase
+          .from('buildings')
+          .insert(buildingData);
+          
+        if (insertError) {
+          throw new Error(`Failed to create building: ${insertError.message}`);
+        }
+      }
+      
+      // Now share the building with the organization
+      const { error: shareError } = await supabase
+        .from('organization_buildings')
+        .insert({
+          building_id: project.id,
+          organization_id: selectedOrgId,
+        });
+        
+      if (shareError) {
+        throw new Error(`Failed to share building: ${shareError.message}`);
+      }
+      
+      toast({
+        title: "Building shared",
+        description: "The building has been shared with the selected organization"
+      });
+      
+      setShowShareDialog(false);
+    } catch (error: any) {
+      console.error("Failed to share building:", error);
+      toast({
+        title: "Error sharing building",
+        description: error.message || "Could not share the building. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
-      setIsRenameDialogOpen(false);
+      setShareLoading(false);
     }
   };
-
-  const handleMove = async () => {
-    if (!user || !selectedOrgId) return;
-    
-    setIsLoading(true);
-    try {
-      // Previously tried using 'organization_id' which doesn't exist in schema
-      // Update to use owner_id which is in the schema
-      const { error } = await supabase
-        .from('buildings')
-        .update({ owner_id: selectedOrgId })
-        .eq('id', project.id);
-        
-      if (error) throw error;
-      
-      toast({
-        title: "Building moved",
-        description: "Building has been moved to the selected organization"
-      });
-      
-      // Force reload to refresh the list
-      window.location.reload();
-    } catch (error: any) {
-      toast({
-        title: "Error moving building",
-        description: error.message || "Failed to move building",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-      setIsMoveDialogOpen(false);
-    }
-  };
-
+  
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={`text-gray-500 hover:text-gray-900 hover:bg-gray-100 ${className}`}
-            disabled={disabled}
-          >
-            <MoreHorizontal className="h-4 w-4" />
+          <Button variant="ghost" size="sm" className={`px-2 ${className}`} disabled={disabled}>
+            <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Building Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setIsNotesDialogOpen(true)}>
-            <MessageSquare className="mr-2 h-4 w-4" />
-            Notes
+          <DropdownMenuItem onClick={() => navigate(`/editor/${project.id}`)}>
+            <FileEdit className="mr-2 h-4 w-4" />
+            Edit Building
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsRenameDialogOpen(true)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Rename
+          <DropdownMenuItem onClick={handleDuplicate}>
+            <Copy className="mr-2 h-4 w-4" />
+            Duplicate
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsMoveDialogOpen(true)}>
-            <Move className="mr-2 h-4 w-4" />
-            Move to Organization
-          </DropdownMenuItem>
+          {user && (
+            <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
+              <Share className="mr-2 h-4 w-4" />
+              Share with Organization
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onDelete} className="text-destructive">
-            <Trash2 className="mr-2 h-4 w-4" />
+            <Trash className="mr-2 h-4 w-4" />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {/* Notes Dialog */}
-      <BuildingNotes 
-        buildingId={project.id}
-        open={isNotesDialogOpen}
-        onOpenChange={setIsNotesDialogOpen}
-      />
-
-      {/* Rename Dialog */}
-      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+      
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename Building</DialogTitle>
+            <DialogTitle>Share building with organization</DialogTitle>
             <DialogDescription>
-              Change the name of your building.
+              Select an organization to share this building with. All members of the organization will have access to view and edit this building.
             </DialogDescription>
           </DialogHeader>
+          
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Name
-              </Label>
-              <Input
-                id="name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="col-span-3"
+            <div className="grid gap-2">
+              <Label htmlFor="org">Organization</Label>
+              <OrganizationSelect 
+                selected={selectedOrgId} 
+                onSelect={setSelectedOrgId} 
               />
             </div>
           </div>
+          
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRenameDialogOpen(false)} disabled={isLoading}>
-              Cancel
-            </Button>
-            <Button onClick={handleRename} disabled={!newName.trim() || isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Move Dialog */}
-      <Dialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Move to Organization</DialogTitle>
-            <DialogDescription>
-              Select the organization you want to move this building to.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <OrganizationSelect 
-              onSelect={setSelectedOrgId}
-              selected={selectedOrgId}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsMoveDialogOpen(false)} disabled={isLoading}>
-              Cancel
-            </Button>
-            <Button onClick={handleMove} disabled={!selectedOrgId || isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Move Building
+            <Button variant="outline" onClick={() => setShowShareDialog(false)}>Cancel</Button>
+            <Button 
+              onClick={handleShareWithOrg} 
+              disabled={!selectedOrgId || shareLoading}
+            >
+              {shareLoading ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                  Sharing...
+                </>
+              ) : (
+                "Share"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import HomePage from "@/pages/HomePage";
@@ -15,6 +16,7 @@ import PDFUploader from "@/components/editor/PDFUploader";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import SettingsPage from "@/pages/SettingsPage";
+import { Toaster } from "@/components/ui/toaster";
 
 // Modified homepage router to decide what to display based on login status
 const HomeRouter = () => {
@@ -45,10 +47,6 @@ const ProtectedRoute = ({ children, requiresSubscription = false }: {
   
   return <>{children}</>;
 };
-
-function CreatePage() {
-  // Ta bort hela CreatePage-komponenten
-}
 
 // Komponent som skapar nytt projekt och redirectar till /editor/:projectId
 function AutoCreateAndRedirectToEditor() {
@@ -97,7 +95,7 @@ export default function App() {
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Routes>
-        {/* Toaster component removed */}
+        <Toaster />
       </Router>
     </AuthProvider>
   );
