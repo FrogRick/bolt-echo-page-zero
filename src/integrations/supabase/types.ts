@@ -48,87 +48,66 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
-          description: string | null
           id: string
+          lat: number | null
+          lng: number | null
           name: string
-          organization_id: string | null
+          owner_id: string
           updated_at: string
-          user_id: string | null
         }
         Insert: {
           address?: string | null
           created_at?: string
-          description?: string | null
           id?: string
+          lat?: number | null
+          lng?: number | null
           name: string
-          organization_id?: string | null
+          owner_id: string
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
           address?: string | null
           created_at?: string
-          description?: string | null
           id?: string
+          lat?: number | null
+          lng?: number | null
           name?: string
-          organization_id?: string | null
+          owner_id?: string
           updated_at?: string
-          user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "buildings_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "buildings_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       elements: {
         Row: {
           created_at: string
           floor_plan_id: string
-          height: number | null
           id: string
-          rotation: number
-          size: number
+          rotation: number | null
+          size: number | null
           type: string
           updated_at: string
-          width: number | null
           x: number
           y: number
         }
         Insert: {
           created_at?: string
           floor_plan_id: string
-          height?: number | null
           id?: string
-          rotation?: number
-          size?: number
+          rotation?: number | null
+          size?: number | null
           type: string
           updated_at?: string
-          width?: number | null
           x: number
           y: number
         }
         Update: {
           created_at?: string
           floor_plan_id?: string
-          height?: number | null
           id?: string
-          rotation?: number
-          size?: number
+          rotation?: number | null
+          size?: number | null
           type?: string
           updated_at?: string
-          width?: number | null
           x?: number
           y?: number
         }
@@ -146,25 +125,31 @@ export type Database = {
         Row: {
           building_id: string
           created_at: string
-          file_path: string | null
+          floor_number: number | null
           id: string
           name: string
+          pdf_data: string | null
+          pdf_url: string | null
           updated_at: string
         }
         Insert: {
           building_id: string
           created_at?: string
-          file_path?: string | null
+          floor_number?: number | null
           id?: string
           name: string
+          pdf_data?: string | null
+          pdf_url?: string | null
           updated_at?: string
         }
         Update: {
           building_id?: string
           created_at?: string
-          file_path?: string | null
+          floor_number?: number | null
           id?: string
           name?: string
+          pdf_data?: string | null
+          pdf_url?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -173,36 +158,6 @@ export type Database = {
             columns: ["building_id"]
             isOneToOne: false
             referencedRelation: "buildings"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      organization_buildings: {
-        Row: {
-          building_id: string
-          organization_id: string
-        }
-        Insert: {
-          building_id: string
-          organization_id: string
-        }
-        Update: {
-          building_id?: string
-          organization_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "organization_buildings_building_id_fkey"
-            columns: ["building_id"]
-            isOneToOne: false
-            referencedRelation: "buildings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "organization_buildings_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -216,6 +171,7 @@ export type Database = {
           organization_id: string
           role: string
           status: string
+          updated_at: string
           user_id: string | null
         }
         Insert: {
@@ -226,6 +182,7 @@ export type Database = {
           organization_id: string
           role?: string
           status?: string
+          updated_at?: string
           user_id?: string | null
         }
         Update: {
@@ -236,6 +193,7 @@ export type Database = {
           organization_id?: string
           role?: string
           status?: string
+          updated_at?: string
           user_id?: string | null
         }
         Relationships: [
@@ -253,24 +211,18 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          subscription_end_date: string | null
-          subscription_tier: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
-          subscription_end_date?: string | null
-          subscription_tier?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
-          subscription_end_date?: string | null
-          subscription_tier?: string
           updated_at?: string
         }
         Relationships: []
@@ -278,88 +230,83 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
-          email: string
+          email: string | null
           first_name: string | null
           id: string
           last_name: string | null
-          subscription_end_date: string | null
-          subscription_start_date: string | null
-          subscription_tier: string
           updated_at: string
         }
         Insert: {
           created_at?: string
-          email: string
+          email?: string | null
           first_name?: string | null
           id: string
           last_name?: string | null
-          subscription_end_date?: string | null
-          subscription_start_date?: string | null
-          subscription_tier?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
-          email?: string
+          email?: string | null
           first_name?: string | null
           id?: string
           last_name?: string | null
-          subscription_end_date?: string | null
-          subscription_start_date?: string | null
-          subscription_tier?: string
           updated_at?: string
         }
         Relationships: []
       }
       subscription_tiers: {
         Row: {
+          buildings_limit: number | null
+          created_at: string
+          description: string | null
           id: string
-          max_buildings: number
-          max_new_buildings_per_month: number
           name: string
-          price_monthly: number
+          price: number
+          updated_at: string
         }
         Insert: {
-          id: string
-          max_buildings: number
-          max_new_buildings_per_month: number
+          buildings_limit?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
           name: string
-          price_monthly: number
+          price: number
+          updated_at?: string
         }
         Update: {
+          buildings_limit?: number | null
+          created_at?: string
+          description?: string | null
           id?: string
-          max_buildings?: number
-          max_new_buildings_per_month?: number
           name?: string
-          price_monthly?: number
+          price?: number
+          updated_at?: string
         }
         Relationships: []
       }
       user_building_counts: {
         Row: {
-          buildings_created_this_month: number
-          current_month: string
+          buildings_count: number | null
+          created_at: string
+          id: string
+          updated_at: string
           user_id: string
         }
         Insert: {
-          buildings_created_this_month?: number
-          current_month: string
+          buildings_count?: number | null
+          created_at?: string
+          id?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
-          buildings_created_this_month?: number
-          current_month?: string
+          buildings_count?: number | null
+          created_at?: string
+          id?: string
+          updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_building_counts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
