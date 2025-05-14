@@ -1,6 +1,7 @@
-import { ProjectDisplayData } from "@/types/editor";
+
+import { Project, ProjectDisplayData } from "@/types/editor";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { BuildingsTable } from "@/types/supabase";
 
 // Helper function to load projects from localStorage
 const loadFromLocalStorage = (): ProjectDisplayData[] => {
@@ -36,15 +37,19 @@ const fetchUserBuildings = async (userId: string): Promise<ProjectDisplayData[]>
     }
 
     // Transform database format to local format
-    return buildings.map(building => ({
+    return buildings.map((building: BuildingsTable) => ({
       id: building.id,
       name: building.name,
       createdAt: new Date(building.created_at),
       updatedAt: new Date(building.updated_at),
-      location: building.location,
-      thumbnail: building.thumbnail,
-      pdfs: building.pdfs || [],
-      symbols: building.symbols || [],
+      location: building.address ? {
+        lat: building.lat || 0,
+        lng: building.lng || 0,
+        address: building.address
+      } : undefined,
+      thumbnail: undefined, // Not available in DB schema
+      pdfs: [], // Will need to be filled separately if needed
+      symbols: [], // Will need to be filled separately if needed
     }));
   } catch (error) {
     console.error("Error fetching buildings from Supabase:", error);

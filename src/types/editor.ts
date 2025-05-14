@@ -1,3 +1,4 @@
+
 export type WallSymbol = {
   id: string;
   type: 'wall';
@@ -102,4 +103,20 @@ export type Project = {
     lng: number;
     address: string;
   };
+};
+
+// Add ProjectDisplayData type for use in the BuildingService
+export type ProjectDisplayData = {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  location?: {
+    lat: number;
+    lng: number;
+    address: string;
+  };
+  thumbnail?: string;
+  pdfs: ProjectPDF[];
+  symbols: EditorSymbol[];
 };
