@@ -22,6 +22,17 @@ const saveToLocalStorage = (projects: ProjectDisplayData[]): void => {
   }
 };
 
+// Define a simple intermediate type for mapping database records to application objects
+type BuildingBasicData = {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
 // Function to fetch user buildings from Supabase
 const fetchUserBuildings = async (userId: string): Promise<ProjectDisplayData[]> => {
   try {
@@ -35,8 +46,8 @@ const fetchUserBuildings = async (userId: string): Promise<ProjectDisplayData[]>
       throw error;
     }
 
-    // Transform database format to local format
-    return buildings.map((building: BuildingsTable) => ({
+    // Transform database format to local format using the intermediate type
+    return (buildings as BuildingBasicData[]).map((building) => ({
       id: building.id,
       name: building.name,
       createdAt: new Date(building.created_at),
