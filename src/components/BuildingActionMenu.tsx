@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -26,7 +25,8 @@ import { Label } from "@/components/ui/label";
 import { OrganizationSelect } from "./OrganizationSelect";
 import { BuildingNotes } from "./BuildingNotes";
 
-interface Project {
+// Update the type definition to match what we're using in HomePage.tsx
+type ProjectData = {
   id: string;
   name: string;
   createdAt: Date;
@@ -36,10 +36,10 @@ interface Project {
     lng: number;
     address: string;
   };
-}
+};
 
 interface BuildingActionMenuProps {
-  project: Project;
+  project: ProjectData;
   onDelete: () => void;
   className?: string;
   disabled?: boolean;

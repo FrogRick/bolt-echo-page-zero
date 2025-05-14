@@ -23,11 +23,24 @@ import { GenericCard } from "@/components/ui/GenericCard";
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZnJldGgwMyIsImEiOiJjajI2a29mYzAwMDJqMnducnZmNnMzejB1In0.oRpO5T3aTpkP1QO8WjsiSw";
 
+// Define local types for component state to avoid circular references
+type ProjectDisplayData = {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  location?: {
+    lat: number;
+    lng: number;
+    address: string;
+  };
+};
+
 const HomePage = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectDisplayData[]>([]);
+  const [filteredProjects, setFilteredProjects] = useState<ProjectDisplayData[]>([]);
   const [view, setView] = useState<"grid" | "map">("grid");
-  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<ProjectDisplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
   const [deletingProjectIds, setDeletingProjectIds] = useState<string[]>([]);
@@ -164,7 +177,7 @@ const HomePage = () => {
     }
   }, [user, refreshSubscription]);
 
-  const handleDeleteProject = async (project: Project) => {
+  const handleDeleteProject = async (project: ProjectDisplayData) => {
     try {
       setDeleteInProgress(true);
       setDeletingProjectIds(prev => [...prev, project.id]);
