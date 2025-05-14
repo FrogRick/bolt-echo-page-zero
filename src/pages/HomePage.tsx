@@ -83,7 +83,7 @@ const HomePage = () => {
             
             if (buildings && buildings.length > 0) {
               // Convert Supabase data to Project format
-              const supabaseProjects: Project[] = buildings.map((building: BuildingsTable) => ({
+              const supabaseProjects: ProjectDisplayData[] = buildings.map((building: BuildingsTable) => ({
                 id: building.id,
                 name: building.name,
                 createdAt: new Date(building.created_at),
@@ -97,7 +97,7 @@ const HomePage = () => {
               }));
               
               // Sort by updated_at descending to show latest first
-              supabaseProjects.sort((a: Project, b: Project) => b.updatedAt.getTime() - a.updatedAt.getTime());
+              supabaseProjects.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
               
               setProjects(supabaseProjects);
               setFilteredProjects(supabaseProjects);
@@ -132,7 +132,7 @@ const HomePage = () => {
             updatedAt: new Date(project.updatedAt)
           }));
           // Sort by updated_at descending to show latest first
-          projectList.sort((a: Project, b: Project) => b.updatedAt.getTime() - a.updatedAt.getTime());
+          projectList.sort((a: ProjectDisplayData, b: ProjectDisplayData) => b.updatedAt.getTime() - a.updatedAt.getTime());
           setProjects(projectList);
           setFilteredProjects(projectList);
         }
