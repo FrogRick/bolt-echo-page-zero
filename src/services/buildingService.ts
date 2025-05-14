@@ -1,3 +1,4 @@
+
 import { Project, ProjectDisplayData } from "@/types/editor";
 import { supabase } from "@/integrations/supabase/client";
 import { BuildingsTable } from "@/types/supabase";
@@ -23,7 +24,7 @@ const saveToLocalStorage = (projects: ProjectDisplayData[]): void => {
 };
 
 // Define a simple intermediate type for mapping database records to application objects
-type BuildingBasicData = {
+interface BuildingBasicData {
   id: string;
   name: string;
   created_at: string;
@@ -31,7 +32,7 @@ type BuildingBasicData = {
   address: string | null;
   lat: number | null;
   lng: number | null;
-};
+}
 
 // Function to fetch user buildings from Supabase
 const fetchUserBuildings = async (userId: string): Promise<ProjectDisplayData[]> => {
@@ -46,8 +47,8 @@ const fetchUserBuildings = async (userId: string): Promise<ProjectDisplayData[]>
       throw error;
     }
 
-    // Transform database format to local format using the intermediate type
-    return (buildings as BuildingBasicData[]).map((building) => ({
+    // Transform database format to local format using type assertion to break the circular reference
+    return (buildings as unknown as BuildingBasicData[]).map((building) => ({
       id: building.id,
       name: building.name,
       createdAt: new Date(building.created_at),
