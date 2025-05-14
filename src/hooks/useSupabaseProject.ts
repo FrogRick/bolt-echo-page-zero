@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Project } from "@/types/editor";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import { BuildingsTable } from "@/types/supabase";
+import { BuildingBasicInfo } from "@/services/buildingService";
 
 export const useSupabaseProject = (projectId: string | undefined) => {
   const [project, setProject] = useState<Project | null>(null);
@@ -27,7 +27,6 @@ export const useSupabaseProject = (projectId: string | undefined) => {
       
       try {
         // Attempt to fetch from Supabase if we have user authentication
-        // Use direct query to avoid RLS issues
         const { data: buildingData, error: buildingError } = await supabase
           .from("buildings")
           .select("*")
@@ -55,13 +54,13 @@ export const useSupabaseProject = (projectId: string | undefined) => {
               id: buildingData.id,
               name: buildingData.name,
               pdfs: [],
-              symbols: [], // Add the required symbols property as an empty array
+              symbols: [],
               createdAt: new Date(buildingData.created_at),
               updatedAt: new Date(buildingData.updated_at),
               location: buildingData.address ? {
                 address: buildingData.address,
-                lat: 0, // We'd need to add these to the buildings table
-                lng: 0, // or fetch from a geocoding service
+                lat: buildingData.lat || 0,
+                lng: buildingData.lng || 0
               } : undefined
             }
           });
@@ -118,11 +117,12 @@ export const useSupabaseProject = (projectId: string | undefined) => {
     try {
       if (user) {
         // Try to save to Supabase first
-        const buildingData: Partial<BuildingsTable> = {
+        const buildingData = {
           name: updatedProject.name,
           updated_at: new Date().toISOString(),
           address: updatedProject.location?.address,
-          // Other fields as needed
+          lat: updatedProject.location?.lat || null,
+          lng: updatedProject.location?.lng || null
         };
 
         const { error } = await supabase
