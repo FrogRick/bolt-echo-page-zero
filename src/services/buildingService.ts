@@ -1,171 +1,104 @@
-
+import { ProjectDisplayData } from "@/types/editor";
 import { supabase } from "@/integrations/supabase/client";
-import { Project } from "@/types/supabase";
+import { User } from "@supabase/supabase-js";
 
-// Define local types for service
-export interface ProjectLocation {
-  lat: number;
-  lng: number;
-  address: string;
-}
-
-export interface ProjectDisplayData {
-  id: string;
-  name: string;
-  createdAt: Date;
-  updatedAt: Date;
-  location?: ProjectLocation;
-}
-
-export const buildingService = {
-  fetchUserBuildings: async (userId: string): Promise<ProjectDisplayData[]> => {
-    try {
-      // Fetch from Supabase if user is logged in
-      const { data: buildings, error } = await supabase
-        .from('buildings')
-        .select('*')
-        .eq('owner_id', userId)
-        .order('updated_at', { ascending: false });
-        
-      if (error) {
-        console.error("Failed to fetch buildings from Supabase:", error);
-        throw error;
-      }
-      
-      if (buildings && buildings.length > 0) {
-        // Convert Supabase data to ProjectDisplayData format
-        const supabaseProjects: ProjectDisplayData[] = buildings.map((building: any) => ({
-          id: building.id,
-          name: building.name,
-          createdAt: new Date(building.created_at),
-          updatedAt: new Date(building.updated_at),
-          location: building.address ? {
-            address: building.address,
-            // If lat/lng are available in the database, use them
-            lat: building.lat || 0,
-            lng: building.lng || 0
-          } : undefined
-        }));
-        
-        // Sort by updated_at descending to show latest first
-        supabaseProjects.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-        
-        return supabaseProjects;
-      }
-      
-      return [];
-    } catch (error) {
-      console.error("Failed to fetch user buildings:", error);
-      throw error;
-    }
-  },
-  
-  loadFromLocalStorage: (): ProjectDisplayData[] => {
-    try {
-      const savedProjects = localStorage.getItem("evacuation-projects");
-      if (savedProjects) {
-        const parsedProjects = JSON.parse(savedProjects);
-        const projectList = parsedProjects.map((project: any) => ({
-          ...project,
-          createdAt: new Date(project.createdAt),
-          updatedAt: new Date(project.updatedAt)
-        }));
-        // Sort by updated_at descending to show latest first
-        projectList.sort((a: ProjectDisplayData, b: ProjectDisplayData) => b.updatedAt.getTime() - a.updatedAt.getTime());
-        return projectList;
-      }
-      return [];
-    } catch (localStorageError) {
-      console.error("Failed to parse projects from localStorage:", localStorageError);
-      return [];
-    }
-  },
-  
-  deleteBuilding: async (building: ProjectDisplayData, userId?: string): Promise<boolean> => {
-    try {
-      // Always update local state first for immediate UI feedback
-      const savedProjects = localStorage.getItem("evacuation-projects");
-      if (savedProjects) {
-        const projects = JSON.parse(savedProjects);
-        const updatedProjects = projects.filter((p: any) => p.id !== building.id);
-        localStorage.setItem("evacuation-projects", JSON.stringify(updatedProjects));
-      }
-      
-      let deleteSuccess = false;
-      
-      if (userId) {
-        // Try multiple deletion strategies
-        
-        // First strategy: Use the edge function
-        try {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const token = sessionData?.session?.access_token;
-          
-          if (token) {
-            const supabaseUrl = "https://ohxecbcihwinyskhaysl.supabase.co";
-            console.log(`Attempting to delete building ${building.id} using admin delete function`);
-            
-            const response = await fetch(`${supabaseUrl}/functions/v1/delete-building`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({ buildingId: building.id })
-            });
-            
-            if (response.ok) {
-              const result = await response.json();
-              console.log('Building deleted successfully via edge function', result);
-              deleteSuccess = true;
-            } else {
-              const errorData = await response.json();
-              console.error('Failed to delete building:', errorData);
-              throw new Error(`Failed to delete building: ${errorData.error || errorData.message || 'Unknown error'}`);
-            }
-          }
-        } catch (edgeFunctionError) {
-          console.error("Failed to delete building from edge function:", edgeFunctionError);
-          console.log("Falling back to direct deletion...");
-          
-          // Second strategy: Try direct Supabase deletion with RLS
-          try {
-            // Try method 1: Standard RLS-compliant delete
-            const { error: deleteError1 } = await supabase
-              .from('buildings')
-              .delete()
-              .eq('id', building.id);
-              
-            if (!deleteError1) {
-              deleteSuccess = true;
-            } else {
-              console.warn("First delete method failed:", deleteError1);
-              
-              // Try method 2: Delete with user_id filter (if this is an older record)
-              const { error: deleteError2 } = await supabase
-                .from('buildings')
-                .delete()
-                .eq('id', building.id)
-                .eq('user_id', userId);
-                
-              if (!deleteError2) {
-                deleteSuccess = true;
-              } else {
-                console.warn("Second delete method failed:", deleteError2);
-                // For legacy data, just rely on localStorage deletion we already did
-                console.log("Using localStorage deletion as fallback");
-              }
-            }
-          } catch (dbError) {
-            console.error("All database deletion attempts failed:", dbError);
-          }
-        }
-      }
-      
-      return deleteSuccess;
-    } catch (error) {
-      console.error("Error in deleteBuilding:", error);
-      throw error;
-    }
+// Helper function to load projects from localStorage
+const loadFromLocalStorage = (): ProjectDisplayData[] => {
+  try {
+    const stored = localStorage.getItem("evacuation-projects");
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error("Failed to parse projects from localStorage:", error);
+    return [];
   }
 };
+
+// Helper function to save projects to localStorage
+const saveToLocalStorage = (projects: ProjectDisplayData[]): void => {
+  try {
+    localStorage.setItem("evacuation-projects", JSON.stringify(projects));
+  } catch (error) {
+    console.error("Failed to save projects to localStorage:", error);
+  }
+};
+
+// Function to fetch user buildings from Supabase
+const fetchUserBuildings = async (userId: string): Promise<ProjectDisplayData[]> => {
+  try {
+    const { data: buildings, error } = await supabase
+      .from("buildings")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    // Transform database format to local format
+    return buildings.map(building => ({
+      id: building.id,
+      name: building.name,
+      createdAt: new Date(building.created_at),
+      updatedAt: new Date(building.updated_at),
+      location: building.location,
+      thumbnail: building.thumbnail,
+      pdfs: building.pdfs || [],
+      symbols: building.symbols || [],
+    }));
+  } catch (error) {
+    console.error("Error fetching buildings from Supabase:", error);
+    throw error;
+  }
+};
+
+// Function to delete building
+const deleteBuilding = async (
+  project: ProjectDisplayData, 
+  userId?: string
+): Promise<boolean> => {
+  try {
+    // If user is logged in, try to delete from Supabase first
+    if (userId) {
+      const { error } = await supabase
+        .from("buildings")
+        .delete()
+        .eq("id", project.id)
+        .eq("user_id", userId);
+
+      if (error) {
+        console.error("Failed to delete building from Supabase:", error);
+        // If deletion from Supabase fails, fall back to localStorage
+      } else {
+        console.log("Successfully deleted building from Supabase");
+        // Also remove from localStorage to keep things consistent
+        const localProjects = loadFromLocalStorage();
+        const updatedProjects = localProjects.filter(p => p.id !== project.id);
+        saveToLocalStorage(updatedProjects);
+        return true;
+      }
+    }
+
+    // If no user or Supabase deletion failed, delete from localStorage
+    const localProjects = loadFromLocalStorage();
+    const updatedProjects = localProjects.filter(p => p.id !== project.id);
+    saveToLocalStorage(updatedProjects);
+    
+    // Return false to indicate it was only removed locally, not from database
+    return userId ? false : true;
+  } catch (error) {
+    console.error("Error during building deletion:", error);
+    throw error;
+  }
+};
+
+// Export all functions as a service object
+export const buildingService = {
+  loadFromLocalStorage,
+  saveToLocalStorage,
+  fetchUserBuildings,
+  deleteBuilding,
+};
+
+// Also export the type for use in components
+export type { ProjectDisplayData };
