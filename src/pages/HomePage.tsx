@@ -1,42 +1,18 @@
+
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { Plus, Map, Grid2X2, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Input } from "@/components/ui/input";
-import { 
-  Plus, 
-  Map, 
-  Grid2X2, 
-  Building, 
-  Search,
-  Loader2
-} from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import MapView from "@/components/MapView";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { BuildingsTable } from "@/types/supabase";
-import { BuildingActionMenu } from "@/components/BuildingActionMenu";
-import { GenericCard } from "@/components/ui/GenericCard";
-
-const MAPBOX_TOKEN = "pk.eyJ1IjoiZnJldGgwMyIsImEiOiJjajI2a29mYzAwMDJqMnducnZmNnMzejB1In0.oRpO5T3aTpkP1QO8WjsiSw";
-
-// Define local types for component state to avoid circular references
-interface ProjectLocation {
-  lat: number;
-  lng: number;
-  address: string;
-}
-
-interface ProjectDisplayData {
-  id: string;
-  name: string;
-  createdAt: Date;
-  updatedAt: Date;
-  location?: ProjectLocation;
-}
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { BuildingsList } from "@/components/buildings/BuildingsList";
+import { MapViewWrapper } from "@/components/buildings/MapViewWrapper";
+import { SearchBar } from "@/components/buildings/SearchBar";
+import { DeleteBuildingDialog } from "@/components/buildings/DeleteBuildingDialog";
+import { NoBuildings } from "@/components/buildings/NoBuildings";
+import { buildingService, ProjectDisplayData } from "@/services/buildingService";
 
 const HomePage = () => {
   const [projects, setProjects] = useState<ProjectDisplayData[]>([]);
@@ -49,15 +25,8 @@ const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [hasLoadError, setHasLoadError] = useState(false);
   
-  const {
-    user,
-    buildingUsage,
-    refreshSubscription,
-    session
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { user, buildingUsage, refreshSubscription } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   
   const reachedBuildingLimit = user && buildingUsage.total >= buildingUsage.limits.total;
@@ -69,80 +38,32 @@ const HomePage = () => {
       setHasLoadError(false);
       try {
         if (user) {
-          // Fetch from Supabase if user is logged in
           try {
-            const { data: buildings, error } = await supabase
-              .from('buildings')
-              .select('*')
-              .eq('owner_id', user.id)
-              .order('updated_at', { ascending: false });
-              
-            if (error) {
-              console.error("Failed to fetch buildings from Supabase:", error);
-              // If this is due to a recursive policy error, we'll try loading from localStorage
-              throw error;
-            }
-            
-            if (buildings && buildings.length > 0) {
-              // Convert Supabase data to ProjectDisplayData format
-              const supabaseProjects: ProjectDisplayData[] = buildings.map((building: BuildingsTable) => ({
-                id: building.id,
-                name: building.name,
-                createdAt: new Date(building.created_at),
-                updatedAt: new Date(building.updated_at),
-                location: building.address ? {
-                  address: building.address,
-                  // If lat/lng are available in the database, use them
-                  lat: building.lat || 0,
-                  lng: building.lng || 0
-                } : undefined
-              }));
-              
-              // Sort by updated_at descending to show latest first
-              supabaseProjects.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-              
-              setProjects(supabaseProjects);
-              setFilteredProjects(supabaseProjects);
-              return;
-            }
+            // Use the service to fetch buildings
+            const buildings = await buildingService.fetchUserBuildings(user.id);
+            setProjects(buildings);
+            setFilteredProjects(buildings);
+            setLoading(false);
+            return;
           } catch (supabaseError) {
             console.error("Supabase fetch error:", supabaseError);
             // Fall through to localStorage as a backup
           }
         }
         
-        // Always try to load from localStorage as a fallback
-        loadFromLocalStorage();
+        // Load from localStorage if no user or Supabase fails
+        const localProjects = buildingService.loadFromLocalStorage();
+        setProjects(localProjects);
+        setFilteredProjects(localProjects);
       } catch (error) {
         console.error("Failed to fetch projects:", error);
         setHasLoadError(true);
-        // Always try localStorage as a last resort
-        loadFromLocalStorage();
+        // Try localStorage as last resort
+        const localProjects = buildingService.loadFromLocalStorage();
+        setProjects(localProjects);
+        setFilteredProjects(localProjects);
       } finally {
         setLoading(false);
-      }
-    };
-    
-    const loadFromLocalStorage = () => {
-      try {
-        const savedProjects = localStorage.getItem("evacuation-projects");
-        if (savedProjects) {
-          const parsedProjects = JSON.parse(savedProjects);
-          const projectList = parsedProjects.map((project: any) => ({
-            ...project,
-            createdAt: new Date(project.createdAt),
-            updatedAt: new Date(project.updatedAt)
-          }));
-          // Sort by updated_at descending to show latest first
-          projectList.sort((a: ProjectDisplayData, b: ProjectDisplayData) => b.updatedAt.getTime() - a.updatedAt.getTime());
-          setProjects(projectList);
-          setFilteredProjects(projectList);
-        }
-      } catch (localStorageError) {
-        console.error("Failed to parse projects from localStorage:", localStorageError);
-        setHasLoadError(true);
-        setProjects([]);
-        setFilteredProjects([]);
       }
     };
     
@@ -184,92 +105,21 @@ const HomePage = () => {
       setDeleteInProgress(true);
       setDeletingProjectIds(prev => [...prev, project.id]);
       
-      // Always update local state first for immediate UI feedback (optimistic update)
-      const updatedProjects = projects.filter(p => p.id !== project.id);
-      localStorage.setItem("evacuation-projects", JSON.stringify(updatedProjects));
+      const deleteSuccess = await buildingService.deleteBuilding(project, user?.id);
       
-      let deleteSuccess = false;
+      // Update the UI state
+      setProjects(prevProjects => prevProjects.filter(p => p.id !== project.id));
+      setFilteredProjects(prevFiltered => prevFiltered.filter(p => p.id !== project.id));
+      setProjectToDelete(null);
       
+      // After deletion attempts, refresh subscription data if user is logged in
       if (user) {
-        // Try multiple deletion strategies
-        
-        // First strategy: Use the edge function
-        try {
-          const session = await supabase.auth.getSession();
-          const token = session?.data?.session?.access_token;
-          
-          if (token) {
-            const supabaseUrl = "https://ohxecbcihwinyskhaysl.supabase.co";
-            console.log(`Attempting to delete building ${project.id} using admin delete function`);
-            
-            const response = await fetch(`${supabaseUrl}/functions/v1/delete-building`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({ buildingId: project.id })
-            });
-            
-            if (response.ok) {
-              const result = await response.json();
-              console.log('Building deleted successfully via edge function', result);
-              deleteSuccess = true;
-            } else {
-              const errorData = await response.json();
-              console.error('Failed to delete building:', errorData);
-              throw new Error(`Failed to delete building: ${errorData.error || errorData.message || 'Unknown error'}`);
-            }
-          }
-        } catch (edgeFunctionError) {
-          console.error("Failed to delete building from edge function:", edgeFunctionError);
-          console.log("Falling back to direct deletion...");
-          
-          // Second strategy: Try direct Supabase deletion with RLS
-          try {
-            // Try method 1: Standard RLS-compliant delete
-            const { error: deleteError1 } = await supabase
-              .from('buildings')
-              .delete()
-              .eq('id', project.id);
-              
-            if (!deleteError1) {
-              deleteSuccess = true;
-            } else {
-              console.warn("First delete method failed:", deleteError1);
-              
-              // Try method 2: Delete with user_id filter (if this is an older record)
-              const { error: deleteError2 } = await supabase
-                .from('buildings')
-                .delete()
-                .eq('id', project.id)
-                .eq('user_id', user.id);
-                
-              if (!deleteError2) {
-                deleteSuccess = true;
-              } else {
-                console.warn("Second delete method failed:", deleteError2);
-                // For legacy data, just rely on localStorage deletion we already did
-                console.log("Using localStorage deletion as fallback");
-              }
-            }
-          } catch (dbError) {
-            console.error("All database deletion attempts failed:", dbError);
-          }
-        }
-        
-        // After deletion attempts, refresh subscription data if user is logged in
         try {
           await refreshSubscription();
         } catch (refreshError) {
           console.warn("Failed to refresh subscription data:", refreshError);
         }
       }
-      
-      // Update the UI state
-      setProjects(prevProjects => prevProjects.filter(p => p.id !== project.id));
-      setFilteredProjects(prevFiltered => prevFiltered.filter(p => p.id !== project.id));
-      setProjectToDelete(null);
       
       toast({
         title: deleteSuccess ? "Building deleted" : "Building removed",
@@ -338,9 +188,7 @@ const HomePage = () => {
 
   // Show loading state while fetching projects
   if (loading) {
-    return <div className="flex justify-center items-center h-64">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-    </div>;
+    return <LoadingSpinner />;
   }
 
   // Show error state if we failed to load data
@@ -377,105 +225,43 @@ const HomePage = () => {
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
-          <Button variant="default" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all duration-300 ease-in-out" onClick={handleNewBuildingClick}>
+          <Button 
+            variant="default" 
+            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all duration-300 ease-in-out" 
+            onClick={handleNewBuildingClick}
+          >
             <Plus className="mr-2 h-4 w-4" />
             New building
           </Button>
         </div>
 
         {/* Search bar */}
-        <div className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              type="text"
-              placeholder="Search buildings by name or address..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
+        <SearchBar value={searchQuery} onChange={setSearchQuery} />
 
-        {/* Only render content if user is logged in or there are buildings in localStorage */}
-        {view === "grid" ? 
-          (filteredProjects.length === 0 ? 
-            <div className="text-center py-12 bg-white rounded-lg shadow">
-              <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              {searchQuery ? (
-                <>
-                  <h2 className="text-2xl font-semibold mb-4">No buildings match your search</h2>
-                  <p className="text-gray-500 mb-6">Try different search terms</p>
-                </>
-              ) : (
-                <>
-                  <h2 className="text-2xl font-semibold mb-4">No buildings yet</h2>
-                  <p className="text-gray-500 mb-6">Create your first building to get started</p>
-                </>
-              )}
-            </div> 
-            : 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProjects.map(project => (
-                <div key={project.id} className="relative">
-                  <GenericCard
-                    title={project.name}
-                    subtitle={project.location?.address || "No address"}
-                    icon={<Building className="w-8 h-8 text-primary" />}
-                    timestamp={{ label: `Last updated: ${project.updatedAt.toLocaleDateString()}` }}
-                    onClick={() => navigate(`/editor/${project.id}`)}
-                    loading={deletingProjectIds.includes(project.id)}
-                    type="building"
-                  />
-                  <BuildingActionMenu 
-                    project={project}
-                    onDelete={() => setProjectToDelete(project)}
-                    className="absolute top-2 right-8"
-                    disabled={deleteInProgress || deletingProjectIds.includes(project.id)}
-                  />
-                </div>
-              ))}
-            </div>
-          ) 
-          : 
-          <MapView projects={filteredProjects} />
-        }
+        {/* Building list or map view */}
+        {view === "grid" ? (
+          <BuildingsList
+            buildings={filteredProjects}
+            searchQuery={searchQuery}
+            onDeleteBuilding={setProjectToDelete}
+            deletingBuildingIds={deletingProjectIds}
+            deleteInProgress={deleteInProgress}
+          />
+        ) : (
+          <MapViewWrapper buildings={filteredProjects} searchQuery={searchQuery} />
+        )}
       </div>
 
       {/* Delete confirmation dialog */}
-      <AlertDialog 
-        open={projectToDelete !== null} 
+      <DeleteBuildingDialog
+        building={projectToDelete}
+        isOpen={projectToDelete !== null}
+        isDeleting={deleteInProgress}
         onOpenChange={(open) => {
-          if (!open && !deleteInProgress) setProjectToDelete(null);
+          if (!open) setProjectToDelete(null);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the building
-              {projectToDelete && ` "${projectToDelete.name}"`} and all associated data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteInProgress}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => projectToDelete && handleDeleteProject(projectToDelete)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteInProgress}
-            >
-              {deleteInProgress ? (
-                <>
-                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onConfirmDelete={() => projectToDelete && handleDeleteProject(projectToDelete)}
+      />
     </div>
   );
 };
