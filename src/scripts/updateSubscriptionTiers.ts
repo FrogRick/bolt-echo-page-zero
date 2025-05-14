@@ -13,7 +13,7 @@ export async function updateSubscriptionTiers() {
   const { error: deleteError } = await supabase
     .from('subscription_tiers')
     .delete()
-    .neq('id', 'custom'); // Keep any custom tiers if they exist
+    .not('id', 'eq', 'custom'); // Keep any custom tiers if they exist
   
   if (deleteError) {
     console.error("Error deleting existing subscription tiers:", deleteError);
@@ -27,9 +27,9 @@ export async function updateSubscriptionTiers() {
       .upsert({
         id: tier.id,
         name: tier.name,
-        max_buildings: tier.buildingLimit,
-        max_new_buildings_per_month: tier.monthlyBuildingLimit,
-        price_monthly: tier.price.monthly || 0
+        buildings_limit: tier.buildingLimit, // Changed from max_buildings to buildings_limit
+        price: tier.price.monthly || 0, // Changed from price_monthly to price
+        description: tier.description || null // Added description field
       });
     
     if (error) {

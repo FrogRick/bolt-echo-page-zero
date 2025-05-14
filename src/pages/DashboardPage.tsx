@@ -166,14 +166,17 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
   async function handleCreateBuilding(newBuilding: { name: string; description?: string; address?: string }) {
     if (!user) return;
     setLoading(true);
+    
+    // Fix: Change to match the Supabase schema - use owner_id instead of user_id
+    // and remove description which isn't in the schema
     const { data: row, error } = await supabase.from("buildings").insert([
       {
         name: newBuilding.name,
-        description: newBuilding.description || null,
         address: newBuilding.address || null,
-        user_id: user.id,
+        owner_id: user.id,
       },
     ]).select().single();
+    
     setLoading(false);
     if (!error && row) {
       fetchData();
@@ -361,4 +364,4 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
       )}
     </div>
   );
-} 
+}

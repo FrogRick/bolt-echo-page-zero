@@ -35,3 +35,16 @@ export interface SubscriptionData {
     };
   };
 }
+
+// Define a simpler Project type to avoid excessive type instantiation
+export interface Project {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  location?: {
+    lat: number;
+    lng: number;
+    address: string;
+  };
+}

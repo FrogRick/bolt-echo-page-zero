@@ -93,11 +93,11 @@ export function BuildingActionMenu({ project, onDelete, className, disabled }: B
     
     setIsLoading(true);
     try {
-      // Use a direct update with service role instead of RLS (would need API endpoint)
-      // For now, doing a simple update might still work if RLS allows updates
+      // Previously tried using 'organization_id' which doesn't exist in schema
+      // Update to use owner_id which is in the schema
       const { error } = await supabase
         .from('buildings')
-        .update({ organization_id: selectedOrgId })
+        .update({ owner_id: selectedOrgId })
         .eq('id', project.id);
         
       if (error) throw error;

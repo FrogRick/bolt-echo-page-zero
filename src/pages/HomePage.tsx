@@ -17,21 +17,9 @@ import { useToast } from "@/hooks/use-toast";
 import MapView from "@/components/MapView";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { BuildingsTable } from "@/types/supabase";
+import { BuildingsTable, Project } from "@/types/supabase";
 import { BuildingActionMenu } from "@/components/BuildingActionMenu";
 import { GenericCard } from "@/components/ui/GenericCard";
-
-type Project = {
-  id: string;
-  name: string;
-  createdAt: Date;
-  updatedAt: Date;
-  location?: {
-    lat: number;
-    lng: number;
-    address: string;
-  };
-};
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZnJldGgwMyIsImEiOiJjajI2a29mYzAwMDJqMnducnZmNnMzejB1In0.oRpO5T3aTpkP1QO8WjsiSw";
 
@@ -71,7 +59,7 @@ const HomePage = () => {
             const { data: buildings, error } = await supabase
               .from('buildings')
               .select('*')
-              .eq('user_id', user.id)
+              .eq('owner_id', user.id) // Changed from 'user_id' to 'owner_id'
               .order('updated_at', { ascending: false });
               
             if (error) {
@@ -89,9 +77,9 @@ const HomePage = () => {
                 updatedAt: new Date(building.updated_at),
                 location: building.address ? {
                   address: building.address,
-                  // Default values for map
-                  lat: 0,
-                  lng: 0
+                  // If lat/lng are available in the database, use them
+                  lat: building.lat || 0,
+                  lng: building.lng || 0
                 } : undefined
               }));
               
