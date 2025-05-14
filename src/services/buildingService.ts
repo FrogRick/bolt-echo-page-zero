@@ -1,4 +1,3 @@
-
 import { Project, ProjectDisplayData } from "@/types/editor";
 import { supabase } from "@/integrations/supabase/client";
 import { BuildingsTable } from "@/types/supabase";
