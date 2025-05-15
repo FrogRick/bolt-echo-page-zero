@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+
+import React, { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { GenericCard } from "@/components/ui/GenericCard";
 import { Flame, Building, User, BookCopy, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { NewBuildingForm } from "@/pages/NewProjectPage";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -11,51 +11,7 @@ import { CreateOrganizationForm } from "@/components/organizations/CreateOrganiz
 import { CreateBuildingForm } from "@/components/buildings/CreateBuildingForm";
 import { CreateEvacuationPlanForm } from "@/components/evacuation-plans/CreateEvacuationPlanForm";
 import { CreateTemplateForm } from "@/components/templates/CreateTemplateForm";
-
-function NewEvacuationPlanForm({ onSuccess }: { onSuccess: (id: string) => void }) {
-  const [name, setName] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  return (
-    <form
-      onSubmit={e => {
-        e.preventDefault();
-        if (!name.trim()) return;
-        setIsSubmitting(true);
-        const newProject = {
-          id: crypto.randomUUID(),
-          name: name.trim(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          pdfs: [],
-          symbols: [],
-        };
-        // Spara till localStorage
-        const existing = localStorage.getItem("evacuation-plans");
-        const projects = existing ? JSON.parse(existing) : [];
-        projects.unshift(newProject);
-        localStorage.setItem("evacuation-plans", JSON.stringify(projects));
-        setIsSubmitting(false);
-        onSuccess(newProject.id);
-      }}
-      className="max-w-2xl mx-auto bg-white rounded-lg p-6"
-    >
-      <h2 className="text-xl font-bold mb-4">Create Evacuation Plan</h2>
-      <div className="mb-4">
-        <label className="block mb-1 font-medium">Plan Name</label>
-        <input
-          className="border rounded px-3 py-2 w-full"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="e.g. Main Building Plan"
-          autoFocus
-        />
-      </div>
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Creating..." : "Create Evacuation Plan"}
-      </Button>
-    </form>
-  );
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const icons = {
   "evacuation-plans": <Flame className="w-8 h-8 text-primary" />,
@@ -75,10 +31,13 @@ const SKELETON_COUNT = 6;
 
 function SkeletonCard() {
   return (
-    <div className="animate-pulse bg-gray-100 rounded-lg p-6 h-40 flex flex-col justify-between">
-      <div className="h-6 w-1/2 bg-gray-200 rounded mb-2" />
-      <div className="h-4 w-1/3 bg-gray-200 rounded mb-4" />
-      <div className="h-4 w-1/4 bg-gray-200 rounded" />
+    <div className="animate-pulse bg-gray-100 rounded-lg p-6 h-[220px] flex flex-col justify-between">
+      <div className="flex flex-col items-center space-y-4">
+        <div className="h-14 w-14 bg-gray-200 rounded-lg" />
+        <div className="h-6 w-1/2 bg-gray-200 rounded mb-2 mx-auto" />
+        <div className="h-4 w-1/3 bg-gray-200 rounded mb-4 mx-auto" />
+      </div>
+      <div className="h-4 w-1/4 bg-gray-200 rounded self-center" />
     </div>
   );
 }
@@ -114,26 +73,74 @@ function EmptyState({
 
 export default function DashboardPage({ typeOverride }: { typeOverride?: string }) {
   const params = useParams<{ type: string }>();
-  const type = typeOverride || params.type;
-  const { user } = useAuth();
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const [showSkeleton, setShowSkeleton] = useState(false);
-  const [delayedLoading, setDelayedLoading] = useState(false);
+  const location = useLocation();
+  const { user } = useAuth();
   const { toast } = useToast();
 
-  // Helper: fetch data from Supabase for the current type
-  async function fetchData() {
-    setLoading(true);
+  // Determine active type from props, params, or default
+  const activeType = typeOverride || params.type || "buildings";
+  
+  // Dashboard data state
+  const [dataMap, setDataMap] = useState<Record<string, any[]>>({
+    "buildings": [],
+    "organizations": [],
+    "templates": [],
+    "evacuation-plans": [],
+  });
+  
+  // UI state
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({
+    "buildings": false,
+    "organizations": false,
+    "templates": false,
+    "evacuation-plans": false,
+  });
+  const [showSkeletonMap, setShowSkeletonMap] = useState<Record<string, boolean>>({
+    "buildings": false,
+    "organizations": false,
+    "templates": false,
+    "evacuation-plans": false,
+  });
+
+  // Update URL without reloading when tab changes
+  const handleTabChange = (type: string) => {
+    if (type !== activeType) {
+      navigate(`/${type}`, { replace: true });
+    }
+  };
+
+  // Helper to set loading state for a specific type
+  const setTypeLoading = (type: string, isLoading: boolean) => {
+    setLoadingMap(prev => ({ ...prev, [type]: isLoading }));
+    
+    if (isLoading) {
+      // Show skeletons after a delay
+      const timer = setTimeout(() => {
+        setShowSkeletonMap(prev => ({ ...prev, [type]: true }));
+      }, 400);
+      return () => clearTimeout(timer);
+    } else {
+      setShowSkeletonMap(prev => ({ ...prev, [type]: false }));
+    }
+  };
+
+  // Fetch data for the specified type
+  const fetchDataForType = async (type: string) => {
+    if (!type) return;
+    
+    if (loadingMap[type]) return; // Prevent duplicate fetches
+    
+    setTypeLoading(type, true);
+    
     let table = "";
     switch (type) {
       case "buildings": table = "buildings"; break;
       case "organizations": table = "organizations"; break;
       case "templates": table = "templates"; break;
       case "evacuation-plans": table = "floor_plans"; break;
-      default: setLoading(false); return;
+      default: setTypeLoading(type, false); return;
     }
     
     try {
@@ -149,45 +156,30 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
           description: `Failed to load ${type}. Please try again.`,
           variant: "destructive",
         });
-        setData([]);
       } else if (rows) {
-        setData(rows);
-      } else {
-        setData([]);
+        setDataMap(prev => ({ ...prev, [type]: rows }));
       }
     } catch (err) {
       console.error(`Error fetching ${table}:`, err);
-      setData([]);
     } finally {
-      setLoading(false);
+      setTypeLoading(type, false);
     }
-  }
+  };
 
-  useEffect(() => { fetchData(); /* eslint-disable-next-line */ }, [type]);
-
+  // Initial data loading and when activeType changes
   useEffect(() => {
-    let skeletonTimeout: NodeJS.Timeout;
-    let spinnerTimeout: NodeJS.Timeout;
-    if (loading) {
-      spinnerTimeout = setTimeout(() => setDelayedLoading(true), 400);
-      skeletonTimeout = setTimeout(() => setShowSkeleton(true), 400);
-    } else {
-      setShowSkeleton(false);
-      setDelayedLoading(false);
+    if (activeType) {
+      fetchDataForType(activeType);
     }
-    return () => {
-      clearTimeout(skeletonTimeout);
-      clearTimeout(spinnerTimeout);
-    };
-  }, [loading]);
+  }, [activeType]);
 
   // --- CREATE handlers ---
   async function handleCreateBuilding(newBuilding: { name: string; description?: string; address?: string }) {
     if (!user) return;
-    setLoading(true);
     
-    // Fix: Change to match the Supabase schema - use owner_id instead of user_id
-    // and remove description which isn't in the schema
+    const prevType = activeType;
+    setTypeLoading(prevType, true);
+    
     const { data: row, error } = await supabase.from("buildings").insert([
       {
         name: newBuilding.name,
@@ -196,16 +188,20 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
       },
     ]).select().single();
     
-    setLoading(false);
+    setTypeLoading(prevType, false);
+    
     if (!error && row) {
-      fetchData();
+      fetchDataForType(prevType);
       setShowNewModal(false);
     }
   }
 
-  async function handleCreateEvacuationPlanAndGoToEditor() {
+  async function handleCreateEvacuationPlan() {
     if (!user) return;
-    setLoading(true);
+    
+    const prevType = activeType;
+    setTypeLoading(prevType, true);
+    
     try {
       const { data: row, error } = await supabase.from("floor_plans").insert([
         {
@@ -213,80 +209,121 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
           building_id: null,
         },
       ]).select().single();
+      
       if (error || !row) {
-        alert("Could not create evacuation plan. Please try again.");
-        setLoading(false);
+        toast({
+          title: "Error",
+          description: "Could not create evacuation plan. Please try again.",
+          variant: "destructive",
+        });
+        setTypeLoading(prevType, false);
         return;
       }
+      
       setShowNewModal(false);
       navigate(`/editor/${row.id}`);
     } catch (err) {
-      alert("Unexpected error. Please try again.");
-      setLoading(false);
+      toast({
+        title: "Error",
+        description: "Unexpected error. Please try again.",
+        variant: "destructive",
+      });
+      setTypeLoading(prevType, false);
     }
-    setLoading(false);
   }
 
-  async function handleCreateTemplate(newTemplate: { name: string; description?: string }) {
-    setData(prev => ([
-      { id: crypto.randomUUID(), name: newTemplate.name, description: newTemplate.description || null, updatedAt: new Date() },
-      ...prev,
-    ]));
-    setShowNewModal(false);
-    alert("Supabase-tabellen 'templates' saknas. Lägg till den i din databas för att spara på riktigt.");
-  }
-
-  // Hantera klick på New-knappen
   function handleNewClick() {
     setShowNewModal(true);
   }
 
   return (
     <div>
-      <div className="flex items-center mb-6">
-        <h2 className="text-3xl font-bold">{titles[type]}</h2>
-        {data.length > 0 && (type === "buildings" || type === "evacuation-plans" || type === "organizations" || type === "templates") && (
-          <Button
-            className="ml-auto" variant="default"
-            onClick={handleNewClick}
-            disabled={loading}
-          >
-            + New {titles[type].replace(/s$/, "")}
-          </Button>
-        )}
-      </div>
-      {loading && delayedLoading ? (
-        showSkeleton ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: SKELETON_COUNT }).map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : (
-          <div className="flex justify-center items-center py-16">
-            <Loader2 className="animate-spin h-8 w-8 text-gray-400" />
-          </div>
-        )
-      ) : !loading && data.length === 0 ? (
-        <EmptyState
-          title={`No ${titles[type].toLowerCase()} found`}
-          description={`Get started by adding your first ${titles[type].toLowerCase().replace(/s$/, "")}`}
-          buttonLabel={loading && type === "evacuation-plans" ? "Creating..." : `+ New ${titles[type].replace(/s$/, "")}`}
-          onButtonClick={handleNewClick}
-          loading={loading}
-        />
-      ) : !loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {data.map((item: any) => (
-            <GenericCard
-              key={item.id}
-              title={item.name}
-              subtitle={item.description}
-              icon={icons[type]}
-              timestamp={{ label: `Last updated: ${item.updated_at ? new Date(item.updated_at).toLocaleDateString() : ""}` }}
-              type={type as any}
-            />
-          ))}
+      <Tabs 
+        defaultValue={activeType}
+        className="space-y-4"
+        value={activeType}
+        onValueChange={handleTabChange}
+      >
+        <div className="flex items-center justify-between mb-6">
+          <TabsList className="bg-transparent p-0">
+            <TabsTrigger 
+              value="buildings" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            >
+              Buildings
+            </TabsTrigger>
+            <TabsTrigger 
+              value="evacuation-plans" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            >
+              Evacuation Plans
+            </TabsTrigger>
+            <TabsTrigger 
+              value="organizations" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            >
+              Organizations
+            </TabsTrigger>
+            <TabsTrigger 
+              value="templates" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            >
+              Templates
+            </TabsTrigger>
+          </TabsList>
+          
+          {dataMap[activeType]?.length > 0 && (
+            <Button
+              variant="default"
+              onClick={handleNewClick}
+              disabled={loadingMap[activeType]}
+            >
+              + New {titles[activeType].replace(/s$/, "")}
+            </Button>
+          )}
         </div>
-      ) : null}
+
+        {Object.keys(titles).map((type) => (
+          <TabsContent key={type} value={type} className="mt-0 pt-0">
+            <div className="flex flex-col min-h-[50vh]">
+              {loadingMap[type] && showSkeletonMap[type] ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
+                    <SkeletonCard key={i} />
+                  ))}
+                </div>
+              ) : loadingMap[type] && !showSkeletonMap[type] ? (
+                <div className="flex justify-center items-center py-16">
+                  <Loader2 className="animate-spin h-8 w-8 text-gray-400" />
+                </div>
+              ) : !loadingMap[type] && (!dataMap[type] || dataMap[type].length === 0) ? (
+                <EmptyState
+                  title={`No ${titles[type].toLowerCase()} found`}
+                  description={`Get started by adding your first ${titles[type].toLowerCase().replace(/s$/, "")}`}
+                  buttonLabel={`+ New ${titles[type].replace(/s$/, "")}`}
+                  onButtonClick={handleNewClick}
+                  loading={loadingMap[type]}
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {dataMap[type]?.map((item: any) => (
+                    <GenericCard
+                      key={item.id}
+                      title={item.name}
+                      subtitle={item.description || item.address}
+                      icon={icons[type]}
+                      timestamp={{ label: `Last updated: ${item.updated_at ? new Date(item.updated_at).toLocaleDateString() : ""}` }}
+                      type={type as any}
+                      onClick={() => navigate(`/editor/${item.id}`)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        ))}
+      </Tabs>
+
       {showNewModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-visible"
@@ -303,35 +340,35 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
               >
                 ×
               </button>
-              {type === "buildings" ? (
+              {activeType === "buildings" ? (
                 <CreateBuildingForm
                   onSuccess={() => {
                     setShowNewModal(false);
-                    fetchData();
+                    fetchDataForType(activeType);
                   }}
                   onCancel={() => setShowNewModal(false)}
                 />
-              ) : type === "evacuation-plans" ? (
+              ) : activeType === "evacuation-plans" ? (
                 <CreateEvacuationPlanForm
                   onSuccess={() => {
                     setShowNewModal(false);
-                    fetchData();
+                    fetchDataForType(activeType);
                   }}
                   onCancel={() => setShowNewModal(false)}
                 />
-              ) : type === "organizations" ? (
+              ) : activeType === "organizations" ? (
                 <CreateOrganizationForm
                   onSuccess={() => {
                     setShowNewModal(false);
-                    fetchData();
+                    fetchDataForType(activeType);
                   }}
                   onCancel={() => setShowNewModal(false)}
                 />
-              ) : type === "templates" ? (
+              ) : activeType === "templates" ? (
                 <CreateTemplateForm
                   onSuccess={() => {
                     setShowNewModal(false);
-                    fetchData();
+                    fetchDataForType(activeType);
                   }}
                   onCancel={() => setShowNewModal(false)}
                 />

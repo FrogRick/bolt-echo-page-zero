@@ -1,3 +1,4 @@
+
 import { ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
@@ -19,6 +20,7 @@ export function GenericCard({
   timestamp,
   onClick,
   loading = false,
+  type,
 }: GenericCardProps) {
   return (
     <Card
@@ -37,8 +39,8 @@ export function GenericCard({
         <div className="h-14 w-14 flex items-center justify-center bg-white rounded-lg shadow-sm border border-primary/10 mb-2">
           {icon}
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 truncate group-hover:text-primary transition-colors">{title}</h3>
-        {subtitle && <p className="mt-1 text-sm text-gray-500 truncate">{subtitle}</p>}
+        <h3 className="text-lg font-semibold text-gray-900 truncate max-w-[90%] px-2 text-center group-hover:text-primary transition-colors">{title}</h3>
+        {subtitle && <p className="mt-1 text-sm text-gray-500 truncate max-w-[90%] px-2 text-center">{subtitle}</p>}
       </div>
       <CardContent className="flex-grow flex flex-col justify-end items-center pb-4">
         {timestamp && (
@@ -52,4 +54,4 @@ export function GenericCard({
       </CardContent>
     </Card>
   );
-} 
+}
