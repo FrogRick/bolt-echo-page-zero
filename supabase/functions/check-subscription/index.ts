@@ -1,141 +1,185 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import { stripe } from '../_shared/stripe.ts';
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { corsHeaders } from "../_shared/cors.ts";
+import { stripe } from "../_shared/stripe.ts";
 
-// Get the environment variables
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+// Helper logging function for enhanced debugging
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
+};
 
-// Initialize the Supabase client with the service role key
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-Deno.serve(async (req: Request) => {
-  // CORS headers
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-      status: 204,
-    });
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
   }
 
+  // Use the service role key to perform secure operations in Supabase
+  const supabaseClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } }
+  );
+
   try {
-    // Get the authorization header from the request
-    const authHeader = req.headers.get('Authorization');
+    logStep("Function started");
     
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Authorization header is required' }), {
-        status: 401,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      });
-    }
+    // Verify auth token from request
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header provided");
     
-    // Extract the token from the authorization header
-    const token = authHeader.replace('Bearer ', '');
+    const token = authHeader.replace("Bearer ", "");
+    logStep("Authenticating user with token");
     
-    // Verify the JWT token
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError) throw new Error(`Authentication error: ${userError.message}`);
     
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized', details: authError?.message }), {
-        status: 401,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      });
-    }
+    const user = userData.user;
+    if (!user?.email) throw new Error("User not authenticated or email not available");
+    logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Get the user's subscription data
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('subscription_tier, subscription_end_date')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError) {
-      return new Response(JSON.stringify({ error: 'Failed to retrieve profile', details: profileError.message }), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      });
-    }
-
-    // Get the tier limits
-    const { data: tierData, error: tierError } = await supabase
-      .from('subscription_tiers')
-      .select('*')
-      .eq('id', profile.subscription_tier)
-      .single();
-
-    if (tierError) {
-      return new Response(JSON.stringify({ error: 'Failed to retrieve subscription tier', details: tierError.message }), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      });
-    }
-
-    // Get the current month in format YYYY-MM
-    const currentMonth = new Date().toISOString().slice(0, 7);
-
-    // Get the user's building counts for this month
-    const { data: buildingCounts, error: countError } = await supabase
-      .from('user_building_counts')
-      .select('buildings_created_this_month')
-      .eq('user_id', user.id)
-      .eq('current_month', currentMonth)
-      .maybeSingle(); // Use maybeSingle instead of single to handle cases where no row exists yet
-
-    // Get the total number of buildings for this user
-    const { count: totalBuildings, error: buildingError } = await supabase
-      .from('buildings')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id);
-
-    // Prepare the response
-    const response = {
-      subscription: {
-        tier: profile.subscription_tier,
-        status: profile.subscription_end_date && new Date(profile.subscription_end_date) < new Date() ? 'expired' : 'active',
-        end_date: profile.subscription_end_date,
-        is_trial: false, // Set based on your business logic
-      },
-      buildings: {
-        total: totalBuildings || 0,
-        monthly: buildingCounts?.buildings_created_this_month || 0,
-        limits: {
-          total: tierData.max_buildings,
-          monthly: tierData.max_new_buildings_per_month,
-        },
-      },
+    // Check if user exists in Stripe as a customer
+    const customers = await stripe.customers.list({ 
+      email: user.email,
+      limit: 1 
+    });
+    
+    // Set default building limits for free tier
+    const defaultLimits = { total: 2, monthly: 1 };
+    let buildingUsage = {
+      total: 0,
+      monthly: 0,
+      limits: defaultLimits
     };
+    
+    // Get user's building usage from Supabase
+    const { data: countData } = await supabaseClient
+      .from("user_building_counts")
+      .select("buildings_count")
+      .eq("user_id", user.id)
+      .single();
+      
+    if (countData) {
+      buildingUsage.total = countData.buildings_count || 0;
+    }
+    
+    // Count buildings created this month
+    const firstDayOfMonth = new Date();
+    firstDayOfMonth.setDate(1);
+    firstDayOfMonth.setHours(0, 0, 0, 0);
+    
+    const { count: monthlyCount } = await supabaseClient
+      .from("buildings")
+      .select("id", { count: 'exact', head: false })
+      .eq("owner_id", user.id)
+      .gte("created_at", firstDayOfMonth.toISOString());
+      
+    buildingUsage.monthly = monthlyCount || 0;
+    
+    // If no customer found in Stripe, return free tier data
+    if (customers.data.length === 0) {
+      logStep("No customer found, returning free tier data");
+      return new Response(JSON.stringify({
+        subscription: {
+          tier: "free",
+          status: "inactive",
+          end_date: null,
+          is_trial: false
+        },
+        buildings: buildingUsage
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
-    return new Response(JSON.stringify(response), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+    const customerId = customers.data[0].id;
+    logStep("Found Stripe customer", { customerId });
+
+    // Check for active subscriptions
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "active",
+      expand: ['data.items.data.price.product'],
+      limit: 1,
+    });
+    
+    // Also check for trial subscriptions
+    const trialSubscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "trialing",
+      expand: ['data.items.data.price.product'],
+      limit: 1,
+    });
+    
+    let hasSubscription = subscriptions.data.length > 0;
+    let subscription = hasSubscription ? subscriptions.data[0] : null;
+    let isTrial = false;
+    
+    // If no active subscription but has trial
+    if (!hasSubscription && trialSubscriptions.data.length > 0) {
+      subscription = trialSubscriptions.data[0];
+      hasSubscription = true;
+      isTrial = true;
+    }
+    
+    let subscriptionTier = "free";
+    let subscriptionStatus = "inactive";
+    let subscriptionEnd = null;
+
+    if (hasSubscription && subscription) {
+      // Get subscription details
+      subscriptionStatus = subscription.status;
+      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      
+      // Determine tier from the product
+      const product = subscription.items.data[0].price.product;
+      if (typeof product !== 'string') {
+        subscriptionTier = product.name.toLowerCase().includes('basic') ? 'basic' : 
+                          product.name.toLowerCase().includes('premium') ? 'premium' : 
+                          product.name.toLowerCase().includes('enterprise') ? 'enterprise' : 'free';
+      }
+      
+      logStep("Subscription found", { 
+        tier: subscriptionTier, 
+        status: subscriptionStatus,
+        endDate: subscriptionEnd,
+        isTrial
+      });
+      
+      // Update building limits based on subscription tier
+      if (subscriptionTier === 'basic') {
+        buildingUsage.limits = { total: 10, monthly: 5 };
+      } else if (subscriptionTier === 'premium') {
+        buildingUsage.limits = { total: 50, monthly: 20 };
+      } else if (subscriptionTier === 'enterprise') {
+        buildingUsage.limits = { total: 500, monthly: 100 };
+      }
+    } else {
+      logStep("No active subscription found");
+    }
+
+    // Return subscription and usage data
+    return new Response(JSON.stringify({
+      subscription: {
+        tier: subscriptionTier,
+        status: subscriptionStatus,
+        end_date: subscriptionEnd,
+        is_trial: isTrial
       },
+      buildings: buildingUsage
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
     });
   } catch (error) {
-    console.error('Error checking subscription:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logStep("ERROR", { message: errorMessage });
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
     });
   }
 });
