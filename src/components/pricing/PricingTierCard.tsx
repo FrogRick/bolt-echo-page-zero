@@ -99,7 +99,7 @@ const PricingTierCard = ({
           )}
           {/* Add spacer when there's no trial to maintain consistent card height */}
           {(!tier.trial || billingPeriod !== "monthly") && (
-            <div className="h-5">&#8203;</div> {/* Invisible character for spacing */}
+            <div className="h-5">&#8203;</div>
           )}
         </div>
         
@@ -137,4 +137,3 @@ const PricingTierCard = ({
 };
 
 export default PricingTierCard;
-
