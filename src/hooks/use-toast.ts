@@ -12,7 +12,7 @@ type ToastProps = {
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
-  variant?: "default" | "destructive" | "success";
+  variant?: "default" | "destructive" | "success" | "warning"; // Added "warning" variant
   duration?: number;
 };
 
@@ -160,6 +160,11 @@ function toast({ ...props }: Toast) {
     });
   } else if (props.variant === "success") {
     return sonnerToast.success(props.title, {
+      description: props.description,
+      ...props,
+    });
+  } else if (props.variant === "warning") { // Added support for warning variant
+    return sonnerToast.warning(props.title, {
       description: props.description,
       ...props,
     });

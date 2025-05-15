@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { GenericCard } from "@/components/ui/GenericCard";
@@ -246,13 +245,13 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
           toast({
             title: "Warning",
             description: "Organization created but failed to assign you as admin.",
-            variant: "warning",
+            variant: "destructive",
           });
         } else {
           toast({
             title: "Success",
             description: "Organization created successfully.",
-            variant: "default",
+            variant: "success",
           });
         }
         
