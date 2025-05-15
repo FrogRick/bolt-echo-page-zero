@@ -66,14 +66,16 @@ serve(async (req) => {
     
     // Determine if this is monthly or yearly based on priceId
     const isYearly = priceId.includes("yearly");
-    const tierName = priceId.split("-")[0]; // basic, premium, etc.
+    const tierName = priceId.split("-")[0]; // basic, pro, team, enterprise
     
     // Pre-configured price IDs - would come from a database in a production app
     const priceMap: {[key: string]: string} = {
       "basic-monthly": "price_basic_monthly",
       "basic-yearly": "price_basic_yearly",
-      "premium-monthly": "price_premium_monthly",
-      "premium-yearly": "price_premium_yearly",
+      "pro-monthly": "price_pro_monthly",
+      "pro-yearly": "price_pro_yearly",
+      "team-monthly": "price_team_monthly",
+      "team-yearly": "price_team_yearly",
       "enterprise-monthly": "price_enterprise_monthly",
       "enterprise-yearly": "price_enterprise_yearly"
     };
@@ -93,6 +95,9 @@ serve(async (req) => {
       cancelUrl
     });
     
+    // Only apply trial for basic tier
+    const trialPeriodDays = tierName === 'basic' ? 14 : undefined;
+    
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -109,7 +114,7 @@ serve(async (req) => {
           tier: tierName,
           billing: isYearly ? "yearly" : "monthly"
         },
-        trial_period_days: 7 // Optional: 7-day trial
+        trial_period_days: trialPeriodDays
       },
       success_url: successUrl,
       cancel_url: cancelUrl

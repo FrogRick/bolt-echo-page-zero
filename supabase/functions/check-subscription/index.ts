@@ -98,11 +98,12 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    // Check for active subscriptions
+    // Check for active subscriptions - fixing the expand issue
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
-      expand: ['data.items.data.price.product'],
+      // Don't try to expand too many levels
+      expand: ['data.items.data.price'],
       limit: 1,
     });
     
@@ -110,7 +111,8 @@ serve(async (req) => {
     const trialSubscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "trialing",
-      expand: ['data.items.data.price.product'],
+      // Don't try to expand too many levels
+      expand: ['data.items.data.price'],
       limit: 1,
     });
     
@@ -134,12 +136,20 @@ serve(async (req) => {
       subscriptionStatus = subscription.status;
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       
-      // Determine tier from the product
-      const product = subscription.items.data[0].price.product;
-      if (typeof product !== 'string') {
-        subscriptionTier = product.name.toLowerCase().includes('basic') ? 'basic' : 
-                          product.name.toLowerCase().includes('premium') ? 'premium' : 
-                          product.name.toLowerCase().includes('enterprise') ? 'enterprise' : 'free';
+      // Instead of trying to expand product, get the priceId and determine tier from that
+      if (subscription.items.data.length > 0) {
+        const priceId = subscription.items.data[0].price.id;
+        
+        // Determine tier from price ID pattern (price_tier_billingperiod)
+        if (priceId.includes('basic')) {
+          subscriptionTier = 'basic';
+        } else if (priceId.includes('pro')) {
+          subscriptionTier = 'pro';
+        } else if (priceId.includes('team')) {
+          subscriptionTier = 'team';
+        } else if (priceId.includes('enterprise')) {
+          subscriptionTier = 'enterprise';
+        }
       }
       
       logStep("Subscription found", { 
@@ -151,9 +161,11 @@ serve(async (req) => {
       
       // Update building limits based on subscription tier
       if (subscriptionTier === 'basic') {
-        buildingUsage.limits = { total: 10, monthly: 5 };
-      } else if (subscriptionTier === 'premium') {
-        buildingUsage.limits = { total: 50, monthly: 20 };
+        buildingUsage.limits = { total: 5, monthly: 3 };
+      } else if (subscriptionTier === 'pro') {
+        buildingUsage.limits = { total: 25, monthly: 15 };
+      } else if (subscriptionTier === 'team') {
+        buildingUsage.limits = { total: 100, monthly: 50 };
       } else if (subscriptionTier === 'enterprise') {
         buildingUsage.limits = { total: 500, monthly: 100 };
       }

@@ -16,10 +16,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Use the service role key for secure operations
+  // Use the service role key
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
   try {
@@ -37,7 +37,7 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Find customer in Stripe
+    // Find the customer in Stripe
     const customers = await stripe.customers.list({
       email: user.email,
       limit: 1
@@ -49,22 +49,16 @@ serve(async (req) => {
     
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
-
-    // Get the origin for return URL
-    const origin = new URL(req.url).origin;
     
-    // Create Stripe customer portal session
-    const portalSession = await stripe.billingPortal.sessions.create({
+    // Create a portal session
+    const { url } = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: origin
+      return_url: new URL("/subscription", req.url).toString(),
     });
     
-    logStep("Portal session created", { 
-      sessionId: portalSession.id,
-      url: portalSession.url
-    });
-
-    return new Response(JSON.stringify({ url: portalSession.url }), {
+    logStep("Portal session created", { url });
+    
+    return new Response(JSON.stringify({ url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });

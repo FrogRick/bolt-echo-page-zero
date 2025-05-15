@@ -27,9 +27,9 @@ export async function updateSubscriptionTiers() {
       .upsert({
         id: tier.id,
         name: tier.name,
-        buildings_limit: tier.buildingLimit, // Changed from max_buildings to buildings_limit
-        price: tier.price.monthly || 0, // Changed from price_monthly to price
-        description: tier.description || null // Added description field
+        buildings_limit: tier.buildingLimit,
+        price: tier.price.monthly || 0,
+        description: tier.description || null
       });
     
     if (error) {

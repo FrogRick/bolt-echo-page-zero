@@ -13,76 +13,135 @@ export type PricingTier = {
   buttonText: string;
   popular?: boolean;
   buildingLimit: number;
-  monthlyBuildingLimit: number;
+  monthlyExportLimit: number;
   customLogo: boolean;
   qrCode: boolean;
+  templates: "none" | "single" | "unlimited";
+  organizationSupport: boolean;
+  reviewFeatures: boolean;
+  userInvites: "none" | "limited" | "unlimited";
+  statistics: boolean;
+  support: "none" | "email" | "priority" | "dedicated";
   trial?: { days: number };
+  color: string;
 };
 
 export const pricingTiers: PricingTier[] = [
   {
     id: "basic",
     name: "Basic",
-    description: "Perfect for small businesses and property managers",
+    description: "Create evacuation plans with limited functionality",
     price: {
       monthly: 9,
-      yearly: 89,
+      yearly: 90,
     },
-    buildingLimit: 10,
-    monthlyBuildingLimit: 3,
+    buildingLimit: 5,
+    monthlyExportLimit: 3,
     features: [
-      "Up to 10 buildings",
-      "Create 3 buildings per month",
-      "Download as PDF",
-      "Automatic wall detection",
-      "Firemap branding included",
-      "14-day free trial"
+      "Create evacuation plans with limited functionality",
+      "Export with Firemap logo",
+      "3 exports/month",
+      "5 buildings",
+      "QR code",
+      "14-day trial upon registration"
     ],
     buttonText: "Start free trial",
-    popular: true,
+    popular: false,
     customLogo: false,
-    qrCode: false,
-    trial: { days: 14 }
+    qrCode: true,
+    templates: "none",
+    organizationSupport: false,
+    reviewFeatures: false,
+    userInvites: "none",
+    statistics: false,
+    support: "none",
+    trial: { days: 14 },
+    color: "green"
   },
   {
-    id: "premium",
-    name: "Premium",
-    description: "For businesses managing multiple properties",
+    id: "pro",
+    name: "Pro",
+    description: "For small businesses or sole proprietors",
     price: {
       monthly: 49,
       yearly: 490,
     },
-    buildingLimit: 50,
-    monthlyBuildingLimit: 10,
+    buildingLimit: 25,
+    monthlyExportLimit: 15,
     features: [
-      "Up to 50 buildings",
-      "Create 10 buildings per month",
-      "Custom logo on exports",
-      "QR code generation"
+      "Everything in Basic",
+      "15 exports/month",
+      "Up to 25 buildings",
+      "Custom logo",
+      "Custom template",
+      "Email support"
+    ],
+    buttonText: "Subscribe",
+    popular: true,
+    customLogo: true,
+    qrCode: true,
+    templates: "single",
+    organizationSupport: false,
+    reviewFeatures: false,
+    userInvites: "none",
+    statistics: false,
+    support: "email",
+    color: "blue"
+  },
+  {
+    id: "team",
+    name: "Team",
+    description: "Small fire protection companies, housing companies, etc.",
+    price: {
+      monthly: 149,
+      yearly: 1490,
+    },
+    buildingLimit: 100,
+    monthlyExportLimit: 100,
+    features: [
+      "Everything in Pro",
+      "100 exports/month",
+      "Invite unlimited users",
+      "Review functionality",
+      "Up to 100 buildings",
+      "Create organizations",
+      "Unlimited templates",
+      "Statistics / usage reports"
     ],
     buttonText: "Subscribe",
     customLogo: true,
-    qrCode: true
+    qrCode: true,
+    templates: "unlimited",
+    organizationSupport: true,
+    reviewFeatures: true,
+    userInvites: "unlimited",
+    statistics: true,
+    support: "priority",
+    color: "yellow"
   },
   {
     id: "enterprise",
     name: "Enterprise",
-    description: "For large organizations with extensive building portfolios",
+    description: "Larger companies, municipalities, national actors",
     price: {
-      monthly: 290,
-      yearly: 2900,
+      monthly: null,
+      yearly: null,
     },
-    buildingLimit: 300,
-    monthlyBuildingLimit: 50,
+    buildingLimit: 500,
+    monthlyExportLimit: 500,
     features: [
-      "Up to 300 buildings",
-      "Create 50 buildings per month",
-      "Custom logo on exports",
-      "QR code generation",
-      "Multiple user accounts (coming soon)"
+      "Customized solution",
+      "Contact us for a custom quote"
     ],
-    buttonText: "Subscribe",
+    buttonText: "Contact us",
     customLogo: true,
-    qrCode: true
+    qrCode: true,
+    templates: "unlimited",
+    organizationSupport: true,
+    reviewFeatures: true,
+    userInvites: "unlimited",
+    statistics: true,
+    support: "dedicated",
+    color: "red"
   }
 ];
