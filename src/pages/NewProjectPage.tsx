@@ -45,7 +45,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
       mapboxgl.accessToken = MAPBOX_TOKEN;
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v11',
+        style: 'mapbox://styles/mapbox/streets-v12', // Updated to streets-v12
         center: [longitude, latitude],
         zoom: 13,
         scrollZoom: false
@@ -66,7 +66,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
       mapboxgl.accessToken = MAPBOX_TOKEN;
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v11',
+        style: 'mapbox://styles/mapbox/streets-v12', // Updated to streets-v12
         center: [-74.5, 40],
         zoom: 9,
         scrollZoom: false
@@ -234,7 +234,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
                     id="address" 
                     value={addressInput} 
                     onChange={e => handleAddressInputChange(e.target.value)} 
-                    placeholder="Search for an address" 
+                    placeholder="Type to search for an address" 
                     className={cn(
                       "pl-9 pr-4 w-full",
                       addressSelected ? "border-green-500" : ""
