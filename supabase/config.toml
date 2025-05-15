@@ -12,3 +12,6 @@ verify_jwt = true
 
 [functions.setup-stripe-products]
 verify_jwt = true
+
+[functions.setup-storage]
+verify_jwt = true

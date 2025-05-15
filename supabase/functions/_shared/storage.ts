@@ -1,5 +1,7 @@
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+// Note: We use SupabaseClient type from esm.sh as well
+type SupabaseClient = ReturnType<typeof createClient>;
 
 // Ensure the avatars bucket exists
 export async function ensureAvatarsBucketExists(supabase: SupabaseClient) {
