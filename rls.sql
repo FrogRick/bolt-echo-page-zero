@@ -47,7 +47,7 @@ CREATE POLICY "Only admins can update organizations"
 CREATE POLICY "Users can view buildings they have access to"
     ON buildings FOR SELECT
     USING (
-        user_id = auth.uid()
+        owner_id = auth.uid()
         OR EXISTS (
             SELECT 1 FROM organization_members
             WHERE organization_members.organization_id = buildings.organization_id
@@ -59,7 +59,7 @@ CREATE POLICY "Users can view buildings they have access to"
 CREATE POLICY "Users can update their own buildings"
     ON buildings FOR UPDATE
     USING (
-        user_id = auth.uid()
+        owner_id = auth.uid()
         OR EXISTS (
             SELECT 1 FROM organization_members
             WHERE organization_members.organization_id = buildings.organization_id
@@ -72,7 +72,20 @@ CREATE POLICY "Users can update their own buildings"
 CREATE POLICY "Users can insert buildings"
     ON buildings FOR INSERT
     WITH CHECK (
-        user_id = auth.uid()
+        owner_id = auth.uid()
+        OR EXISTS (
+            SELECT 1 FROM organization_members
+            WHERE organization_members.organization_id = buildings.organization_id
+            AND organization_members.user_id = auth.uid()
+            AND organization_members.role = 'admin'
+            AND organization_members.status = 'active'
+        )
+    );
+
+CREATE POLICY "Users can delete their own buildings"
+    ON buildings FOR DELETE
+    USING (
+        owner_id = auth.uid()
         OR EXISTS (
             SELECT 1 FROM organization_members
             WHERE organization_members.organization_id = buildings.organization_id
@@ -90,7 +103,7 @@ CREATE POLICY "Users can view floor plans they have access to"
             SELECT 1 FROM buildings
             WHERE buildings.id = floor_plans.building_id
             AND (
-                buildings.user_id = auth.uid()
+                buildings.owner_id = auth.uid()
                 OR EXISTS (
                     SELECT 1 FROM organization_members
                     WHERE organization_members.organization_id = buildings.organization_id
@@ -101,14 +114,52 @@ CREATE POLICY "Users can view floor plans they have access to"
         )
     );
 
-CREATE POLICY "Users can modify floor plans they have access to"
-    ON floor_plans FOR ALL
+CREATE POLICY "Users can insert floor plans"
+    ON floor_plans FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM buildings
+            WHERE buildings.id = floor_plans.building_id
+            AND (
+                buildings.owner_id = auth.uid()
+                OR EXISTS (
+                    SELECT 1 FROM organization_members
+                    WHERE organization_members.organization_id = buildings.organization_id
+                    AND organization_members.user_id = auth.uid()
+                    AND organization_members.role = 'admin'
+                    AND organization_members.status = 'active'
+                )
+            )
+        )
+    );
+
+CREATE POLICY "Users can update floor plans they have access to"
+    ON floor_plans FOR UPDATE
     USING (
         EXISTS (
             SELECT 1 FROM buildings
             WHERE buildings.id = floor_plans.building_id
             AND (
-                buildings.user_id = auth.uid()
+                buildings.owner_id = auth.uid()
+                OR EXISTS (
+                    SELECT 1 FROM organization_members
+                    WHERE organization_members.organization_id = buildings.organization_id
+                    AND organization_members.user_id = auth.uid()
+                    AND organization_members.role = 'admin'
+                    AND organization_members.status = 'active'
+                )
+            )
+        )
+    );
+
+CREATE POLICY "Users can delete floor plans they have access to"
+    ON floor_plans FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM buildings
+            WHERE buildings.id = floor_plans.building_id
+            AND (
+                buildings.owner_id = auth.uid()
                 OR EXISTS (
                     SELECT 1 FROM organization_members
                     WHERE organization_members.organization_id = buildings.organization_id
@@ -129,7 +180,7 @@ CREATE POLICY "Users can view elements they have access to"
             JOIN buildings ON buildings.id = floor_plans.building_id
             WHERE floor_plans.id = elements.floor_plan_id
             AND (
-                buildings.user_id = auth.uid()
+                buildings.owner_id = auth.uid()
                 OR EXISTS (
                     SELECT 1 FROM organization_members
                     WHERE organization_members.organization_id = buildings.organization_id
@@ -140,15 +191,55 @@ CREATE POLICY "Users can view elements they have access to"
         )
     );
 
-CREATE POLICY "Users can modify elements they have access to"
-    ON elements FOR ALL
+CREATE POLICY "Users can insert elements they have access to"
+    ON elements FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM floor_plans
+            JOIN buildings ON buildings.id = floor_plans.building_id
+            WHERE floor_plans.id = elements.floor_plan_id
+            AND (
+                buildings.owner_id = auth.uid()
+                OR EXISTS (
+                    SELECT 1 FROM organization_members
+                    WHERE organization_members.organization_id = buildings.organization_id
+                    AND organization_members.user_id = auth.uid()
+                    AND organization_members.role = 'admin'
+                    AND organization_members.status = 'active'
+                )
+            )
+        )
+    );
+
+CREATE POLICY "Users can update elements they have access to"
+    ON elements FOR UPDATE
     USING (
         EXISTS (
             SELECT 1 FROM floor_plans
             JOIN buildings ON buildings.id = floor_plans.building_id
             WHERE floor_plans.id = elements.floor_plan_id
             AND (
-                buildings.user_id = auth.uid()
+                buildings.owner_id = auth.uid()
+                OR EXISTS (
+                    SELECT 1 FROM organization_members
+                    WHERE organization_members.organization_id = buildings.organization_id
+                    AND organization_members.user_id = auth.uid()
+                    AND organization_members.role = 'admin'
+                    AND organization_members.status = 'active'
+                )
+            )
+        )
+    );
+
+CREATE POLICY "Users can delete elements they have access to"
+    ON elements FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM floor_plans
+            JOIN buildings ON buildings.id = floor_plans.building_id
+            WHERE floor_plans.id = elements.floor_plan_id
+            AND (
+                buildings.owner_id = auth.uid()
                 OR EXISTS (
                     SELECT 1 FROM organization_members
                     WHERE organization_members.organization_id = buildings.organization_id
@@ -169,7 +260,7 @@ CREATE POLICY "Users can view notes they have access to"
             SELECT 1 FROM buildings
             WHERE buildings.id = building_notes.building_id
             AND (
-                buildings.user_id = auth.uid()
+                buildings.owner_id = auth.uid()
                 OR EXISTS (
                     SELECT 1 FROM organization_members
                     WHERE organization_members.organization_id = buildings.organization_id

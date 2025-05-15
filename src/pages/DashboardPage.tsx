@@ -8,6 +8,9 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CreateOrganizationForm } from "@/components/organizations/CreateOrganizationForm";
+import { CreateBuildingForm } from "@/components/buildings/CreateBuildingForm";
+import { CreateEvacuationPlanForm } from "@/components/evacuation-plans/CreateEvacuationPlanForm";
+import { CreateTemplateForm } from "@/components/templates/CreateTemplateForm";
 
 function NewEvacuationPlanForm({ onSuccess }: { onSuccess: (id: string) => void }) {
   const [name, setName] = useState("");
@@ -230,11 +233,7 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
 
   // Hantera klick på New-knappen
   function handleNewClick() {
-    if (type === "evacuation-plans") {
-      handleCreateEvacuationPlanAndGoToEditor();
-    } else {
-      setShowNewModal(true);
-    }
+    setShowNewModal(true);
   }
 
   return (
@@ -300,14 +299,22 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
                 ×
               </button>
               {type === "buildings" ? (
-                <NewBuildingForm
+                <CreateBuildingForm
                   onSuccess={() => {
                     setShowNewModal(false);
                     fetchData();
                   }}
+                  onCancel={() => setShowNewModal(false)}
                 />
-              ) : type === "evacuation-plans" ? null
-                : type === "organizations" ? (
+              ) : type === "evacuation-plans" ? (
+                <CreateEvacuationPlanForm
+                  onSuccess={() => {
+                    setShowNewModal(false);
+                    fetchData();
+                  }}
+                  onCancel={() => setShowNewModal(false)}
+                />
+              ) : type === "organizations" ? (
                 <CreateOrganizationForm
                   onSuccess={() => {
                     setShowNewModal(false);
@@ -316,30 +323,13 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
                   onCancel={() => setShowNewModal(false)}
                 />
               ) : type === "templates" ? (
-                <form
-                  onSubmit={async e => {
-                    e.preventDefault();
-                    const form = e.target as HTMLFormElement;
-                    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
-                    const description = (form.elements.namedItem("description") as HTMLInputElement).value.trim();
-                    if (!name) return;
-                    await handleCreateTemplate({ name, description });
+                <CreateTemplateForm
+                  onSuccess={() => {
+                    setShowNewModal(false);
+                    fetchData();
                   }}
-                  className="max-w-2xl mx-auto bg-white rounded-lg p-6"
-                >
-                  <h2 className="text-xl font-bold mb-4">Create Template</h2>
-                  <div className="mb-4">
-                    <label className="block mb-1 font-medium">Name</label>
-                    <input className="border rounded px-3 py-2 w-full" name="name" placeholder="e.g. Standard Template" autoFocus />
-                  </div>
-                  <div className="mb-4">
-                    <label className="block mb-1 font-medium">Description</label>
-                    <input className="border rounded px-3 py-2 w-full" name="description" placeholder="Description (optional)" />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Creating..." : "Create Template"}
-                  </Button>
-                </form>
+                  onCancel={() => setShowNewModal(false)}
+                />
               ) : null}
             </div>
           </div>
