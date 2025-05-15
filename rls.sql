@@ -1,3 +1,4 @@
+
 -- Enable RLS on all tables
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
@@ -25,26 +26,20 @@ CREATE POLICY "Service role can view all profiles"
     USING (auth.jwt()->>'role' = 'service_role');
 
 -- Create policies for organizations
-CREATE POLICY "Organization members can view their organizations"
-    ON organizations FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM organization_members
-            WHERE organization_members.organization_id = organizations.id
-            AND organization_members.user_id = auth.uid()
-            AND organization_members.status = 'active'
-        )
-    );
+CREATE POLICY "Allow users to view organizations" 
+    ON organizations 
+    FOR SELECT 
+    USING (TRUE);
 
-CREATE POLICY "Organization admins can update their organizations"
-    ON organizations FOR UPDATE
+CREATE POLICY "Only admins can update organizations"
+    ON organizations
+    FOR UPDATE
     USING (
         EXISTS (
             SELECT 1 FROM organization_members
             WHERE organization_members.organization_id = organizations.id
             AND organization_members.user_id = auth.uid()
             AND organization_members.role = 'admin'
-            AND organization_members.status = 'active'
         )
     );
 
@@ -190,16 +185,10 @@ CREATE POLICY "Users can modify their own notes"
     USING (user_id = auth.uid());
 
 -- Create policies for organization_members
-CREATE POLICY "Organization members can view other members"
-    ON organization_members FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM organization_members AS om
-            WHERE om.organization_id = organization_members.organization_id
-            AND om.user_id = auth.uid()
-            AND om.status = 'active'
-        )
-    );
+CREATE POLICY "Allow authenticated users to view organization members" 
+    ON organization_members 
+    FOR SELECT 
+    USING (auth.role() = 'authenticated');
 
 CREATE POLICY "Organization admins can modify members"
     ON organization_members FOR ALL
