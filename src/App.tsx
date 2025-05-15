@@ -77,7 +77,7 @@ export default function App() {
       <Router>
         <Routes>
           <Route path="/" element={<Layout />}>
-            <Route index element={<Navigate to="/buildings" replace />} />
+            <Route index element={<Navigate to="/editor" replace />} />
             <Route path="/editor" element={<AutoCreateAndRedirectToEditor />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/pricing" element={<PricingPage />} />
