@@ -321,6 +321,14 @@ export type Database = {
         Args: { org_id: string; email: string; invite_role?: string }
         Returns: string
       }
+      is_org_admin: {
+        Args: { org_id: string }
+        Returns: boolean
+      }
+      is_org_member: {
+        Args: { org_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

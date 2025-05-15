@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { GenericCard } from "@/components/ui/GenericCard";
@@ -26,10 +27,10 @@ function NewEvacuationPlanForm({ onSuccess }: { onSuccess: (id: string) => void 
           symbols: [],
         };
         // Spara till localStorage
-        const existing = localStorage.getItem("evacuation-projects");
+        const existing = localStorage.getItem("evacuation-plans");
         const projects = existing ? JSON.parse(existing) : [];
         projects.unshift(newProject);
-        localStorage.setItem("evacuation-projects", JSON.stringify(projects));
+        localStorage.setItem("evacuation-plans", JSON.stringify(projects));
         setIsSubmitting(false);
         onSuccess(newProject.id);
       }}
@@ -214,26 +215,29 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
     if (!user) return;
     setLoading(true);
     try {
-      // Remove the subscription_tier field since it doesn't exist in the organizations table
-      const { data: row, error } = await supabase.from("organizations").insert([
+      // First create the organization
+      const { data: orgData, error: orgError } = await supabase.from("organizations").insert([
         {
           name: newOrg.name,
-          // No subscription_tier field here
         }
       ]).select().single();
       
-      if (error) {
-        console.error("Error creating organization:", error);
+      if (orgError) {
+        console.error("Error creating organization:", orgError);
         toast({
           title: "Error",
           description: "Failed to create organization. Please try again.",
           variant: "destructive",
         });
-      } else if (row) {
-        // If creation successful, also create an organization_member record to connect the user
+        setLoading(false);
+        return;
+      }
+      
+      // Then create the organization member record for the current user
+      if (orgData) {
         const { error: memberError } = await supabase.from("organization_members").insert([
           {
-            organization_id: row.id,
+            organization_id: orgData.id,
             user_id: user.id,
             role: "admin",
             status: "active"
