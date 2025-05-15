@@ -68,21 +68,36 @@ serve(async (req) => {
     const isYearly = priceId.includes("yearly");
     const tierName = priceId.split("-")[0]; // basic, pro, team, enterprise
     
-    // Pre-configured price IDs - would come from a database in a production app
-    const priceMap: {[key: string]: string} = {
-      "basic-monthly": "price_basic_monthly",
-      "basic-yearly": "price_basic_yearly",
-      "pro-monthly": "price_pro_monthly",
-      "pro-yearly": "price_pro_yearly",
-      "team-monthly": "price_team_monthly",
-      "team-yearly": "price_team_yearly",
-      "enterprise-monthly": "price_enterprise_monthly",
-      "enterprise-yearly": "price_enterprise_yearly"
+    // Create the actual Stripe price IDs based on our tier structure
+    // These should match your actual price IDs in Stripe dashboard
+    const tierPrices = {
+      basic: {
+        monthly: "price_basic_monthly", // Replace with real Stripe price ID
+        yearly: "price_basic_yearly"
+      },
+      pro: {
+        monthly: "price_pro_monthly",
+        yearly: "price_pro_yearly"
+      },
+      team: {
+        monthly: "price_team_monthly",
+        yearly: "price_team_yearly"
+      },
+      enterprise: {
+        monthly: "price_enterprise_monthly",
+        yearly: "price_enterprise_yearly"
+      }
     };
+
+    // Get the correct Stripe price ID for this tier and billing period
+    const period = isYearly ? "yearly" : "monthly";
+    const stripePriceId = priceId.startsWith("price_") 
+      ? priceId // If it's already a full Stripe price ID, use it directly
+      : tierPrices[tierName as keyof typeof tierPrices]?.[period as "monthly" | "yearly"];
     
-    // If it's a special test price for development, use it directly
-    const stripePriceId = priceId.startsWith("price_") ? priceId : priceMap[priceId];
-    if (!stripePriceId) throw new Error(`Invalid price ID: ${priceId}`);
+    if (!stripePriceId) {
+      throw new Error(`Invalid price ID or tier: ${priceId}`);
+    }
     
     // Common session parameters
     const origin = new URL(req.url).origin;
