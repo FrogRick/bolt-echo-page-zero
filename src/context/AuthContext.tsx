@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,14 +62,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionInfo>(defaultSubscription);
   const [buildingUsage, setBuildingUsage] = useState<BuildingUsage>(defaultBuildingUsage);
+  const [isRefreshingSubscription, setIsRefreshingSubscription] = useState(false);
   const { toast } = useToast();
   const [refreshCount, setRefreshCount] = useState(0);
 
   // Function to refresh subscription data
   const refreshSubscription = async () => {
-    if (!user) return;
+    if (!user || isRefreshingSubscription) return;
     
     try {
+      setIsRefreshingSubscription(true);
       console.log("Refreshing subscription data for user", user.id);
       const { data, error } = await supabase.functions.invoke("check-subscription");
       
@@ -100,6 +103,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error("Error checking subscription:", error);
+    } finally {
+      setIsRefreshingSubscription(false);
     }
   };
 

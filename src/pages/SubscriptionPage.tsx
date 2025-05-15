@@ -24,12 +24,27 @@ const SubscriptionPage = () => {
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [hasInitiallyRefreshed, setHasInitiallyRefreshed] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Refresh subscription data when the component mounts
-    refreshSubscription();
-  }, [refreshSubscription]);
+    // Only refresh subscription data once when the component mounts
+    if (!hasInitiallyRefreshed && user) {
+      refreshSubscription();
+      setHasInitiallyRefreshed(true);
+    }
+    
+    // Check for success parameter in URL when component mounts
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    
+    // If success parameter exists, refresh subscription data and remove it from URL
+    if (success === 'true' && user) {
+      console.log("Subscription checkout successful, refreshing subscription data");
+      refreshSubscription();
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [refreshSubscription, user, hasInitiallyRefreshed]);
 
   const handleSubscribe = async (tier: PricingTier) => {
     // Get redirect URL from session if available
