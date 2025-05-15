@@ -1,8 +1,12 @@
 
 import { Outlet } from "react-router-dom";
 import Header from "./Header";
+import { useAuth } from "@/context/AuthContext";
 
 const Layout = () => {
+  // Add useAuth to trigger re-renders when auth state changes
+  const { user } = useAuth();
+  
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 to-slate-100">
       <Header />

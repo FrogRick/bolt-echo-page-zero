@@ -1,7 +1,8 @@
+
 import { useAuth } from "@/context/AuthContext";
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, Search, User as UserIcon, Settings, Building, HelpCircle, BookOpen, Flame, BookCopy, Shield } from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,8 @@ const Header = () => {
     }
     return user?.email?.substring(0, 2).toUpperCase() || "U";
   };
+
+  const avatarUrl = user?.user_metadata?.avatar_url;
 
   // Navigation links for the header
   const mainNavItems = user ? [
@@ -92,7 +95,11 @@ const Header = () => {
                   aria-haspopup="true"
                 >
                   <Avatar className="h-8 w-8 border-2 border-primary/10">
-                    <AvatarFallback className="bg-primary/10 text-primary font-medium">{getUserInitials()}</AvatarFallback>
+                    {avatarUrl ? (
+                      <AvatarImage src={avatarUrl} alt="Profile" />
+                    ) : (
+                      <AvatarFallback className="bg-primary/10 text-primary font-medium">{getUserInitials()}</AvatarFallback>
+                    )}
                   </Avatar>
                 </button>
               </div>
@@ -156,10 +163,10 @@ const Header = () => {
             <>
               <Button asChild variant="ghost">
                 <Link to="/auth?tab=signup">Sign Up</Link>
-            </Button>
-            <Button asChild>
+              </Button>
+              <Button asChild>
                 <Link to="/auth">Login</Link>
-            </Button>
+              </Button>
             </>
           )}
         </div>

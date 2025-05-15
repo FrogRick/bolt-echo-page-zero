@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { UserProfileForm } from "@/components/UserProfileForm";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,10 +16,15 @@ export default function SettingsPage() {
   const { user, refreshSubscription } = useAuth();
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(
-    user?.user_metadata?.avatar_url || null
-  );
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("profile");
+
+  // Fetch avatar URL from user metadata when component mounts
+  useEffect(() => {
+    if (user?.user_metadata?.avatar_url) {
+      setAvatarUrl(user.user_metadata.avatar_url);
+    }
+  }, [user]);
 
   // Function to handle profile picture upload
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,7 +37,8 @@ export default function SettingsPage() {
 
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const filePath = `${user?.id}.${fileExt}`;
+      const fileName = `${user?.id}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
 
       // Upload the file to Supabase Storage
       const { error: uploadError } = await supabase.storage
@@ -94,12 +99,9 @@ export default function SettingsPage() {
       }
       
       // Extract the file name from the URL
-      const filePathMatch = avatarUrl.match(/\/avatars\/([^?]+)/);
-      if (!filePathMatch) {
-        throw new Error("Could not determine avatar file path.");
-      }
-      
-      const filePath = filePathMatch[1];
+      const urlParts = avatarUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      const filePath = `avatars/${fileName}`;
       
       // Delete the file from storage
       const { error: deleteError } = await supabase.storage
@@ -178,8 +180,11 @@ export default function SettingsPage() {
                     className="h-24 w-24 cursor-pointer"
                     onClick={triggerFileInput}
                   >
-                    <AvatarImage src={avatarUrl || undefined} />
-                    <AvatarFallback className="text-lg bg-primary/10">{getUserInitials()}</AvatarFallback>
+                    {avatarUrl ? (
+                      <AvatarImage src={avatarUrl} alt="Profile" />
+                    ) : (
+                      <AvatarFallback className="text-lg bg-primary/10">{getUserInitials()}</AvatarFallback>
+                    )}
                   </Avatar>
                   <div 
                     className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
@@ -246,7 +251,7 @@ export default function SettingsPage() {
               <Separator />
               
               {/* Profile Form */}
-              <UserProfileForm onComplete={() => {}} initialField={null} />
+              <UserProfileForm onComplete={refreshSubscription} initialField={null} />
             </CardContent>
           </Card>
         </TabsContent>
