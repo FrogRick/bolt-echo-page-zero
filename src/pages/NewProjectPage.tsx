@@ -31,6 +31,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
+  const [addressSelected, setAddressSelected] = useState(false);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const marker = useRef<mapboxgl.Marker | null>(null);
@@ -58,6 +59,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
         if (data.features?.[0]?.place_name) {
           setAddress(data.features[0].place_name);
           setAddressInput(data.features[0].place_name);
+          setAddressSelected(true);
         }
       });
     }, () => {
@@ -91,6 +93,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
         if (data.features?.[0]?.place_name) {
           setAddress(data.features[0].place_name);
           setAddressInput(data.features[0].place_name);
+          setAddressSelected(true);
         }
       });
     });
@@ -99,8 +102,11 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
   useEffect(() => {
     if (!addressInput) {
       setSuggestions([]);
+      setAddressSelected(false);
       return;
     }
+    
+    // Only auto-suggest if the user is typing (not when an address is selected)
     const timer = setTimeout(() => {
       fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addressInput)}.json?access_token=${MAPBOX_TOKEN}`).then(res => res.json()).then(data => {
         if (data.features && Array.isArray(data.features)) {
@@ -119,6 +125,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
   const handleSelectAddress = (suggestion: { place_name: string; center: [number, number]; }) => {
     setAddress(suggestion.place_name);
     setAddressInput(suggestion.place_name);
+    setAddressSelected(true);
     setOpen(false);
     const [lng, lat] = suggestion.center;
     marker.current?.setLngLat([lng, lat]);
@@ -136,10 +143,10 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
       });
       return;
     }
-    if (!address.trim() || !location) {
+    if (!addressSelected || !address.trim() || !location) {
       toast({
         title: "Location required",
-        description: "Please select a location for your building.",
+        description: "Please select a valid address from the suggestions list.",
         variant: "destructive"
       });
       return;
@@ -188,6 +195,12 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
     map.current?.zoomOut();
   };
 
+  const handleAddressInputChange = (value: string) => {
+    setAddressInput(value);
+    setAddressSelected(false);
+    setOpen(true);
+  };
+
   return <div className="max-w-2xl mx-auto">
       <Card>
         <CardHeader>
@@ -209,7 +222,18 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <Search className="h-4 w-4 text-gray-400" />
                   </div>
-                  <Input id="address" value={addressInput} onChange={e => setAddressInput(e.target.value)} placeholder="Search for an address" className="pl-9 pr-4 w-full" onClick={() => setOpen(true)} onFocus={() => setOpen(true)} />
+                  <Input 
+                    id="address" 
+                    value={addressInput} 
+                    onChange={e => handleAddressInputChange(e.target.value)} 
+                    placeholder="Search for an address" 
+                    className={cn(
+                      "pl-9 pr-4 w-full",
+                      addressSelected ? "border-green-500" : ""
+                    )}
+                    onClick={() => setOpen(true)} 
+                    onFocus={() => setOpen(true)} 
+                  />
                 </div>
                 {addressInput && suggestions.length > 0 && open && <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg">
                     <ul className="max-h-60 overflow-auto py-1">
@@ -221,6 +245,9 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
               </div>
               {addressInput && suggestions.length === 0 && open && <div className="mt-1 text-sm text-gray-500">
                   No addresses found
+                </div>}
+              {!addressSelected && addressInput && <div className="mt-1 text-sm text-amber-500">
+                  Please select an address from the suggestions
                 </div>}
             </div>
             <div>
@@ -237,7 +264,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
                 </div>
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full" disabled={isSubmitting || !addressSelected}>
               {isSubmitting ? "Creating..." : "Create Building"}
             </Button>
           </form>

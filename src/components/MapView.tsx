@@ -42,7 +42,7 @@ const MapView: React.FC<MapViewProps> = ({ projects }) => {
       // Create the map instance
       mapRef.current = new mapboxgl.Map({
         container: mapContainerRef.current,
-        style: 'mapbox://styles/mapbox/light-v11',
+        style: 'mapbox://styles/mapbox/streets-v11', // Change to streets-v11 style
         center: [10, 35], // Default center (can be adjusted)
         zoom: 2,
       });
