@@ -46,7 +46,9 @@ export function CreateEvacuationPlanForm({ onSuccess, onCancel, buildingId }: Cr
     setLoading(true);
     
     try {
-      // Create the floor plan without creating a building
+      console.log("Creating floor plan with:", { name, building_id: buildingId || null, floor_number: floorNumber });
+      
+      // Create the floor plan with or without a building association
       const { data: floorPlan, error } = await supabase
         .from('floor_plans')
         .insert([
