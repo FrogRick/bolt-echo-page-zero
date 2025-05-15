@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -58,6 +59,69 @@ interface BuildingRecord {
   lng: number | null;
   owner_id: string;
 }
+
+// Function to create a new building
+const createBuilding = async (
+  building: {
+    name: string;
+    location?: BuildingLocation;
+  },
+  userId?: string
+): Promise<BuildingBasicInfo> => {
+  try {
+    const newBuildingId = crypto.randomUUID();
+    const now = new Date();
+    
+    // Create the new building object
+    const newBuilding: BuildingBasicInfo = {
+      id: newBuildingId,
+      name: building.name.trim(),
+      createdAt: now,
+      updatedAt: now,
+      location: building.location,
+    };
+
+    // If user is logged in, try to save to Supabase first
+    if (userId) {
+      try {
+        const { data, error } = await supabase
+          .from("buildings")
+          .insert([{
+            id: newBuildingId,
+            name: building.name.trim(),
+            address: building.location?.address || null,
+            lat: building.location?.lat || null,
+            lng: building.location?.lng || null,
+            owner_id: userId,
+            created_at: now.toISOString(),
+            updated_at: now.toISOString()
+          }])
+          .select()
+          .single();
+
+        if (error) {
+          console.error("Failed to create building in Supabase:", error);
+          // Even if Supabase fails, continue to save to localStorage as fallback
+        } else {
+          console.log("Successfully created building in Supabase:", data);
+        }
+      } catch (dbError) {
+        console.error("Error during Supabase building creation:", dbError);
+        // Continue to localStorage as fallback
+      }
+    }
+
+    // Always save to localStorage as well (for offline mode or as a backup)
+    const localBuildings = loadFromLocalStorage();
+    localBuildings.push(newBuilding);
+    saveToLocalStorage(localBuildings);
+    
+    return newBuilding;
+  } catch (error) {
+    console.error("Error creating building:", error);
+    throw error;
+  }
+};
 
 // Function to fetch user buildings from Supabase
 const fetchUserBuildings = async (userId: string): Promise<BuildingBasicInfo[]> => {
@@ -141,6 +205,7 @@ const deleteBuilding = async (
 export const buildingService = {
   loadFromLocalStorage,
   saveToLocalStorage,
+  createBuilding,
   fetchUserBuildings,
   deleteBuilding,
 };

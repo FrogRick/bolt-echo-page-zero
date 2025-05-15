@@ -1,19 +1,19 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { createRoot } from "react-dom/client";
 import BuildingMarker from "@/components/BuildingMarker";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { Search, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Plus, Minus } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { buildingService } from "@/services/buildingService";
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZnJldGgwMyIsImEiOiJjajI2a29mYzAwMDJqMnducnZmNnMzejB1In0.oRpO5T3aTpkP1QO8WjsiSw";
 
@@ -35,6 +35,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
   const map = useRef<mapboxgl.Map | null>(null);
   const marker = useRef<mapboxgl.Marker | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -125,7 +126,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
     map.current?.setCenter([lng, lat]);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectName.trim()) {
       toast({
@@ -143,31 +144,40 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
       });
       return;
     }
+    
     setIsSubmitting(true);
-    const newProject = {
-      id: crypto.randomUUID(),
-      name: projectName.trim(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      location: {
-        lat: location.lat,
-        lng: location.lng,
-        address: address.trim()
-      },
-      pdfData: null,
-      symbols: []
-    };
-    const existingProjects = localStorage.getItem("evacuation-projects");
-    const projects = existingProjects ? JSON.parse(existingProjects) : [];
-    projects.push(newProject);
-    localStorage.setItem("evacuation-projects", JSON.stringify(projects));
-    toast({
-      title: "Building created",
-      description: `"${projectName}" has been created successfully.`
-    });
-    setIsSubmitting(false);
-    if (onSuccess) {
-      onSuccess(newProject.id);
+    
+    try {
+      // Create building using the service
+      const newBuilding = await buildingService.createBuilding(
+        {
+          name: projectName.trim(),
+          location: {
+            lat: location.lat,
+            lng: location.lng,
+            address: address.trim()
+          }
+        },
+        user?.id
+      );
+      
+      toast({
+        title: "Building created",
+        description: `"${projectName}" has been created successfully.`
+      });
+      
+      if (onSuccess) {
+        onSuccess(newBuilding.id);
+      }
+    } catch (error) {
+      console.error("Error creating building:", error);
+      toast({
+        title: "Creation failed",
+        description: "There was an error creating your building. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
