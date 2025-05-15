@@ -45,7 +45,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
       mapboxgl.accessToken = MAPBOX_TOKEN;
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
+        style: 'mapbox://styles/mapbox/streets-v11',
         center: [longitude, latitude],
         zoom: 13,
         scrollZoom: false
@@ -66,7 +66,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
       mapboxgl.accessToken = MAPBOX_TOKEN;
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
+        style: 'mapbox://styles/mapbox/streets-v11',
         center: [-74.5, 40],
         zoom: 9,
         scrollZoom: false
@@ -107,20 +107,26 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
     }
     
     // Only auto-suggest if the user is typing (not when an address is selected)
-    const timer = setTimeout(() => {
-      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addressInput)}.json?access_token=${MAPBOX_TOKEN}`).then(res => res.json()).then(data => {
-        if (data.features && Array.isArray(data.features)) {
-          setSuggestions(data.features || []);
-        } else {
-          setSuggestions([]);
-        }
-      }).catch(error => {
-        console.error("Error fetching address suggestions:", error);
-        setSuggestions([]);
-      });
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [addressInput]);
+    if (!addressSelected) {
+      const timer = setTimeout(() => {
+        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addressInput)}.json?access_token=${MAPBOX_TOKEN}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.features && Array.isArray(data.features)) {
+              setSuggestions(data.features || []);
+              setOpen(true);
+            } else {
+              setSuggestions([]);
+            }
+          })
+          .catch(error => {
+            console.error("Error fetching address suggestions:", error);
+            setSuggestions([]);
+          });
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [addressInput, addressSelected]);
 
   const handleSelectAddress = (suggestion: { place_name: string; center: [number, number]; }) => {
     setAddress(suggestion.place_name);
@@ -131,6 +137,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
     marker.current?.setLngLat([lng, lat]);
     setLocation({ lng, lat });
     map.current?.setCenter([lng, lat]);
+    map.current?.setZoom(14); // Zoom in when an address is selected
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -191,6 +198,7 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
   const handleZoomIn = () => {
     map.current?.zoomIn();
   };
+  
   const handleZoomOut = () => {
     map.current?.zoomOut();
   };
@@ -235,20 +243,35 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
                     onFocus={() => setOpen(true)} 
                   />
                 </div>
-                {addressInput && suggestions.length > 0 && open && <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg">
+                {addressInput && suggestions.length > 0 && open && (
+                  <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg">
                     <ul className="max-h-60 overflow-auto py-1">
-                      {suggestions.map((suggestion, index) => <li key={`${suggestion.place_name}-${index}`} className={cn("px-3 py-2 text-sm cursor-pointer hover:bg-gray-100", address === suggestion.place_name && "bg-gray-100")} onClick={() => handleSelectAddress(suggestion)}>
+                      {suggestions.map((suggestion, index) => (
+                        <li 
+                          key={`${suggestion.place_name}-${index}`} 
+                          className={cn(
+                            "px-3 py-2 text-sm cursor-pointer hover:bg-gray-100", 
+                            address === suggestion.place_name && "bg-gray-100"
+                          )}
+                          onClick={() => handleSelectAddress(suggestion)}
+                        >
                           {suggestion.place_name}
-                        </li>)}
+                        </li>
+                      ))}
                     </ul>
-                  </div>}
+                  </div>
+                )}
               </div>
-              {addressInput && suggestions.length === 0 && open && <div className="mt-1 text-sm text-gray-500">
+              {addressInput && suggestions.length === 0 && open && (
+                <div className="mt-1 text-sm text-gray-500">
                   No addresses found
-                </div>}
-              {!addressSelected && addressInput && <div className="mt-1 text-sm text-amber-500">
+                </div>
+              )}
+              {!addressSelected && addressInput && (
+                <div className="mt-1 text-sm text-amber-500">
                   Please select an address from the suggestions
-                </div>}
+                </div>
+              )}
             </div>
             <div>
               <Label>Location</Label>

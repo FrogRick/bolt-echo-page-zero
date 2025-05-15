@@ -42,7 +42,7 @@ const MapView: React.FC<MapViewProps> = ({ projects }) => {
       // Create the map instance
       mapRef.current = new mapboxgl.Map({
         container: mapContainerRef.current,
-        style: 'mapbox://styles/mapbox/streets-v11', // Change to streets-v11 style
+        style: 'mapbox://styles/mapbox/streets-v11', 
         center: [10, 35], // Default center (can be adjusted)
         zoom: 2,
       });
@@ -53,7 +53,7 @@ const MapView: React.FC<MapViewProps> = ({ projects }) => {
       // Wait for map to load
       mapRef.current.on('load', () => {
         setMapInitialized(true);
-
+        
         // Add markers for projects with locations
         projects.forEach(project => {
           if (project.location && project.location.lat && project.location.lng) {
