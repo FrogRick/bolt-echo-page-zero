@@ -8,9 +8,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { DeleteAccountDialog } from "@/components/DeleteAccountDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Camera, Settings, UserRound } from "lucide-react";
+import { Camera, Settings, Trash, UserRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 export default function SettingsPage() {
   const { user, refreshSubscription } = useAuth();
@@ -76,10 +77,76 @@ export default function SettingsPage() {
     }
   };
 
+  // Function to delete profile picture
+  const handleDeleteAvatar = async () => {
+    try {
+      setUploading(true);
+      
+      if (!user) return;
+      
+      // If there's no avatar URL, nothing to delete
+      if (!avatarUrl) {
+        toast({
+          title: "No profile picture",
+          description: "You don't have a profile picture to delete.",
+        });
+        return;
+      }
+      
+      // Extract the file name from the URL
+      const filePathMatch = avatarUrl.match(/\/avatars\/([^?]+)/);
+      if (!filePathMatch) {
+        throw new Error("Could not determine avatar file path.");
+      }
+      
+      const filePath = filePathMatch[1];
+      
+      // Delete the file from storage
+      const { error: deleteError } = await supabase.storage
+        .from('avatars')
+        .remove([filePath]);
+        
+      if (deleteError) {
+        throw deleteError;
+      }
+      
+      // Update user metadata to remove avatar URL
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { avatar_url: null }
+      });
+      
+      if (updateError) {
+        throw updateError;
+      }
+      
+      setAvatarUrl(null);
+      toast({
+        title: "Success",
+        description: "Profile picture deleted successfully.",
+      });
+      
+      // Refresh subscription data to ensure UI updates
+      refreshSubscription();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Error deleting avatar",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const getUserInitials = () => {
     const firstName = user?.user_metadata?.first_name || '';
     const lastName = user?.user_metadata?.last_name || '';
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U';
+  };
+
+  // Function to trigger file input click
+  const triggerFileInput = () => {
+    document.getElementById('avatar-upload')?.click();
   };
 
   return (
@@ -106,10 +173,21 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               {/* Avatar Section */}
               <div className="flex flex-col items-center space-y-4 sm:flex-row sm:space-y-0 sm:space-x-6">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={avatarUrl || undefined} />
-                  <AvatarFallback className="text-lg bg-primary/10">{getUserInitials()}</AvatarFallback>
-                </Avatar>
+                <div className="relative group">
+                  <Avatar 
+                    className="h-24 w-24 cursor-pointer"
+                    onClick={triggerFileInput}
+                  >
+                    <AvatarImage src={avatarUrl || undefined} />
+                    <AvatarFallback className="text-lg bg-primary/10">{getUserInitials()}</AvatarFallback>
+                  </Avatar>
+                  <div 
+                    className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    onClick={triggerFileInput}
+                  >
+                    <Camera className="h-8 w-8 text-white" />
+                  </div>
+                </div>
                 
                 <div className="flex flex-col space-y-2">
                   <p className="text-sm text-gray-500">Upload a profile picture</p>
@@ -117,12 +195,43 @@ export default function SettingsPage() {
                     <Button 
                       variant="outline" 
                       disabled={uploading}
-                      onClick={() => document.getElementById('avatar-upload')?.click()}
+                      onClick={triggerFileInput}
                       className="flex gap-2"
                     >
                       <Camera className="h-4 w-4" />
                       {uploading ? "Uploading..." : "Change Picture"}
                     </Button>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          className="flex gap-2 text-red-500 border-red-200 hover:bg-red-50"
+                          disabled={!avatarUrl || uploading}
+                        >
+                          <Trash className="h-4 w-4" />
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete profile picture?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete your profile picture. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={handleDeleteAvatar}
+                            className="bg-red-500 text-white hover:bg-red-600"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    
                     <input
                       type="file"
                       id="avatar-upload"
