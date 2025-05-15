@@ -46,39 +46,13 @@ export function CreateEvacuationPlanForm({ onSuccess, onCancel, buildingId }: Cr
     setLoading(true);
     
     try {
-      // If no buildingId is provided, we need to create a building first
-      let finalBuildingId = buildingId;
-      
-      if (!buildingId) {
-        const { data: building, error: buildingError } = await supabase
-          .from('buildings')
-          .insert([{
-            name: `Building for ${name}`,
-            owner_id: user.id
-          }])
-          .select()
-          .single();
-          
-        if (buildingError) {
-          console.error("Error creating associated building:", buildingError);
-          toast({
-            title: "Error",
-            description: "Failed to create associated building. Please try again.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        finalBuildingId = building.id;
-      }
-      
-      // Now create the floor plan
+      // Create the floor plan without creating a building
       const { data: floorPlan, error } = await supabase
         .from('floor_plans')
         .insert([
           {
             name,
-            building_id: finalBuildingId,
+            building_id: buildingId || null,
             floor_number: floorNumber ? parseInt(floorNumber) : null
           }
         ])
