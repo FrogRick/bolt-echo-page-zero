@@ -212,14 +212,21 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
   }
 
   async function handleCreateOrganization(newOrg: { name: string; description?: string }) {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to create an organization.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
+    
     try {
-      // First create the organization
+      // Step 1: Create the organization
       const { data: orgData, error: orgError } = await supabase.from("organizations").insert([
-        {
-          name: newOrg.name,
-        }
+        { name: newOrg.name }
       ]).select().single();
       
       if (orgError) {
@@ -233,35 +240,52 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
         return;
       }
       
-      // Then create the organization member record for the current user
-      if (orgData) {
-        const { error: memberError } = await supabase.from("organization_members").insert([
-          {
-            organization_id: orgData.id,
-            user_id: user.id,
-            role: "admin",
-            status: "active"
-          }
-        ]);
-        
-        if (memberError) {
-          console.error("Error creating organization membership:", memberError);
-          toast({
-            title: "Warning",
-            description: "Organization created but failed to assign you as admin.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Success",
-            description: "Organization created successfully.",
-            variant: "success",
-          });
-        }
-        
-        fetchData();
-        setShowNewModal(false);
+      if (!orgData) {
+        toast({
+          title: "Error",
+          description: "Organization was not created. Please try again.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
       }
+      
+      // Step 2: Create the organization member record for the current user
+      const { error: memberError } = await supabase.from("organization_members").insert([
+        {
+          organization_id: orgData.id,
+          user_id: user.id,
+          role: "admin",
+          status: "active"
+        }
+      ]);
+      
+      if (memberError) {
+        console.error("Error creating organization membership:", memberError);
+        
+        // Attempt to delete the organization if member creation failed
+        await supabase.from("organizations").delete().eq("id", orgData.id);
+        
+        toast({
+          title: "Error",
+          description: "Failed to create organization membership. Please try again.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Success! Everything worked
+      toast({
+        title: "Success",
+        description: "Organization created successfully.",
+        variant: "success",
+      });
+      
+      // Refresh the data and close the modal
+      fetchData();
+      setShowNewModal(false);
+      
     } catch (err) {
       console.error("Unexpected error creating organization:", err);
       toast({
@@ -383,7 +407,9 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
                     <label className="block mb-1 font-medium">Description</label>
                     <input className="border rounded px-3 py-2 w-full" name="description" placeholder="Description (optional)" />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>Create Organization</Button>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Creating..." : "Create Organization"}
+                  </Button>
                 </form>
               ) : type === "templates" ? (
                 <form
@@ -406,7 +432,9 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
                     <label className="block mb-1 font-medium">Description</label>
                     <input className="border rounded px-3 py-2 w-full" name="description" placeholder="Description (optional)" />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>Create Template</Button>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Creating..." : "Create Template"}
+                  </Button>
                 </form>
               ) : null}
             </div>
