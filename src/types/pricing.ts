@@ -1,10 +1,9 @@
-
 export type BillingPeriod = "monthly" | "yearly";
 
 export type PricingTier = {
   id: string;
   name: string;
-  description: string;
+  description: string; // We'll keep this in the type definition but not use it in the card
   price: {
     monthly: number | null;
     yearly: number | null;
@@ -38,7 +37,7 @@ export const pricingTiers: PricingTier[] = [
     buildingLimit: 5,
     monthlyExportLimit: 3,
     features: [
-      "Create evacuation plans with limited functionality",
+      "Create evacuation plans",
       "Export with Firemap logo",
       "3 exports/month",
       "5 buildings",

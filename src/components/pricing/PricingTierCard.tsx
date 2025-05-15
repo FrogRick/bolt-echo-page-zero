@@ -70,7 +70,7 @@ const PricingTierCard = ({
 
       <CardHeader>
         <CardTitle className="text-2xl">{tier.name}</CardTitle>
-        <CardDescription>{tier.description}</CardDescription>
+        {/* Description removed as requested */}
       </CardHeader>
 
       <CardContent className="flex-1">
@@ -96,6 +96,10 @@ const PricingTierCard = ({
             <div className="mt-1 text-sm text-green-600 font-medium">
               {tier.trial.days}-day free trial
             </div>
+          )}
+          {/* Add spacer when there's no trial to maintain consistent card height */}
+          {(!tier.trial || billingPeriod !== "monthly") && (
+            <div className="h-5">&#8203;</div> {/* Invisible character for spacing */}
           )}
         </div>
         
@@ -133,3 +137,4 @@ const PricingTierCard = ({
 };
 
 export default PricingTierCard;
+
