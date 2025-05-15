@@ -17,6 +17,7 @@ import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Organization {
   id: string;
@@ -34,6 +35,7 @@ export function OrganizationSelect({ onSelect, selected }: OrganizationSelectPro
   const [open, setOpen] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   
   useEffect(() => {
     const fetchOrganizations = async () => {
@@ -41,11 +43,10 @@ export function OrganizationSelect({ onSelect, selected }: OrganizationSelectPro
       
       setLoading(true);
       try {
-        // Use a direct query instead of a join to avoid recursive policy issues
         // First get the organization memberships
         const { data: memberships, error: membershipError } = await supabase
           .from('organization_members')
-          .select('organization_id, role')
+          .select('organization_id, role, status')
           .eq('user_id', user.id)
           .eq('status', 'active');
 
@@ -83,13 +84,18 @@ export function OrganizationSelect({ onSelect, selected }: OrganizationSelectPro
         }
       } catch (error) {
         console.error('Error fetching organizations:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load organizations",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
     };
     
     fetchOrganizations();
-  }, [user]);
+  }, [user, toast]);
   
   const selectedOrg = organizations.find(org => org.id === selected);
 

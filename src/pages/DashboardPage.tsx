@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { GenericCard } from "@/components/ui/GenericCard";
@@ -6,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { NewBuildingForm } from "@/pages/NewProjectPage";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 function NewEvacuationPlanForm({ onSuccess }: { onSuccess: (id: string) => void }) {
   const [name, setName] = useState("");
@@ -117,6 +119,7 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
   const navigate = useNavigate();
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [delayedLoading, setDelayedLoading] = useState(false);
+  const { toast } = useToast();
 
   // Helper: fetch data from Supabase for the current type
   async function fetchData() {
@@ -209,17 +212,62 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
   }
 
   async function handleCreateOrganization(newOrg: { name: string; description?: string }) {
+    if (!user) return;
     setLoading(true);
-    const { data: row, error } = await supabase.from("organizations").insert([
-      {
-        name: newOrg.name,
-        subscription_tier: "free",
-      },
-    ]).select().single();
-    setLoading(false);
-    if (!error && row) {
-      fetchData();
-      setShowNewModal(false);
+    try {
+      // Remove the subscription_tier field since it doesn't exist in the organizations table
+      const { data: row, error } = await supabase.from("organizations").insert([
+        {
+          name: newOrg.name,
+          // No subscription_tier field here
+        }
+      ]).select().single();
+      
+      if (error) {
+        console.error("Error creating organization:", error);
+        toast({
+          title: "Error",
+          description: "Failed to create organization. Please try again.",
+          variant: "destructive",
+        });
+      } else if (row) {
+        // If creation successful, also create an organization_member record to connect the user
+        const { error: memberError } = await supabase.from("organization_members").insert([
+          {
+            organization_id: row.id,
+            user_id: user.id,
+            role: "admin",
+            status: "active"
+          }
+        ]);
+        
+        if (memberError) {
+          console.error("Error creating organization membership:", memberError);
+          toast({
+            title: "Warning",
+            description: "Organization created but failed to assign you as admin.",
+            variant: "warning",
+          });
+        } else {
+          toast({
+            title: "Success",
+            description: "Organization created successfully.",
+            variant: "default",
+          });
+        }
+        
+        fetchData();
+        setShowNewModal(false);
+      }
+    } catch (err) {
+      console.error("Unexpected error creating organization:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   }
 
