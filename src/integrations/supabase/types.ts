@@ -317,6 +317,10 @@ export type Database = {
         Args: { token: string }
         Returns: boolean
       }
+      create_organization_with_admin: {
+        Args: { org_name: string; admin_user_id: string }
+        Returns: string
+      }
       invite_org_member: {
         Args: { org_id: string; email: string; invite_role?: string }
         Returns: string

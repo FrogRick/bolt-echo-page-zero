@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { GenericCard } from "@/components/ui/GenericCard";
@@ -224,51 +223,20 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
     setLoading(true);
     
     try {
-      // Step 1: Create the organization
-      const { data: orgData, error: orgError } = await supabase.from("organizations").insert([
-        { name: newOrg.name }
-      ]).select().single();
+      // Use our new security definer function to create an organization and add the user as admin
+      const { data, error } = await supabase.rpc(
+        'create_organization_with_admin', 
+        { 
+          org_name: newOrg.name,
+          admin_user_id: user.id
+        }
+      );
       
-      if (orgError) {
-        console.error("Error creating organization:", orgError);
+      if (error) {
+        console.error("Error creating organization:", error);
         toast({
           title: "Error",
           description: "Failed to create organization. Please try again.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-      
-      if (!orgData) {
-        toast({
-          title: "Error",
-          description: "Organization was not created. Please try again.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-      
-      // Step 2: Create the organization member record for the current user
-      const { error: memberError } = await supabase.from("organization_members").insert([
-        {
-          organization_id: orgData.id,
-          user_id: user.id,
-          role: "admin",
-          status: "active"
-        }
-      ]);
-      
-      if (memberError) {
-        console.error("Error creating organization membership:", memberError);
-        
-        // Attempt to delete the organization if member creation failed
-        await supabase.from("organizations").delete().eq("id", orgData.id);
-        
-        toast({
-          title: "Error",
-          description: "Failed to create organization membership. Please try again.",
           variant: "destructive",
         });
         setLoading(false);
