@@ -43,9 +43,9 @@ export function CreateTemplateForm({ onSuccess, onCancel }: CreateTemplateFormPr
     setLoading(true);
     
     try {
-      // Create template in Supabase with proper typing
+      // Create template in Supabase
       const { data, error } = await supabase
-        .from('templates' as any) // Type assertion to bypass TypeScript error temporarily
+        .from('templates')
         .insert([
           {
             name,

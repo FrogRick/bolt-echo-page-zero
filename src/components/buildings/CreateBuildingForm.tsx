@@ -8,10 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 interface CreateBuildingFormProps {
   onSuccess: () => void;
   onCancel: () => void;
-  organizationId?: string;
 }
 
-export function CreateBuildingForm({ onSuccess, onCancel, organizationId }: CreateBuildingFormProps) {
+export function CreateBuildingForm({ onSuccess, onCancel }: CreateBuildingFormProps) {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -48,8 +47,7 @@ export function CreateBuildingForm({ onSuccess, onCancel, organizationId }: Crea
       const buildingData = {
         name,
         address: address || null,
-        owner_id: user.id,
-        organization_id: organizationId || null
+        owner_id: user.id
       };
       
       const { data: building, error } = await supabase

@@ -135,27 +135,32 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
       case "evacuation-plans": table = "floor_plans"; break;
       default: setLoading(false); return;
     }
-    if (type === "templates") {
-      // Templates fallback: visa tomt om tabellen saknas
+    
+    try {
+      const { data: rows, error } = await supabase
+        .from(table as any)
+        .select("*")
+        .order("updated_at", { ascending: false });
+        
+      if (error) {
+        console.error(`Error fetching ${table}:`, error);
+        toast({
+          title: "Error",
+          description: `Failed to load ${type}. Please try again.`,
+          variant: "destructive",
+        });
+        setData([]);
+      } else if (rows) {
+        setData(rows);
+      } else {
+        setData([]);
+      }
+    } catch (err) {
+      console.error(`Error fetching ${table}:`, err);
       setData([]);
+    } finally {
       setLoading(false);
-      return;
     }
-    const { data: rows, error } = await supabase.from(table as any).select("*").order("updated_at", { ascending: false });
-    if (error) {
-      console.error(`Error fetching ${table}:`, error);
-      toast({
-        title: "Error",
-        description: `Failed to load ${type}. Please try again.`,
-        variant: "destructive",
-      });
-      setData([]);
-    } else if (rows) {
-      setData(rows);
-    } else {
-      setData([]);
-    }
-    setLoading(false);
   }
 
   useEffect(() => { fetchData(); /* eslint-disable-next-line */ }, [type]);
