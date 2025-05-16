@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User, AuthChangeEvent } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,6 +121,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           });
           // Refresh subscription data when user signs in
           refreshSubscription();
+          
+          // Check if this is a new sign up - we can check user metadata for a flag
+          // or use the created_at date being very recent
+          if (session?.user?.app_metadata?.provider === 'email' && 
+              new Date((session?.user?.created_at || '')).getTime() > Date.now() - 10000) {
+            console.log("New user signed up, starting Basic tier trial");
+            // Automatically start the 14-day trial of basic tier
+            setTimeout(async () => {
+              try {
+                // Create a checkout session for the basic tier with trial
+                const { data, error } = await supabase.functions.invoke("create-checkout", {
+                  body: { 
+                    priceId: "basic-monthly",
+                    redirectUrl: "/subscription?success=true"
+                  }
+                });
+                
+                if (error) {
+                  console.error("Error starting trial:", error);
+                  return;
+                }
+                
+                if (data?.url) {
+                  // Redirect to checkout page to complete trial activation
+                  window.location.href = data.url;
+                }
+              } catch (error) {
+                console.error("Error starting trial:", error);
+              }
+            }, 1000); // Small delay to ensure auth is fully processed
+          }
         }
         if (event === 'SIGNED_OUT') {
           toast({ 
@@ -131,35 +161,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Reset subscription data when user signs out
           setSubscription(defaultSubscription);
           setBuildingUsage(defaultBuildingUsage);
-        }
-        
-        // If this is a new sign-up (SIGNED_UP event), automatically start the basic tier trial
-        if (event === 'SIGNED_UP' && session?.user) {
-          console.log("New user signed up, starting Basic tier trial");
-          // Automatically start the 14-day trial of basic tier
-          setTimeout(async () => {
-            try {
-              // Create a checkout session for the basic tier with trial
-              const { data, error } = await supabase.functions.invoke("create-checkout", {
-                body: { 
-                  priceId: "basic-monthly",
-                  redirectUrl: "/subscription?success=true"
-                }
-              });
-              
-              if (error) {
-                console.error("Error starting trial:", error);
-                return;
-              }
-              
-              if (data?.url) {
-                // Redirect to checkout page to complete trial activation
-                window.location.href = data.url;
-              }
-            } catch (error) {
-              console.error("Error starting trial:", error);
-            }
-          }, 1000); // Small delay to ensure auth is fully processed
         }
       }
     );
