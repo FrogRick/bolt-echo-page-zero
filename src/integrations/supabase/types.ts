@@ -39,6 +39,13 @@ export type Database = {
             foreignKeyName: "building_notes_building_id_fkey"
             columns: ["building_id"]
             isOneToOne: false
+            referencedRelation: "active_buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_notes_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
             referencedRelation: "buildings"
             referencedColumns: ["id"]
           },
@@ -48,6 +55,7 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           lat: number | null
           lng: number | null
@@ -58,6 +66,7 @@ export type Database = {
         Insert: {
           address?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           lat?: number | null
           lng?: number | null
@@ -68,6 +77,7 @@ export type Database = {
         Update: {
           address?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           lat?: number | null
           lng?: number | null
@@ -116,6 +126,13 @@ export type Database = {
             foreignKeyName: "elements_floor_plan_id_fkey"
             columns: ["floor_plan_id"]
             isOneToOne: false
+            referencedRelation: "active_floor_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "elements_floor_plan_id_fkey"
+            columns: ["floor_plan_id"]
+            isOneToOne: false
             referencedRelation: "floor_plans"
             referencedColumns: ["id"]
           },
@@ -125,6 +142,7 @@ export type Database = {
         Row: {
           building_id: string | null
           created_at: string
+          deleted_at: string | null
           floor_number: number | null
           id: string
           name: string
@@ -135,6 +153,7 @@ export type Database = {
         Insert: {
           building_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           floor_number?: number | null
           id?: string
           name: string
@@ -145,6 +164,7 @@ export type Database = {
         Update: {
           building_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           floor_number?: number | null
           id?: string
           name?: string
@@ -153,6 +173,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "floor_plans_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "active_buildings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "floor_plans_building_id_fkey"
             columns: ["building_id"]
@@ -201,6 +228,13 @@ export type Database = {
             foreignKeyName: "organization_members_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "active_organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -209,18 +243,21 @@ export type Database = {
       organizations: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           name: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name?: string
           updated_at?: string
@@ -287,6 +324,7 @@ export type Database = {
       templates: {
         Row: {
           created_at: string
+          deleted_at: string | null
           description: string | null
           id: string
           name: string
@@ -296,6 +334,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           id?: string
           name: string
@@ -305,6 +344,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           id?: string
           name?: string
@@ -340,7 +380,150 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      active_buildings: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          deleted_at: string | null
+          id: string | null
+          lat: number | null
+          lng: number | null
+          name: string | null
+          owner_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string | null
+          lat?: number | null
+          lng?: number | null
+          name?: string | null
+          owner_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string | null
+          lat?: number | null
+          lng?: number | null
+          name?: string | null
+          owner_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      active_floor_plans: {
+        Row: {
+          building_id: string | null
+          created_at: string | null
+          deleted_at: string | null
+          floor_number: number | null
+          id: string | null
+          name: string | null
+          pdf_data: string | null
+          pdf_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          building_id?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          floor_number?: number | null
+          id?: string | null
+          name?: string | null
+          pdf_data?: string | null
+          pdf_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          building_id?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          floor_number?: number | null
+          id?: string | null
+          name?: string | null
+          pdf_data?: string | null
+          pdf_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "floor_plans_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "active_buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "floor_plans_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      active_organizations: {
+        Row: {
+          created_at: string | null
+          deleted_at: string | null
+          id: string | null
+          name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string | null
+          name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string | null
+          name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      active_templates: {
+        Row: {
+          created_at: string | null
+          deleted_at: string | null
+          description: string | null
+          id: string | null
+          name: string | null
+          organization_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          id?: string | null
+          name?: string | null
+          organization_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          id?: string | null
+          name?: string | null
+          organization_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_org_invitation: {
@@ -350,6 +533,10 @@ export type Database = {
       create_organization_with_admin: {
         Args: { org_name: string; admin_user_id: string }
         Returns: string
+      }
+      delete_expired_trash: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       invite_org_member: {
         Args: { org_id: string; email: string; invite_role?: string }
