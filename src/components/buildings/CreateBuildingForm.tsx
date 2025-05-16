@@ -332,7 +332,7 @@ export function CreateBuildingForm({ onSuccess, onCancel }: CreateBuildingFormPr
         <p className="text-xs text-muted-foreground mt-1.5">Click on the map to set location or drag the marker</p>
       </div>
       
-      <div className="flex justify-center space-x-2">
+      <div className="flex justify-end space-x-2">
         <Button 
           type="button" 
           variant="outline"
