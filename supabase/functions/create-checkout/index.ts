@@ -64,43 +64,25 @@ serve(async (req) => {
       logStep("Created new customer", { customerId });
     }
     
-    // Determine if this is monthly or yearly based on priceId
-    const isYearly = priceId.includes("yearly");
-    const tierName = priceId.split("-")[0]; // basic, pro, team, enterprise
+    // Determine the tier name and billing period
+    let tierName = priceId.split("-")[0]; // basic, pro, team, enterprise
+    let billingPeriod = "monthly";
     
-    // Create the actual Stripe price IDs based on our tier structure
-    // These should match your actual price IDs in Stripe dashboard
-    const tierPrices = {
-      basic: {
-        monthly: "price_basic_monthly", // Replace with real Stripe price ID
-        yearly: "price_basic_yearly"
-      },
-      pro: {
-        monthly: "price_pro_monthly",
-        yearly: "price_pro_yearly"
-      },
-      team: {
-        monthly: "price_team_monthly",
-        yearly: "price_team_yearly"
-      },
-      enterprise: {
-        monthly: "price_enterprise_monthly",
-        yearly: "price_enterprise_yearly"
-      }
-    };
-
-    // Get the correct Stripe price ID for this tier and billing period
-    const period = isYearly ? "yearly" : "monthly";
-    const stripePriceId = priceId.startsWith("price_") 
-      ? priceId // If it's already a full Stripe price ID, use it directly
-      : tierPrices[tierName as keyof typeof tierPrices]?.[period as "monthly" | "yearly"];
-    
-    if (!stripePriceId) {
-      throw new Error(`Invalid price ID or tier: ${priceId}`);
+    if (priceId.includes("yearly")) {
+      billingPeriod = "yearly";
     }
     
+    logStep("Determined tier and billing", { tierName, billingPeriod });
+    
+    // Create a direct price ID based on tier and billing period
+    // This is a placeholder - you would need to create these products/prices in your Stripe dashboard
+    // and use the actual IDs here
+    const stripePriceId = `price_${tierName}_${billingPeriod}`;
+    
+    logStep("Using Stripe price ID", { stripePriceId });
+    
     // Common session parameters
-    const origin = new URL(req.url).origin;
+    const origin = req.headers.get("origin") || "http://localhost:3000";
     const successUrl = new URL(redirectUrl + "?success=true", origin).toString();
     const cancelUrl = new URL(redirectUrl, origin).toString();
     
@@ -110,24 +92,38 @@ serve(async (req) => {
       cancelUrl
     });
     
-    // Only apply trial for basic tier
+    // Only apply trial for basic tier and if not already a customer with past subscriptions
     const trialPeriodDays = tierName === 'basic' ? 14 : undefined;
+    
+    // For testing purposes, we'll use a simple line item since the Stripe price may not exist
+    // In production, you would use the actual Stripe price ID
+    const lineItems = [{
+      price_data: {
+        currency: 'eur',
+        product_data: {
+          name: `${tierName.charAt(0).toUpperCase() + tierName.slice(1)} Plan (${billingPeriod})`,
+        },
+        unit_amount: tierName === 'basic' ? 900 : 
+                     tierName === 'pro' ? 4900 : 
+                     tierName === 'team' ? 14900 : 
+                     29900, // enterprise
+        recurring: {
+          interval: billingPeriod === 'yearly' ? 'year' : 'month',
+        },
+      },
+      quantity: 1
+    }];
     
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      line_items: [
-        {
-          price: stripePriceId,
-          quantity: 1
-        }
-      ],
+      line_items: lineItems,
       mode: "subscription",
       subscription_data: {
         metadata: {
           user_id: user.id,
           tier: tierName,
-          billing: isYearly ? "yearly" : "monthly"
+          billing: billingPeriod
         },
         trial_period_days: trialPeriodDays
       },

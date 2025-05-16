@@ -132,6 +132,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setSubscription(defaultSubscription);
           setBuildingUsage(defaultBuildingUsage);
         }
+        
+        // If this is a new sign-up (SIGNED_UP event), automatically start the basic tier trial
+        if (event === 'SIGNED_UP' && session?.user) {
+          console.log("New user signed up, starting Basic tier trial");
+          // Automatically start the 14-day trial of basic tier
+          setTimeout(async () => {
+            try {
+              // Create a checkout session for the basic tier with trial
+              const { data, error } = await supabase.functions.invoke("create-checkout", {
+                body: { 
+                  priceId: "basic-monthly",
+                  redirectUrl: "/subscription?success=true"
+                }
+              });
+              
+              if (error) {
+                console.error("Error starting trial:", error);
+                return;
+              }
+              
+              if (data?.url) {
+                // Redirect to checkout page to complete trial activation
+                window.location.href = data.url;
+              }
+            } catch (error) {
+              console.error("Error starting trial:", error);
+            }
+          }, 1000); // Small delay to ensure auth is fully processed
+        }
       }
     );
 
