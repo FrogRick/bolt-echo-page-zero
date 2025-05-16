@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { UserProfileForm } from "@/components/UserProfileForm";
@@ -38,7 +39,7 @@ export default function SettingsPage() {
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
       const fileName = `${user?.id}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const filePath = `${fileName}`; // Simplified path - don't include 'avatars/' in the path
 
       // Upload the file to Supabase Storage
       const { error: uploadError } = await supabase.storage
@@ -101,12 +102,11 @@ export default function SettingsPage() {
       // Extract the file name from the URL
       const urlParts = avatarUrl.split('/');
       const fileName = urlParts[urlParts.length - 1];
-      const filePath = `avatars/${fileName}`;
       
-      // Delete the file from storage
+      // Delete the file from storage - don't include 'avatars/' in the path
       const { error: deleteError } = await supabase.storage
         .from('avatars')
-        .remove([filePath]);
+        .remove([fileName]);
         
       if (deleteError) {
         throw deleteError;
