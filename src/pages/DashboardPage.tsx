@@ -149,10 +149,10 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
     const tableName = typeToTable[type as keyof typeof typeToTable];
     
     try {
+      // Remove the deleted_at filter since the column doesn't exist yet
       const { data: rows, error } = await supabase
         .from(tableName)
         .select("*")
-        .is('deleted_at', null)
         .order("updated_at", { ascending: false });
         
       if (error) {
@@ -278,8 +278,8 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
     setShowNewModal(true);
   }
 
-  // Handle soft delete function
-  async function handleSoftDelete(id: string) {
+  // Handle hard delete for now until the schema is migrated
+  async function handleDelete(id: string) {
     if (!user) return;
     
     // Validate type is one of our valid types
@@ -299,15 +299,14 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
     }
     
     try {
-      // Instead of hard delete, update with deleted_at timestamp
-      // Use type assertion to handle the type checking
+      // Since deleted_at column doesn't exist yet, we'll do a hard delete
       const { error } = await supabase
         .from(tableName)
-        .update({ deleted_at: new Date().toISOString() } as any)
+        .delete()
         .eq('id', id);
         
       if (error) {
-        console.error(`Error soft deleting ${tableName}:`, error);
+        console.error(`Error deleting ${tableName}:`, error);
         toast({
           title: "Error",
           description: `Failed to delete ${type.replace(/-/g, " ")}. Please try again.`,
@@ -316,13 +315,13 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
       } else {
         toast({
           title: "Success",
-          description: `${type.replace(/-/g, " ").replace(/s$/, "")} moved to trash.`,
+          description: `${type.replace(/-/g, " ").replace(/s$/, "")} deleted successfully.`,
         });
         // Refresh data
         fetchData();
       }
     } catch (err) {
-      console.error(`Error soft deleting ${tableName}:`, err);
+      console.error(`Error deleting ${tableName}:`, err);
       toast({
         title: "Error",
         description: `Failed to delete ${type.replace(/-/g, " ")}. Please try again.`,
@@ -395,7 +394,7 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
               id={item.id}
               loading={item.loading}
               onClick={() => type === "evacuation-plans" ? navigate(`/editor/${item.id}`) : null}
-              onDelete={() => handleSoftDelete(item.id)}
+              onDelete={() => handleDelete(item.id)}
             />
           ))}
         </div>
