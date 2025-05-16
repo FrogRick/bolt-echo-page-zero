@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ResourceCounters } from "@/components/ResourceCounters";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const SubscriptionPage = () => {
   const { user, subscription, buildingUsage, refreshSubscription, createCheckoutSession, createCustomerPortalSession } = useAuth();
@@ -25,6 +28,7 @@ const SubscriptionPage = () => {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [hasInitiallyRefreshed, setHasInitiallyRefreshed] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("overview");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -108,132 +112,216 @@ const SubscriptionPage = () => {
     
     return (
       <div className="container mx-auto py-12 px-4">
-        <h1 className="text-3xl font-bold mb-8">Subscription</h1>
-        
-        <div className="grid gap-8 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Current Plan</CardTitle>
-              <CardDescription>Your subscription details</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <h3 className="text-xl font-bold capitalize">{subscription.tier}</h3>
-                    {subscription.isTrial && (
-                      <Badge variant="outline" className="ml-2">
-                        Trial
-                      </Badge>
-                    )}
+        <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6 mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-1">Your Subscription</h1>
+              <div className="flex items-center gap-2">
+                <Badge className="text-lg py-1 px-3 bg-primary text-primary-foreground">
+                  {subscription.tier.toUpperCase()}
+                </Badge>
+                {subscription.isTrial && (
+                  <Badge variant="outline" className="ml-1">Trial</Badge>
+                )}
+                <Badge 
+                  className={
+                    subscription.status === "active" || subscription.status === "trialing" 
+                      ? "bg-green-500 text-white" 
+                      : "bg-amber-500 text-white"
+                  }
+                >
+                  {subscription.status}
+                </Badge>
+              </div>
+            </div>
+            <Button 
+              onClick={handleManageSubscription}
+              disabled={isRedirecting}
+              className="whitespace-nowrap"
+            >
+              {isRedirecting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CreditCard className="mr-2 h-4 w-4" />
+              )}
+              Manage Subscription
+            </Button>
+          </div>
+          
+          {subscription.endDate && (
+            <div className="mt-4 flex items-center text-sm">
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              <span>
+                {subscription.status === "trialing" 
+                  ? `Trial ends on ${format(new Date(subscription.endDate), "MMMM d, yyyy")}`
+                  : `Next billing date: ${format(new Date(subscription.endDate), "MMMM d, yyyy")}`
+                }
+              </span>
+            </div>
+          )}
+        </div>
+
+        <Tabs
+          defaultValue="overview"
+          value={activeTab} 
+          onValueChange={setActiveTab}
+          className="mb-8"
+        >
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="usage">Usage</TabsTrigger>
+            <TabsTrigger value="features">Features</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="overview" className="mt-6">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold mb-4">Your Resources</h2>
+              <ResourceCounters />
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Subscription Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="font-medium">Plan</TableCell>
+                        <TableCell className="capitalize">{subscription.tier}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Status</TableCell>
+                        <TableCell className="capitalize">{subscription.status}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Price</TableCell>
+                        <TableCell>
+                          {currentTier?.price.monthly && `$${currentTier.price.monthly}/month`}
+                        </TableCell>
+                      </TableRow>
+                      {subscription.endDate && (
+                        <TableRow>
+                          <TableCell className="font-medium">
+                            {subscription.isTrial ? "Trial End Date" : "Next Billing Date"}
+                          </TableCell>
+                          <TableCell>
+                            {format(new Date(subscription.endDate), "MMMM d, yyyy")}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Current Building Usage</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span>Total Buildings</span>
+                        <span className="font-medium">{buildingUsage.total} / {buildingUsage.limits.total}</span>
+                      </div>
+                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary" 
+                          style={{ width: `${Math.min((buildingUsage.total / buildingUsage.limits.total) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span>New Buildings This Month</span>
+                        <span className="font-medium">{buildingUsage.monthly} / {buildingUsage.limits.monthly}</span>
+                      </div>
+                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary" 
+                          style={{ width: `${Math.min((buildingUsage.monthly / buildingUsage.limits.monthly) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <Badge 
-                    className={
-                      subscription.status === "active" || subscription.status === "trialing" 
-                        ? "bg-green-500" 
-                        : "bg-amber-500"
-                    }
-                  >
-                    {subscription.status}
-                  </Badge>
-                </div>
-                
-                <p className="text-sm text-muted-foreground">
-                  {currentTier?.price.monthly && `$${currentTier.price.monthly}/month`}
-                </p>
-                
-                {subscription.endDate && (
-                  <div className="mt-4 flex items-center text-sm text-muted-foreground">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    <span>
-                      {subscription.status === "trialing" 
-                        ? `Trial ends on ${format(new Date(subscription.endDate), "MMMM d, yyyy")}`
-                        : `Next billing date: ${format(new Date(subscription.endDate), "MMMM d, yyyy")}`
-                      }
-                    </span>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="usage" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Resource Usage</CardTitle>
+                <CardDescription>Overview of your resource usage compared to limits</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {buildingUsage.total >= buildingUsage.limits.total || buildingUsage.monthly >= buildingUsage.limits.monthly ? (
+                  <Alert variant="destructive" className="mb-6">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Usage Limit Reached</AlertTitle>
+                    <AlertDescription>
+                      You've reached your plan's usage limits. Consider upgrading your plan to add more buildings.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="text-sm text-muted-foreground mb-6">
+                    You can add {buildingUsage.limits.total - buildingUsage.total} more buildings in total, 
+                    with {buildingUsage.limits.monthly - buildingUsage.monthly} available this month.
                   </div>
                 )}
-              </div>
-              
-              <div className="space-y-2">
-                <h4 className="font-medium">Features</h4>
+                
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Resource</TableHead>
+                      <TableHead>Used</TableHead>
+                      <TableHead>Limit</TableHead>
+                      <TableHead>Available</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>Total Buildings</TableCell>
+                      <TableCell>{buildingUsage.total}</TableCell>
+                      <TableCell>{buildingUsage.limits.total}</TableCell>
+                      <TableCell>{buildingUsage.limits.total - buildingUsage.total}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>Monthly New Buildings</TableCell>
+                      <TableCell>{buildingUsage.monthly}</TableCell>
+                      <TableCell>{buildingUsage.limits.monthly}</TableCell>
+                      <TableCell>{buildingUsage.limits.monthly - buildingUsage.monthly}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="features" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Plan Features</CardTitle>
+                <CardDescription>Features included in your {subscription.tier} plan</CardDescription>
+              </CardHeader>
+              <CardContent>
                 <ul className="space-y-2">
                   {currentTier?.features.map((feature, index) => (
                     <li key={index} className="flex items-center">
-                      <CheckCircle2 className="h-4 w-4 text-[#1cdd86] mr-2" />
-                      <span className="text-sm">{feature}</span>
+                      <CheckCircle2 className="h-5 w-5 text-[#1cdd86] mr-2" />
+                      <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={handleManageSubscription}
-                disabled={isRedirecting}
-              >
-                {isRedirecting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <CreditCard className="mr-2 h-4 w-4" />
-                )}
-                Manage Billing
-              </Button>
-            </CardFooter>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Usage</CardTitle>
-              <CardDescription>Your current resource usage</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span>Buildings</span>
-                  <span className="font-medium">{buildingUsage.total} / {buildingUsage.limits.total}</span>
-                </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary" 
-                    style={{ width: `${Math.min((buildingUsage.total / buildingUsage.limits.total) * 100, 100)}%` }}
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span>New Buildings This Month</span>
-                  <span className="font-medium">{buildingUsage.monthly} / {buildingUsage.limits.monthly}</span>
-                </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary" 
-                    style={{ width: `${Math.min((buildingUsage.monthly / buildingUsage.limits.monthly) * 100, 100)}%` }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              {buildingUsage.total >= buildingUsage.limits.total || buildingUsage.monthly >= buildingUsage.limits.monthly ? (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Usage Limit Reached</AlertTitle>
-                  <AlertDescription>
-                    You've reached your plan's usage limits. Consider upgrading your plan to add more buildings.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  You can add {buildingUsage.limits.total - buildingUsage.total} more buildings in total, 
-                  with {buildingUsage.limits.monthly - buildingUsage.monthly} available this month.
-                </div>
-              )}
-            </CardFooter>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
         
         <div className="mt-12">
           <h2 className="text-2xl font-bold mb-6">Upgrade Your Plan</h2>

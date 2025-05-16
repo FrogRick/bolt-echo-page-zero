@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+
+import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,9 @@ import { ExternalLink, Settings, Building, PlusCircle, CreditCard, RefreshCcw, L
 import { UserProfileForm } from "@/components/UserProfileForm";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { DeleteAccountDialog } from "@/components/DeleteAccountDialog";
+import { ResourceCounters } from "@/components/ResourceCounters";
+import { Badge } from "@/components/ui/badge";
+
 const AccountPage = () => {
   const {
     user,
@@ -24,11 +28,13 @@ const AccountPage = () => {
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+  
   const handleRefreshSubscription = async () => {
     setIsRefreshing(true);
     await refreshSubscription();
     setIsRefreshing(false);
   };
+  
   const handleManageSubscription = async () => {
     setIsRedirecting(true);
     try {
@@ -46,8 +52,47 @@ const AccountPage = () => {
   // Calculate percentages for progress bars
   const totalBuildingsPercentage = Math.min(buildingUsage.total / buildingUsage.limits.total * 100, 100);
   const monthlyBuildingsPercentage = Math.min(buildingUsage.monthly / buildingUsage.limits.monthly * 100, 100);
+  
   return <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-8">Account</h1>
+
+      {/* Subscription Tier Banner */}
+      <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-4 mb-8 flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            Current Plan: 
+            <Badge className="text-lg py-1 px-3 bg-primary/20 text-primary hover:bg-primary/30">
+              {subscription.tier.toUpperCase()}
+            </Badge>
+            {subscription.isTrial && (
+              <Badge variant="outline" className="ml-1">Trial</Badge>
+            )}
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Status: <span className="font-medium capitalize">{subscription.status}</span>
+            {subscription.endDate && (
+              <span className="ml-2">
+                • {subscription.isTrial ? "Trial ends" : "Renews"} on {new Date(subscription.endDate).toLocaleDateString()}
+              </span>
+            )}
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={handleManageSubscription} 
+          disabled={subscription.tier === "free" || isRedirecting}
+          className="whitespace-nowrap"
+        >
+          {isRedirecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+          {subscription.tier === "free" ? "Upgrade Plan" : "Manage Plan"}
+        </Button>
+      </div>
+
+      {/* Resource Counters */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold mb-4">Your Resources</h2>
+        <ResourceCounters />
+      </div>
 
       <div className="grid gap-8 md:grid-cols-2">
         {/* Account Information */}
@@ -175,49 +220,6 @@ const AccountPage = () => {
           </CardFooter>
         </Card>
       </div>
-
-      {/* Buildings */}
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle className="text-xl">Buildings</CardTitle>
-          <CardDescription>Your buildings and usage statistics</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center">
-                  <Building className="h-5 w-5 mr-2" />
-                  Total Buildings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{buildingUsage.total}</p>
-                <p className="text-sm text-gray-500">
-                  Limit: {buildingUsage.limits.total}
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center">
-                  <PlusCircle className="h-5 w-5 mr-2" />
-                  New This Month
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{buildingUsage.monthly}</p>
-                <p className="text-sm text-gray-500">
-                  Limit: {buildingUsage.limits.monthly} per month
-                </p>
-              </CardContent>
-            </Card>
-            
-            
-          </div>
-        </CardContent>
-      </Card>
     </div>;
 };
 export default AccountPage;
