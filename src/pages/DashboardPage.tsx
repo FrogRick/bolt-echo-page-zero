@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { GenericCard } from "@/components/ui/GenericCard";
@@ -333,24 +332,21 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
 
   return (
     <div>
-      {/* Updated layout with centered search bar */}
+      {/* Updated layout with title, search box and new-button in a single row */}
       <div className="mb-6">
-        <div className="flex flex-col items-center mb-6">
-          <h2 className="text-3xl font-bold mb-6">{titles[type]}</h2>
+        {/* Reorganized layout */}
+        <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
+          <h2 className="text-3xl font-bold">{titles[type]}</h2>
           
-          <div className="flex justify-center w-full mb-4">
-            <div className="w-full max-w-md">
-              <DashboardSearch 
-                value={searchQuery}
-                onChange={handleSearchChange}
-                placeholder={`Search ${titles[type].toLowerCase()}...`}
-                className="w-full"
-              />
-            </div>
+          <div className="flex-grow max-w-md mx-2">
+            <DashboardSearch 
+              value={searchQuery}
+              onChange={handleSearchChange}
+              placeholder={`Search ${titles[type].toLowerCase()}...`}
+              className="w-full"
+            />
           </div>
-        </div>
-        
-        <div className="flex justify-end mb-2">
+          
           {data.length > 0 && (type === "buildings" || type === "evacuation-plans" || type === "organizations" || type === "templates") && (
             <Button
               className="whitespace-nowrap" 

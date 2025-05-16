@@ -8,6 +8,12 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 
 interface GenericCardProps {
   title: string;
@@ -50,15 +56,33 @@ export function GenericCard({
             </div>
           )}
           <div className="absolute top-2 right-2 z-10">
-            <div 
-              className="p-1 rounded-full hover:bg-gray-100 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent card click
-                setShowContextMenu(true);
-              }}
-            >
-              <MoreVertical className="h-4 w-4 text-gray-500" />
-            </div>
+            {/* Replace the div with DropdownMenu for better control */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent card click
+                  }}
+                >
+                  <MoreVertical className="h-4 w-4 text-gray-500" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {onDelete && (
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete();
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Move to Trash
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div className="relative flex flex-col items-center justify-center pt-6 pb-2">
             <div className="h-14 w-14 flex items-center justify-center bg-white rounded-lg shadow-sm border border-primary/10 mb-2">
