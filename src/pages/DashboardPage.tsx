@@ -126,6 +126,11 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
   const [delayedLoading, setDelayedLoading] = useState(false);
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Add handleSearchChange function to update searchQuery state
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+  };
 
   // Helper: fetch data from Supabase for the current type
   async function fetchData() {
