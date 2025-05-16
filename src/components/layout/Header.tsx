@@ -93,13 +93,15 @@ const Header = () => {
                               : "text-gray-700 hover:bg-gray-100"
                           }`}
                         >
-                          <span className={`mr-2 ${
-                            location.pathname === item.path
-                              ? "text-primary"
-                              : "text-gray-500"
-                          }`}>
-                            {item.icon}
-                          </span>
+                          {item.icon && (
+                            <span className={`mr-2 ${
+                              location.pathname === item.path
+                                ? "text-primary"
+                                : "text-gray-500"
+                            }`}>
+                              {item.icon}
+                            </span>
+                          )}
                           {item.label}
                         </Link>
                       </DropdownMenuItem>
@@ -183,7 +185,7 @@ const Header = () => {
                       >
                         <Settings className="mr-2 h-4 w-4 text-gray-500" />
                         Settings
-                  </Link>
+                      </Link>
                     </div>
                     <div className="py-1 border-t border-gray-100">
                       <Link
@@ -192,14 +194,14 @@ const Header = () => {
                       >
                         <HelpCircle className="mr-2 h-4 w-4 text-gray-500" />
                         Help Center
-                  </Link>
+                      </Link>
                       <Link
                         to="/docs"
                         className="flex items-center px-3 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100 w-full text-left"
                       >
                         <BookOpen className="mr-2 h-4 w-4 text-gray-500" />
                         Documentation
-                  </Link>
+                      </Link>
                     </div>
                     <div className="py-1 border-t border-gray-100">
                       <button
