@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { GenericCard } from "@/components/ui/GenericCard";
@@ -270,25 +271,30 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
 
   return (
     <div>
-      <div className="flex flex-col mb-6">
-        <h2 className="text-3xl font-bold mb-4">{titles[type]}</h2>
-        
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <DashboardSearch 
-            value={searchQuery}
-            onChange={handleSearchChange}
-            placeholder={`Search ${titles[type].toLowerCase()}...`}
-          />
+      {/* Updated layout with flex for responsive alignment */}
+      <div className="mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+          <h2 className="text-3xl font-bold">{titles[type]}</h2>
           
-          {data.length > 0 && (type === "buildings" || type === "evacuation-plans" || type === "organizations" || type === "templates") && (
-            <Button
-              className="whitespace-nowrap" variant="default"
-              onClick={handleNewClick}
-              disabled={loading}
-            >
-              + New {titles[type].replace(/s$/, "")}
-            </Button>
-          )}
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full md:w-auto">
+            <DashboardSearch 
+              value={searchQuery}
+              onChange={handleSearchChange}
+              placeholder={`Search ${titles[type].toLowerCase()}...`}
+              className="w-full md:w-64 lg:w-80"
+            />
+            
+            {data.length > 0 && (type === "buildings" || type === "evacuation-plans" || type === "organizations" || type === "templates") && (
+              <Button
+                className="whitespace-nowrap w-full md:w-auto" 
+                variant="default"
+                onClick={handleNewClick}
+                disabled={loading}
+              >
+                + New {titles[type].replace(/s$/, "")}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
       

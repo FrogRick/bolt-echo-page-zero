@@ -3,15 +3,23 @@ import { useAuth } from "@/context/AuthContext";
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, Search, User as UserIcon, Settings, Building, HelpCircle, BookOpen, Flame, BookCopy, Shield } from "lucide-react";
+import { LogOut, Search, User as UserIcon, Settings, Building, HelpCircle, BookOpen, Flame, BookCopy, Shield, ChevronDown } from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Header = () => {
   const { user, signOut } = useAuth();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const isMobile = useIsMobile();
 
   const getUserInitials = () => {
     const meta = user?.user_metadata;
@@ -33,6 +41,9 @@ const Header = () => {
     { path: "/editor", label: "Editor" },
     { path: "/pricing", label: "Pricing" },
   ];
+
+  // Find current page for mobile dropdown
+  const currentPage = mainNavItems.find(item => item.path === location.pathname);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -56,35 +67,79 @@ const Header = () => {
         </div>
         {/* Main navigation links - centered */}
         <div className="flex-grow flex justify-center">
-          <div className="hidden md:flex space-x-1">
-            {mainNavItems.map(item => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                  location.pathname === item.path
-                    ? "bg-primary/10 text-primary"
-                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-              >
-                {item.icon && (
-                  <span className={`mr-1.5 ${
-                    location.pathname === item.path
-                      ? "text-primary"
-                      : "text-gray-500"
-                  }`}>
-                    {item.icon}
-                  </span>
-                )}
-                {item.label}
-          </Link>
-            ))}
-          </div>
+          {user && (
+            <>
+              {/* Mobile dropdown version */}
+              {isMobile ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      className="flex items-center gap-2 px-3 py-2 text-sm font-medium"
+                    >
+                      {currentPage?.icon}
+                      {currentPage?.label || "Navigation"}
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="center" className="w-48 bg-white">
+                    {mainNavItems.map(item => (
+                      <DropdownMenuItem key={item.path} asChild>
+                        <Link
+                          to={item.path}
+                          className={`flex items-center w-full px-3 py-2 text-sm rounded-md ${
+                            location.pathname === item.path
+                              ? "bg-primary/10 text-primary" 
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          <span className={`mr-2 ${
+                            location.pathname === item.path
+                              ? "text-primary"
+                              : "text-gray-500"
+                          }`}>
+                            {item.icon}
+                          </span>
+                          {item.label}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                /* Desktop horizontal navigation */
+                <div className="hidden md:flex space-x-1">
+                  {mainNavItems.map(item => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        location.pathname === item.path
+                          ? "bg-primary/10 text-primary"
+                          : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      }`}
+                    >
+                      {item.icon && (
+                        <span className={`mr-1.5 ${
+                          location.pathname === item.path
+                            ? "text-primary"
+                            : "text-gray-500"
+                        }`}>
+                          {item.icon}
+                        </span>
+                      )}
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
+        
         {/* Right side elements */}
         <div className="flex-shrink-0 flex items-center space-x-3">
-          {/* Notifications-knapp borttagen */}
-          {/* Visa profilmeny om inloggad, annars Sign Up / Login */}
+          {/* Profile menu */}
           {user ? (
             <div className="relative" ref={profileMenuRef}>
               <div>
