@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 
+// Unified interface that works for all card types
 interface GenericCardProps {
   title: string;
   subtitle?: string;
@@ -22,7 +23,7 @@ interface GenericCardProps {
   timestamp?: { label: string };
   onClick?: () => void;
   loading?: boolean;
-  type: "evacuation-plans" | "buildings" | "organizations" | "templates" | "evacuation-plan" | "building" | "organization" | "template";
+  type: string; // Changed to string to allow for more flexibility
   id?: string;
   onDelete?: () => void;
 }
@@ -56,7 +57,6 @@ export function GenericCard({
             </div>
           )}
           <div className="absolute top-2 right-2 z-10">
-            {/* Replace the div with DropdownMenu for better control */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button 

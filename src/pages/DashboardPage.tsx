@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { GenericCard } from "@/components/ui/GenericCard";
@@ -12,51 +13,7 @@ import { CreateEvacuationPlanForm } from "@/components/evacuation-plans/CreateEv
 import { CreateTemplateForm } from "@/components/templates/CreateTemplateForm";
 import { DashboardSearch } from "@/components/dashboard/DashboardSearch";
 
-function NewEvacuationPlanForm({ onSuccess }: { onSuccess: (id: string) => void }) {
-  const [name, setName] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  return (
-    <form
-      onSubmit={e => {
-        e.preventDefault();
-        if (!name.trim()) return;
-        setIsSubmitting(true);
-        const newProject = {
-          id: crypto.randomUUID(),
-          name: name.trim(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          pdfs: [],
-          symbols: [],
-        };
-        // Spara till localStorage
-        const existing = localStorage.getItem("evacuation-plans");
-        const projects = existing ? JSON.parse(existing) : [];
-        projects.unshift(newProject);
-        localStorage.setItem("evacuation-plans", JSON.stringify(projects));
-        setIsSubmitting(false);
-        onSuccess(newProject.id);
-      }}
-      className="max-w-2xl mx-auto bg-white rounded-lg p-6"
-    >
-      <h2 className="text-xl font-bold mb-4">Create Evacuation Plan</h2>
-      <div className="mb-4">
-        <label className="block mb-1 font-medium">Plan Name</label>
-        <input
-          className="border rounded px-3 py-2 w-full"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="e.g. Main Building Plan"
-          autoFocus
-        />
-      </div>
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Creating..." : "Create Evacuation Plan"}
-      </Button>
-    </form>
-  );
-}
-
+// Icons for card types
 const icons = {
   "evacuation-plans": <Flame className="w-8 h-8 text-primary" />,
   "buildings": <Building className="w-8 h-8 text-primary" />,
@@ -64,6 +21,7 @@ const icons = {
   "templates": <BookCopy className="w-8 h-8 text-primary" />,
 };
 
+// Titles for each section
 const titles = {
   "evacuation-plans": "Evacuation Plans",
   "buildings": "Buildings",
@@ -81,6 +39,7 @@ const typeToTable = {
 
 const SKELETON_COUNT = 6;
 
+// Reusable SkeletonCard component
 function SkeletonCard() {
   return (
     <div className="animate-pulse bg-gray-100 rounded-lg p-6 h-40 flex flex-col justify-between">
@@ -91,6 +50,7 @@ function SkeletonCard() {
   );
 }
 
+// EmptyState component
 function EmptyState({
   title,
   description,
@@ -223,8 +183,6 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
     if (!user) return;
     setLoading(true);
     
-    // Fix: Change to match the Supabase schema - use owner_id instead of user_id
-    // and remove description which isn't in the schema
     const { data: row, error } = await supabase.from("buildings").insert([
       {
         name: newBuilding.name,
@@ -273,12 +231,12 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
     alert("Supabase-tabellen 'templates' saknas. Lägg till den i din databas för att spara på riktigt.");
   }
 
-  // Hantera klick på New-knappen
+  // Handle click on New button
   function handleNewClick() {
     setShowNewModal(true);
   }
 
-  // Handle soft delete now that the deleted_at column exists
+  // Handle soft delete with deleted_at
   async function handleDelete(id: string) {
     if (!user) return;
     
@@ -330,11 +288,18 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
     }
   }
 
+  // Handle card click - navigate to editor for evacuation plans
+  const handleCardClick = (item: any) => {
+    if (type === "evacuation-plans") {
+      navigate(`/editor/${item.id}`);
+    }
+    // Add other type-specific navigation if needed in the future
+  };
+
   return (
     <div>
-      {/* Updated layout with title, search box and new-button in a single row */}
       <div className="mb-6">
-        {/* Reorganized layout */}
+        {/* Layout with title, search, and new button in a single row */}
         <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
           <h2 className="text-3xl font-bold">{titles[type]}</h2>
           
@@ -387,10 +352,10 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
               subtitle={item.description || item.address}
               icon={icons[type]}
               timestamp={{ label: `Last updated: ${item.updated_at ? new Date(item.updated_at).toLocaleDateString() : ""}` }}
-              type={type as any}
+              type={type}
               id={item.id}
               loading={item.loading}
-              onClick={() => type === "evacuation-plans" ? navigate(`/editor/${item.id}`) : null}
+              onClick={() => handleCardClick(item)}
               onDelete={() => handleDelete(item.id)}
             />
           ))}
