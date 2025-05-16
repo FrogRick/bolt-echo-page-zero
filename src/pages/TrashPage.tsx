@@ -56,7 +56,7 @@ export default function TrashPage() {
     
     try {
       const results = await Promise.all(types.map(async (type) => {
-        const tableName = typeToTable[type];
+        const tableName = typeToTable[type as keyof typeof typeToTable];
         
         // Fetch only items that have a deleted_at timestamp (in the trash)
         const { data, error } = await supabase
@@ -102,6 +102,19 @@ export default function TrashPage() {
     fetchTrashItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+  
+  // Calculate days remaining before auto-deletion
+  const calculateDaysRemaining = (deletedDate: string): number => {
+    const deleted = new Date(deletedDate);
+    const autoDeleteDate = new Date(deleted);
+    autoDeleteDate.setDate(autoDeleteDate.getDate() + 30); // 30 days from deletion
+    
+    const today = new Date();
+    const diffTime = autoDeleteDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return Math.max(0, diffDays); // Don't show negative days
+  };
   
   // Handle restoring an item from trash
   async function handleRestore(type: string, id: string) {
@@ -168,9 +181,15 @@ export default function TrashPage() {
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-6">Trash</h1>
-      <p className="text-gray-500 mb-6">
+      <p className="text-gray-500 mb-2">
         Items in trash will be permanently deleted after 30 days. You can restore them before then.
       </p>
+      <div className="p-4 mb-6 bg-amber-50 border border-amber-200 rounded-md">
+        <p className="text-amber-800 flex items-center">
+          <span className="mr-2">⚠️</span> 
+          Items are automatically deleted after 30 days from the deletion date.
+        </p>
+      </div>
       
       <Tabs
         defaultValue="buildings"
@@ -208,19 +227,31 @@ export default function TrashPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {itemsByType[type].map((item) => (
-                  <GenericCard
-                    key={item.id}
-                    title={item.name}
-                    subtitle={item.description || item.address}
-                    icon={icons[type as keyof typeof icons]}
-                    timestamp={{ label: `Deleted: ${item.deleted_at ? new Date(item.deleted_at).toLocaleDateString() : ""}` }}
-                    type={type}
-                    id={item.id}
-                    loading={item.loading}
-                    onRestore={() => handleRestore(type, item.id)} // Add this handler for restore functionality
-                  />
-                ))}
+                {itemsByType[type].map((item) => {
+                  // Calculate days remaining before auto-deletion
+                  const daysRemaining = calculateDaysRemaining(item.deleted_at);
+                  const deletionLabel = daysRemaining > 1 
+                    ? `Auto-delete in ${daysRemaining} days` 
+                    : daysRemaining === 1 
+                      ? "Auto-delete tomorrow" 
+                      : "Auto-delete today";
+                  
+                  return (
+                    <GenericCard
+                      key={item.id}
+                      title={item.name}
+                      subtitle={item.description || item.address}
+                      icon={icons[type as keyof typeof icons]}
+                      timestamp={{ 
+                        label: deletionLabel 
+                      }}
+                      type={type}
+                      id={item.id}
+                      loading={item.loading}
+                      onRestore={() => handleRestore(type, item.id)}
+                    />
+                  );
+                })}
               </div>
             )}
           </TabsContent>
