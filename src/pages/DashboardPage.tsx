@@ -269,32 +269,82 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
     setShowNewModal(true);
   }
 
+  // Handle soft delete function
+  async function handleSoftDelete(id: string) {
+    if (!user) return;
+    
+    setLoading(true);
+    let table = "";
+    switch (type) {
+      case "buildings": table = "buildings"; break;
+      case "organizations": table = "organizations"; break;
+      case "templates": table = "templates"; break;
+      case "evacuation-plans": table = "floor_plans"; break;
+      default: setLoading(false); return;
+    }
+    
+    try {
+      // Instead of hard delete, update with deleted_at timestamp
+      const { data: result, error } = await supabase
+        .from(table)
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+        
+      if (error) {
+        console.error(`Error soft deleting ${table}:`, error);
+        toast({
+          title: "Error",
+          description: `Failed to delete ${type.replace(/-/g, " ")}. Please try again.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: `${type.replace(/-/g, " ").replace(/s$/, "")} moved to trash.`,
+        });
+        // Refresh data
+        fetchData();
+      }
+    } catch (err) {
+      console.error(`Error soft deleting ${table}:`, err);
+      toast({
+        title: "Error",
+        description: `Failed to delete ${type.replace(/-/g, " ")}. Please try again.`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div>
-      {/* Updated layout with flex for responsive alignment */}
+      {/* Updated layout with centered search bar */}
       <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-          <h2 className="text-3xl font-bold">{titles[type]}</h2>
+        <div className="flex flex-col items-center mb-6">
+          <h2 className="text-3xl font-bold mb-6">{titles[type]}</h2>
           
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full md:w-auto">
+          <div className="flex flex-col md:flex-row items-center gap-4 w-full max-w-md">
             <DashboardSearch 
               value={searchQuery}
               onChange={handleSearchChange}
               placeholder={`Search ${titles[type].toLowerCase()}...`}
-              className="w-full md:w-64 lg:w-80"
+              className="w-full"
             />
-            
-            {data.length > 0 && (type === "buildings" || type === "evacuation-plans" || type === "organizations" || type === "templates") && (
-              <Button
-                className="whitespace-nowrap w-full md:w-auto" 
-                variant="default"
-                onClick={handleNewClick}
-                disabled={loading}
-              >
-                + New {titles[type].replace(/s$/, "")}
-              </Button>
-            )}
           </div>
+        </div>
+        
+        <div className="flex justify-end mb-2">
+          {data.length > 0 && (type === "buildings" || type === "evacuation-plans" || type === "organizations" || type === "templates") && (
+            <Button
+              className="whitespace-nowrap" 
+              variant="default"
+              onClick={handleNewClick}
+              disabled={loading}
+            >
+              + New {titles[type].replace(/s$/, "")}
+            </Button>
+          )}
         </div>
       </div>
       
@@ -326,6 +376,8 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
               icon={icons[type]}
               timestamp={{ label: `Last updated: ${item.updated_at ? new Date(item.updated_at).toLocaleDateString() : ""}` }}
               type={type as any}
+              id={item.id}
+              onDelete={() => handleSoftDelete(item.id)}
             />
           ))}
         </div>

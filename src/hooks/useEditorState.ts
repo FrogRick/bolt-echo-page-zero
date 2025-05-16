@@ -40,6 +40,9 @@ export const useEditorState = () => {
   const [snapToAngle, setSnapToAngle] = useState<boolean>(true);
   const [snapToWalls, setSnapToWalls] = useState<boolean>(true);
   
+  // Trash/deleted items state
+  const [deletedItems, setDeletedItems] = useState<{id: string, type: string, deletedAt: Date}[]>([]);
+  
   // Layers state
   const [layers, setLayers] = useState<Layer[]>([
     { id: 'evacuation', name: 'Evacuation Symbols', type: 'evacuation', visible: true },
@@ -93,6 +96,10 @@ export const useEditorState = () => {
     useManualWalls,
     setUseManualWalls,
     exportSettings,
-    setExportSettings
+    setExportSettings,
+    
+    // Trash/deleted items state
+    deletedItems,
+    setDeletedItems
   };
 };
