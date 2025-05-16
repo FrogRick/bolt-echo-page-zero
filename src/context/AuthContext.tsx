@@ -134,7 +134,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         
         // If this is a new sign-up (SIGNED_UP event), automatically start the basic tier trial
-        if (event === 'USER_SIGNED_UP' && session?.user) {
+        if (event === 'SIGNED_UP' && session?.user) {
           console.log("New user signed up, starting Basic tier trial");
           // Automatically start the 14-day trial of basic tier
           setTimeout(async () => {
