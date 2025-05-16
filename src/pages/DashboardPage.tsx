@@ -11,6 +11,7 @@ import { CreateOrganizationForm } from "@/components/organizations/CreateOrganiz
 import { CreateBuildingForm } from "@/components/buildings/CreateBuildingForm";
 import { CreateEvacuationPlanForm } from "@/components/evacuation-plans/CreateEvacuationPlanForm";
 import { CreateTemplateForm } from "@/components/templates/CreateTemplateForm";
+import { DashboardSearch } from "@/components/dashboard/DashboardSearch";
 
 function NewEvacuationPlanForm({ onSuccess }: { onSuccess: (id: string) => void }) {
   const [name, setName] = useState("");
@@ -118,11 +119,13 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
   const { user } = useAuth();
   const [showNewModal, setShowNewModal] = useState(false);
   const [data, setData] = useState<any[]>([]);
+  const [filteredData, setFilteredData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [delayedLoading, setDelayedLoading] = useState(false);
   const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Helper: fetch data from Supabase for the current type
   async function fetchData() {
@@ -164,6 +167,25 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
   }
 
   useEffect(() => { fetchData(); /* eslint-disable-next-line */ }, [type]);
+
+  // Filter data based on search query
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredData(data);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = data.filter((item) => {
+        const name = (item.name || "").toLowerCase();
+        const description = (item.description || "").toLowerCase();
+        const address = (item.address || "").toLowerCase();
+        
+        return name.includes(query) || 
+               description.includes(query) || 
+               address.includes(query);
+      });
+      setFilteredData(filtered);
+    }
+  }, [searchQuery, data]);
 
   useEffect(() => {
     let skeletonTimeout: NodeJS.Timeout;
@@ -243,18 +265,28 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
 
   return (
     <div>
-      <div className="flex items-center mb-6">
-        <h2 className="text-3xl font-bold">{titles[type]}</h2>
-        {data.length > 0 && (type === "buildings" || type === "evacuation-plans" || type === "organizations" || type === "templates") && (
-          <Button
-            className="ml-auto" variant="default"
-            onClick={handleNewClick}
-            disabled={loading}
-          >
-            + New {titles[type].replace(/s$/, "")}
-          </Button>
-        )}
+      <div className="flex flex-col mb-6">
+        <h2 className="text-3xl font-bold mb-4">{titles[type]}</h2>
+        
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <DashboardSearch 
+            value={searchQuery}
+            onChange={handleSearchChange}
+            placeholder={`Search ${titles[type].toLowerCase()}...`}
+          />
+          
+          {data.length > 0 && (type === "buildings" || type === "evacuation-plans" || type === "organizations" || type === "templates") && (
+            <Button
+              className="whitespace-nowrap" variant="default"
+              onClick={handleNewClick}
+              disabled={loading}
+            >
+              + New {titles[type].replace(/s$/, "")}
+            </Button>
+          )}
+        </div>
       </div>
+      
       {loading && delayedLoading ? (
         showSkeleton ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -275,11 +307,11 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
         />
       ) : !loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {data.map((item: any) => (
+          {filteredData.map((item: any) => (
             <GenericCard
               key={item.id}
               title={item.name}
-              subtitle={item.description}
+              subtitle={item.description || item.address}
               icon={icons[type]}
               timestamp={{ label: `Last updated: ${item.updated_at ? new Date(item.updated_at).toLocaleDateString() : ""}` }}
               type={type as any}
@@ -287,6 +319,7 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
           ))}
         </div>
       ) : null}
+      
       {showNewModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-visible"
