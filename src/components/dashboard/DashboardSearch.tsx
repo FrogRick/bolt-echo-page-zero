@@ -22,7 +22,7 @@ export const DashboardSearch: React.FC<DashboardSearchProps> = ({
       <Input
         type="text"
         placeholder={placeholder}
-        className="pl-10 bg-background border border-input rounded-md"
+        className="pl-10 bg-background border border-input rounded-md text-center"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />

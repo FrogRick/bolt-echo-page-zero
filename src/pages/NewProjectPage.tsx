@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import mapboxgl from 'mapbox-gl';
@@ -297,13 +296,15 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
                 </div>
               </div>
             </div>
-            <Button 
-              type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 transition-colors" 
-              disabled={isSubmitting || !addressSelected}
-            >
-              {isSubmitting ? "Creating..." : "Create Building"}
-            </Button>
+            <div className="flex justify-center">
+              <Button 
+                type="submit" 
+                className="w-full max-w-xs bg-primary hover:bg-primary/90 transition-colors" 
+                disabled={isSubmitting || !addressSelected}
+              >
+                {isSubmitting ? "Creating..." : "Create Building"}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
