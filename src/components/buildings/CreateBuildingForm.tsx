@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
@@ -7,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Search } from "lucide-react";
+import BuildingMarker from "@/components/BuildingMarker";
+import { createRoot } from "react-dom/client";
 
 // Mapbox token
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZnJldGgwMyIsImEiOiJjajI2a29mYzAwMDJqMnducnZmNnMzejB1In0.oRpO5T3aTpkP1QO8WjsiSw";
@@ -51,14 +52,21 @@ export function CreateBuildingForm({ onSuccess, onCancel }: CreateBuildingFormPr
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/streets-v12',
         center: [location.lng, location.lat],
-        zoom: 10
+        zoom: 10,
+        scrollZoom: false // Disable scroll zooming
       });
 
       // Add navigation controls
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
+      // Create marker element with BuildingMarker component
+      const markerElement = document.createElement('div');
+      const markerRoot = createRoot(markerElement);
+      markerRoot.render(<BuildingMarker />);
+
       // Add marker
       marker.current = new mapboxgl.Marker({
+        element: markerElement,
         draggable: true
       })
         .setLngLat([location.lng, location.lat])
@@ -260,13 +268,13 @@ export function CreateBuildingForm({ onSuccess, onCancel }: CreateBuildingFormPr
   return (
     <form
       onSubmit={handleSubmit}
-      className="max-w-2xl mx-auto bg-white rounded-lg p-6"
+      className="max-w-2xl mx-auto bg-white rounded-lg p-6 shadow-sm border border-border/40"
     >
-      <h2 className="text-xl font-bold mb-4">Create Building</h2>
+      <h2 className="text-xl font-bold mb-4 text-primary">Create Building</h2>
       <div className="mb-4">
-        <label className="block mb-1 font-medium">Name</label>
+        <label className="block mb-1.5 font-medium text-sm">Name</label>
         <input 
-          className="border rounded px-3 py-2 w-full" 
+          className="border border-input/60 rounded-md px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors" 
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Main Office" 
@@ -276,13 +284,15 @@ export function CreateBuildingForm({ onSuccess, onCancel }: CreateBuildingFormPr
       
       {/* Address search with auto-suggestions */}
       <div className="mb-4">
-        <label className="block mb-1 font-medium">Address</label>
+        <label className="block mb-1.5 font-medium text-sm">Address</label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400" />
+            <Search className="h-4 w-4 text-muted-foreground" />
           </div>
           <input 
-            className={`border rounded pl-9 pr-3 py-2 w-full ${addressSelected ? 'border-green-500' : ''}`}
+            className={`border rounded-md pl-9 pr-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors ${
+              addressSelected ? 'border-primary' : 'border-input/60'
+            }`}
             value={addressInput}
             onChange={(e) => handleAddressInputChange(e.target.value)}
             onFocus={() => setShowSuggestions(true)}
@@ -291,11 +301,11 @@ export function CreateBuildingForm({ onSuccess, onCancel }: CreateBuildingFormPr
           
           {/* Display address suggestions */}
           {showSuggestions && suggestions.length > 0 && (
-            <ul className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+            <ul className="absolute z-10 mt-1 w-full bg-white border border-border/40 rounded-md shadow-lg max-h-60 overflow-auto">
               {suggestions.map((suggestion, index) => (
                 <li
                   key={`${suggestion.place_name}-${index}`}
-                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                  className="px-3 py-2 hover:bg-primary/10 cursor-pointer text-sm"
                   onClick={() => handleSelectAddress(suggestion)}
                 >
                   {suggestion.place_name}
@@ -305,10 +315,10 @@ export function CreateBuildingForm({ onSuccess, onCancel }: CreateBuildingFormPr
           )}
         </div>
         {addressInput && !addressSelected && (
-          <p className="mt-1 text-sm text-amber-500">Please select an address from the suggestions</p>
+          <p className="mt-1.5 text-sm text-amber-500">Please select an address from the suggestions</p>
         )}
         {addressSelected && (
-          <p className="mt-1 text-sm text-green-500">Address selected</p>
+          <p className="mt-1.5 text-sm text-primary">Address selected</p>
         )}
       </div>
       
@@ -316,10 +326,10 @@ export function CreateBuildingForm({ onSuccess, onCancel }: CreateBuildingFormPr
       <div className="mb-6">
         <div
           ref={mapContainer}
-          className="w-full h-64 rounded border"
+          className="w-full h-64 rounded-md border border-border/40 shadow-inner"
           style={{ minHeight: "250px" }}
         />
-        <p className="text-xs text-gray-500 mt-1">Click on the map to set location or drag the marker</p>
+        <p className="text-xs text-muted-foreground mt-1.5">Click on the map to set location or drag the marker</p>
       </div>
       
       <div className="flex justify-end space-x-2">
@@ -327,12 +337,14 @@ export function CreateBuildingForm({ onSuccess, onCancel }: CreateBuildingFormPr
           type="button" 
           variant="outline"
           onClick={onCancel}
+          className="border-input/60"
         >
           Cancel
         </Button>
         <Button 
           type="submit" 
           disabled={loading || !addressSelected}
+          className="bg-primary hover:bg-primary/90 transition-colors"
         >
           {loading ? "Creating..." : "Create Building"}
         </Button>

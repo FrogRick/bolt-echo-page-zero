@@ -5,6 +5,8 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from "@/components/ui/button";
 import { Building } from "lucide-react";
 import { Link } from "react-router-dom";
+import BuildingMarker from "@/components/BuildingMarker";
+import { createRoot } from "react-dom/client";
 
 // Set your Mapbox access token
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZnJldGgwMyIsImEiOiJjajI2a29mYzAwMDJqMnducnZmNnMzejB1In0.oRpO5T3aTpkP1QO8WjsiSw";
@@ -42,9 +44,10 @@ const MapView: React.FC<MapViewProps> = ({ projects }) => {
       // Create the map instance
       mapRef.current = new mapboxgl.Map({
         container: mapContainerRef.current,
-        style: 'mapbox://styles/mapbox/streets-v12', // Updated to streets-v12
+        style: 'mapbox://styles/mapbox/streets-v12',
         center: [10, 35], // Default center (can be adjusted)
         zoom: 2,
+        scrollZoom: false // Disable scroll zooming
       });
 
       // Add navigation controls
@@ -57,22 +60,17 @@ const MapView: React.FC<MapViewProps> = ({ projects }) => {
         // Add markers for projects with locations
         projects.forEach(project => {
           if (project.location && project.location.lat && project.location.lng) {
-            // Create a DOM element for the marker
-            const el = document.createElement('div');
-            el.className = 'marker';
-            el.style.backgroundColor = '#19e16c';
-            el.style.width = '24px';
-            el.style.height = '24px';
-            el.style.borderRadius = '50%';
-            el.style.cursor = 'pointer';
-            el.style.boxShadow = '0 0 0 4px white';
+            // Create a DOM element for the marker using BuildingMarker
+            const markerElement = document.createElement('div');
+            const markerRoot = createRoot(markerElement);
+            markerRoot.render(<BuildingMarker />);
 
             // Create popup content
             const popupContent = document.createElement('div');
             popupContent.innerHTML = `
               <h3 class="text-lg font-bold">${project.name}</h3>
               <p class="text-sm whitespace-pre-line">${project.location.address.split(',').join('\n')}</p>
-              <a href="/editor/${project.id}" class="text-blue-600 hover:underline">Open</a>
+              <a href="/editor/${project.id}" class="text-primary hover:underline font-medium">Open</a>
             `;
 
             // Add popup
@@ -80,7 +78,7 @@ const MapView: React.FC<MapViewProps> = ({ projects }) => {
               .setDOMContent(popupContent);
 
             // Create and add marker
-            new mapboxgl.Marker(el)
+            new mapboxgl.Marker(markerElement)
               .setLngLat([project.location.lng, project.location.lat])
               .setPopup(popup)
               .addTo(mapRef.current!);

@@ -45,10 +45,10 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
       mapboxgl.accessToken = MAPBOX_TOKEN;
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12', // Updated to streets-v12
+        style: 'mapbox://styles/mapbox/streets-v12',
         center: [longitude, latitude],
         zoom: 13,
-        scrollZoom: false
+        scrollZoom: false // Disable scroll zooming
       });
       const markerElement = document.createElement('div');
       const markerRoot = createRoot(markerElement);
@@ -66,10 +66,10 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
       mapboxgl.accessToken = MAPBOX_TOKEN;
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12', // Updated to streets-v12
+        style: 'mapbox://styles/mapbox/streets-v12',
         center: [-74.5, 40],
         zoom: 9,
-        scrollZoom: false
+        scrollZoom: false // Disable scroll zooming
       });
       const markerElement = document.createElement('div');
       const markerRoot = createRoot(markerElement);
@@ -210,25 +210,32 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
   };
 
   return <div className="max-w-2xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Building</CardTitle>
-          <CardDescription>
+      <Card className="border border-border/40 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-2xl font-semibold text-primary">Create Building</CardTitle>
+          <CardDescription className="text-muted-foreground">
             Enter details and select location for your new building
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <Label htmlFor="projectName">Building Name</Label>
-              <Input id="projectName" value={projectName} onChange={e => setProjectName(e.target.value)} placeholder="e.g., Office Building" className="mt-1" autoFocus />
+              <Label htmlFor="projectName" className="text-sm font-medium">Building Name</Label>
+              <Input 
+                id="projectName" 
+                value={projectName} 
+                onChange={e => setProjectName(e.target.value)} 
+                placeholder="e.g., Office Building" 
+                className="mt-1.5 border-input/60 focus-visible:ring-primary/30" 
+                autoFocus 
+              />
             </div>
             <div>
-              <Label htmlFor="address">Address</Label>
-              <div className="relative mt-1">
+              <Label htmlFor="address" className="text-sm font-medium">Address</Label>
+              <div className="relative mt-1.5">
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <Search className="h-4 w-4 text-gray-400" />
+                    <Search className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <Input 
                     id="address" 
@@ -236,22 +243,22 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
                     onChange={e => handleAddressInputChange(e.target.value)} 
                     placeholder="Type to search for an address" 
                     className={cn(
-                      "pl-9 pr-4 w-full",
-                      addressSelected ? "border-green-500" : ""
+                      "pl-9 pr-4 w-full border-input/60 focus-visible:ring-primary/30",
+                      addressSelected ? "border-primary" : ""
                     )}
                     onClick={() => setOpen(true)} 
                     onFocus={() => setOpen(true)} 
                   />
                 </div>
                 {addressInput && suggestions.length > 0 && open && (
-                  <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg">
+                  <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg border border-border/40">
                     <ul className="max-h-60 overflow-auto py-1">
                       {suggestions.map((suggestion, index) => (
                         <li 
                           key={`${suggestion.place_name}-${index}`} 
                           className={cn(
-                            "px-3 py-2 text-sm cursor-pointer hover:bg-gray-100", 
-                            address === suggestion.place_name && "bg-gray-100"
+                            "px-3 py-2 text-sm cursor-pointer hover:bg-primary/10", 
+                            address === suggestion.place_name && "bg-primary/10"
                           )}
                           onClick={() => handleSelectAddress(suggestion)}
                         >
@@ -263,31 +270,38 @@ export function NewBuildingForm({ onSuccess }: { onSuccess?: (id: string) => voi
                 )}
               </div>
               {addressInput && suggestions.length === 0 && open && (
-                <div className="mt-1 text-sm text-gray-500">
+                <div className="mt-1.5 text-sm text-muted-foreground">
                   No addresses found
                 </div>
               )}
               {!addressSelected && addressInput && (
-                <div className="mt-1 text-sm text-amber-500">
+                <div className="mt-1.5 text-sm text-amber-500">
                   Please select an address from the suggestions
                 </div>
               )}
             </div>
             <div>
-              <Label>Location</Label>
+              <Label className="text-sm font-medium">Location</Label>
               <div className="relative">
-                <div ref={mapContainer} className="h-[300px] mt-1 rounded-lg overflow-hidden border" />
+                <div 
+                  ref={mapContainer} 
+                  className="h-[300px] mt-1.5 rounded-lg overflow-hidden border border-border/40 shadow-inner" 
+                />
                 <div className="absolute top-2 right-2 flex flex-col gap-2">
-                  <Button variant="secondary" size="icon" onClick={handleZoomIn} type="button" className="bg-white hover:bg-gray-100">
+                  <Button variant="secondary" size="icon" onClick={handleZoomIn} type="button" className="bg-white hover:bg-gray-100 shadow-sm">
                     <Plus className="h-4 w-4" />
                   </Button>
-                  <Button variant="secondary" size="icon" onClick={handleZoomOut} type="button" className="bg-white hover:bg-gray-100">
+                  <Button variant="secondary" size="icon" onClick={handleZoomOut} type="button" className="bg-white hover:bg-gray-100 shadow-sm">
                     <Minus className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting || !addressSelected}>
+            <Button 
+              type="submit" 
+              className="w-full bg-primary hover:bg-primary/90 transition-colors" 
+              disabled={isSubmitting || !addressSelected}
+            >
               {isSubmitting ? "Creating..." : "Create Building"}
             </Button>
           </form>

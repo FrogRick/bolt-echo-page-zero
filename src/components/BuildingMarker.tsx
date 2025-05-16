@@ -1,7 +1,7 @@
 
 const BuildingMarker = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-8 h-8">
-    <rect width="100" height="100" fill="#19e16c" rx="25" ry="25" />
+    <rect width="100" height="100" fill="hsl(var(--primary))" rx="25" ry="25" />
     <g fill="white">
       <path d="M50 12 Q54 20, 65 30 L58 30 L58 50 L42 50 L42 30 L35 30 Q46 20, 50 12 Z" />
       <path d="M88 50 Q80 54, 70 65 L70 58 L50 58 L50 42 L70 42 L70 35 Q80 46, 88 50 Z" />
