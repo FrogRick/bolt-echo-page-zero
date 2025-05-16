@@ -1,121 +1,125 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Pencil, Settings } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Pencil } from "lucide-react";
 
 interface ManualWallDrawingProps {
   isActive: boolean;
-  onDrawingModeToggle: (enabled: boolean) => void;
+  onDrawingModeToggle: (active: boolean) => void;
   wallThickness: number;
   onWallThicknessChange: (thickness: number) => void;
   snapToAngle: boolean;
   onSnapToAngleToggle: (enabled: boolean) => void;
   snapToWalls: boolean;
   onSnapToWallsToggle: (enabled: boolean) => void;
-  onNext: () => void;
-  onBack: () => void;
+  onNext?: () => void;
+  onBack?: () => void;
 }
 
 export const ManualWallDrawing = ({
   isActive,
   onDrawingModeToggle,
-  wallThickness = 5,
+  wallThickness,
   onWallThicknessChange,
-  snapToAngle = true,
+  snapToAngle,
   onSnapToAngleToggle,
-  snapToWalls = true,
+  snapToWalls,
   onSnapToWallsToggle,
   onNext,
   onBack
 }: ManualWallDrawingProps) => {
-  const { toast } = useToast();
-  
-  const toggleDrawingMode = () => {
-    const newMode = !isActive;
-    onDrawingModeToggle(newMode);
-    if (newMode) {
-      toast({
-        title: "Wall Drawing Mode Activated",
-        description: "Click to set start point, then click again to place end point.",
-        duration: 3000
-      });
-    }
-  };
-  
   return (
-    <Card className="relative h-full flex flex-col max-w-3xl mx-auto">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Pencil className="h-4 w-4" />
-          Draw Walls
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-4 flex-1 flex flex-col min-h-[500px]">
-        <div className="flex-1 relative min-h-[500px] flex flex-col space-y-4">
-          <Button 
-            variant={isActive ? "default" : "outline"}
-            className="w-full" 
-            onClick={toggleDrawingMode}
-          >
-            {isActive ? "Drawing Mode Active - Click to Disable" : "Start Drawing"}
-          </Button>
-          
-          {isActive && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded text-sm text-blue-800 dark:text-blue-300">
-              Click once to set the start point, then click again to complete the wall.
-            </div>
-          )}
-          
-          <div className="space-y-6 border-t pt-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium flex items-center gap-1">
-                <Settings className="h-4 w-4" /> Wall Settings
-              </h3>
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="thickness">Wall Thickness</Label>
-              <div className="flex items-center gap-4">
-                <Slider 
-                  id="thickness" 
-                  value={[wallThickness]} 
-                  min={1} 
-                  max={10} 
-                  step={1} 
-                  onValueChange={value => onWallThicknessChange?.(value[0])} 
-                />
-                <span className="w-6 text-right">{wallThickness}px</span>
-              </div>
-            </div>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold mb-2">Wall Drawing Tools</h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Draw walls by clicking on the canvas to set start and end points.
+        </p>
+      </div>
 
-            <div className="flex items-center justify-between">
-              <Label htmlFor="snap-angle">Snap to 45° angles</Label>
-              <Switch 
-                id="snap-angle" 
-                checked={snapToAngle} 
-                onCheckedChange={onSnapToAngleToggle} 
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <Label htmlFor="snap-walls">Snap to existing walls</Label>
-              <Switch 
-                id="snap-walls" 
-                checked={snapToWalls} 
-                onCheckedChange={onSnapToWallsToggle} 
-              />
-            </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label htmlFor="drawing-mode" className="font-medium">Wall Drawing Mode</Label>
+            <p className="text-xs text-gray-500">Click to place walls</p>
+          </div>
+          <Switch
+            id="drawing-mode"
+            checked={isActive}
+            onCheckedChange={onDrawingModeToggle}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="wall-thickness" className="font-medium">Wall Thickness</Label>
+          <div className="flex items-center space-x-2 mt-2">
+            <Slider
+              id="wall-thickness"
+              min={1}
+              max={10}
+              step={1}
+              value={[wallThickness]}
+              onValueChange={(values) => onWallThicknessChange(values[0])}
+              className="flex-1"
+            />
+            <span className="w-8 text-right text-sm">{wallThickness}px</span>
           </div>
         </div>
-      </CardContent>
-      <div className="flex justify-between gap-4 px-6 pb-6 pt-2 mt-auto bg-white z-10 border-t">
-        <Button variant="outline" onClick={onBack} disabled={!onBack}>Back</Button>
-        <Button onClick={onNext}>Next</Button>
+        
+        <div className="flex items-center justify-between">
+          <div>
+            <Label htmlFor="snap-angle" className="font-medium">Snap to Angle</Label>
+            <p className="text-xs text-gray-500">Align to 45° increments</p>
+          </div>
+          <Switch
+            id="snap-angle"
+            checked={snapToAngle}
+            onCheckedChange={onSnapToAngleToggle}
+          />
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <div>
+            <Label htmlFor="snap-walls" className="font-medium">Snap to Walls</Label>
+            <p className="text-xs text-gray-500">Connect walls automatically</p>
+          </div>
+          <Switch
+            id="snap-walls"
+            checked={snapToWalls}
+            onCheckedChange={onSnapToWallsToggle}
+          />
+        </div>
       </div>
-    </Card>
+      
+      {isActive && (
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-600">
+          <div className="flex items-center space-x-2 mb-1">
+            <Pencil className="h-4 w-4" />
+            <span className="font-medium">Drawing Mode Active</span>
+          </div>
+          <p>Click to set start point, then click again to draw wall.</p>
+        </div>
+      )}
+      
+      <div className="flex justify-between pt-4">
+        {onBack ? (
+          <Button variant="outline" onClick={onBack}>
+            Back
+          </Button>
+        ) : (
+          <div></div>
+        )}
+        
+        {onNext && (
+          <Button onClick={onNext}>
+            Next: Add Symbols
+          </Button>
+        )}
+      </div>
+    </div>
   );
 };

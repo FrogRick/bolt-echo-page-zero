@@ -1,3 +1,4 @@
+
 import { pdfjs } from "react-pdf";
 import { EditorContainer } from "@/components/editor/EditorContainer";
 import { useEditorState } from "@/hooks/useEditorState";
@@ -5,7 +6,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useProject } from "@/hooks/useProject";
-import PDFUploader from "@/components/editor/PDFUploader";
 import { useToast } from "@/hooks/use-toast";
 
 // Set PDF.js worker
@@ -39,7 +39,6 @@ const EditorPage = () => {
           ...project,
           pdfs: [...(project.pdfs || []), newPDF],
           pdfData: e.target.result as string,
-          // Keep compatibility with older code
           updatedAt: new Date()
         };
         
@@ -57,8 +56,6 @@ const EditorPage = () => {
 
         // Make sure we're initialized after uploading
         setIsInitialized(true);
-        
-        console.log("PDF upload completed and initialized:", isInitialized);
       }
     };
     
@@ -93,42 +90,30 @@ const EditorPage = () => {
 
       // If we have PDFs or a pdfFile, initialize the state
       if ((project.pdfs && project.pdfs.length > 0) || editorState.pdfFile) {
-        console.log("Setting initialized to true");
         setIsInitialized(true);
-
-        // Om currentStage är undefined, null eller 'choose_mode', gå till 'draw_walls'
-        if (
-          editorState.currentStage === undefined ||
-          editorState.currentStage === null ||
-          editorState.currentStage === 'choose_mode'
-        ) {
-          editorState.setUseManualWalls(true);
-          editorState.setCurrentStage('draw_walls');
-        }
-      } else {
-        console.log("No PDFs found in project");
+        editorState.setUseManualWalls(true);
+        editorState.setCurrentStage('draw_walls');
       }
     }
   }, [loading, project, editorState]);
 
-  useEffect(() => {
-    console.log("Current initialization state:", isInitialized);
-    console.log("Current editor state:", editorState);
-  }, [isInitialized, editorState]);
-
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">
+    return (
+      <div className="flex items-center justify-center h-screen">
         <div className="bg-white p-8 rounded-lg shadow-lg text-center">
           <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-lg font-medium">Loading project...</p>
         </div>
-      </div>;
+      </div>
+    );
   }
 
-  return <>
+  return (
+    <div className="h-screen flex flex-col">
       <EditorContainer {...editorState} onPDFUpload={handlePDFUpload} />
       <Toaster />
-    </>;
+    </div>
+  );
 };
 
 export default EditorPage;

@@ -1,131 +1,125 @@
+
 import React, { forwardRef } from "react";
-import { EditorSymbol } from "@/types/editor";
-import { Card, CardContent } from "@/components/ui/card";
 import { PDFCanvas } from "./PDFCanvas";
-import { ZoomControls } from "./ZoomControls";
+import { EditorSymbol, WallSymbol } from "@/types/editor";
 import { Layer } from "@/hooks/useEditorState";
-import PDFUploader from "./PDFUploader";
+import { WorkflowStage } from "./WorkflowSteps";
 
 interface PDFSectionProps {
   pdfFile: File | null;
-  symbols: EditorSymbol[];
-  setSymbols: (symbols: EditorSymbol[]) => void; // Add setSymbols to interface
-  activeSymbolType: string | null;
+  pageNumber: number;
   scale: number;
   setScale: (scale: number) => void;
-  pageNumber: number;
+  symbols: EditorSymbol[];
+  setSymbols: (symbols: EditorSymbol[]) => void;
   onPDFUpload: (file: File) => void;
   onDocumentLoadSuccess: ({ numPages }: { numPages: number }) => void;
-  onSymbolPlace: (type: string, x: number, y: number) => void;
-  onSymbolDragEnd: (symbolId: string, x: number, y: number) => void;
-  onSymbolSelect: (symbol: EditorSymbol) => void;
-  onSymbolDelete: (symbolId: string) => void;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
+  activeSymbolType: string | null;
+  setActiveSymbolType: (type: string | null) => void;
+  selectedSymbol: EditorSymbol | null;
+  setSelectedSymbol: (symbol: EditorSymbol | null) => void;
   drawingWallMode: boolean;
-  onDrawingWallModeToggle: (enabled: boolean) => void;
+  setDrawingWallMode: (mode: boolean) => void;
   wallStartPoint: {x: number, y: number} | null;
-  onWallPointSet: (x: number, y: number) => void;
+  setWallStartPoint: (point: {x: number, y: number} | null) => void;
   layers?: Layer[];
-  hideBackgroundPDF?: boolean;
-  currentStage?: string;
+  setLayers?: (layers: Layer[]) => void;
+  similarityDetectionMode?: boolean;
+  setSimilarityDetectionMode?: (enabled: boolean) => void;
+  onSimilarWallsDetected?: (walls: WallSymbol[]) => void;
+  currentStage?: WorkflowStage;
   useManualWalls?: boolean;
+  setUseManualWalls?: (use: boolean) => void;
   wallThickness?: number;
-  onWallThicknessChange?: (thickness: number) => void;
   snapToAngle?: boolean;
-  onSnapToAngleToggle?: (enabled: boolean) => void;
   snapToWalls?: boolean;
-  onSnapToWallsToggle?: (enabled: boolean) => void;
+  hideBackgroundPDF?: boolean;
 }
 
-export const PDFSection = forwardRef<any, PDFSectionProps>(({
-  pdfFile,
-  symbols,
-  setSymbols, // Add setSymbols param
-  activeSymbolType,
-  scale,
-  setScale,
-  pageNumber,
-  onPDFUpload,
-  onDocumentLoadSuccess,
-  onSymbolPlace,
-  onSymbolDragEnd,
-  onSymbolSelect,
-  onSymbolDelete,
-  onZoomIn,
-  onZoomOut,
-  drawingWallMode,
-  onDrawingWallModeToggle,
-  wallStartPoint,
-  onWallPointSet,
-  layers = [],
-  hideBackgroundPDF = false,
-  currentStage,
-  useManualWalls = false,
-  wallThickness = 5,
-  onWallThicknessChange,
-  snapToAngle = true,
-  onSnapToAngleToggle,
-  snapToWalls = true,
-  onSnapToWallsToggle
-}, ref) => {
-  // Determine if we should hide the PDF background
-  // Hide when using manual walls and we're past the draw_walls stage
-  const shouldHidePDF = useManualWalls && 
-    (currentStage === 'place_symbols' || currentStage === 'review' || currentStage === 'export');
+export const PDFSection = forwardRef<any, PDFSectionProps>((props, ref) => {
+  // Handle zoom functionality
+  const handleZoomIn = () => {
+    props.setScale(Math.min(props.scale + 0.1, 3.0));
+  };
+
+  const handleZoomOut = () => {
+    props.setScale(Math.max(props.scale - 0.1, 1.0));
+  };
+
+  // Handle symbol operations
+  const handleSymbolPlace = (type: string, x: number, y: number) => {
+    // Create a new symbol
+    const newSymbol: EditorSymbol = {
+      id: crypto.randomUUID(),
+      type,
+      x,
+      y,
+      rotation: 0,
+      size: 30
+    };
+    
+    props.setSymbols([...props.symbols, newSymbol]);
+  };
+
+  const handleSymbolDragEnd = (symbolId: string, x: number, y: number) => {
+    const updatedSymbols = props.symbols.map(symbol => 
+      symbol.id === symbolId ? { ...symbol, x, y } : symbol
+    );
+    props.setSymbols(updatedSymbols);
+  };
+
+  const handleSymbolSelect = (symbol: EditorSymbol) => {
+    props.setSelectedSymbol(symbol);
+  };
+
+  const handleSymbolDelete = (symbolId: string) => {
+    const updatedSymbols = props.symbols.filter(symbol => symbol.id !== symbolId);
+    props.setSymbols(updatedSymbols);
+  };
 
   return (
-    <Card className="relative h-full flex flex-col">
-      <CardContent className="p-4 flex-1 flex flex-col min-h-[500px]">
-        <div className="flex-1 relative min-h-[500px]">
-          {pdfFile ? (
-            <PDFCanvas
-              ref={ref}
-              pdfFile={pdfFile}
-              symbols={symbols}
-              setSymbols={setSymbols}
-              activeSymbolType={activeSymbolType}
-              onPDFUpload={onPDFUpload}
-              onDocumentLoadSuccess={onDocumentLoadSuccess}
-              onSymbolPlace={onSymbolPlace}
-              onSymbolDragEnd={onSymbolDragEnd}
-              onSymbolSelect={onSymbolSelect}
-              onSymbolDelete={onSymbolDelete}
-              pageNumber={pageNumber}
-              scale={scale}
-              setScale={setScale}
-              onZoomIn={onZoomIn}
-              onZoomOut={onZoomOut}
-              drawingWallMode={drawingWallMode}
-              wallStartPoint={wallStartPoint}
-              onWallPointSet={onWallPointSet}
-              layers={layers}
-              hideBackgroundPDF={shouldHidePDF || hideBackgroundPDF}
-              currentStage={currentStage}
-              useManualWalls={useManualWalls}
-              wallThickness={wallThickness}
-              onWallThicknessChange={onWallThicknessChange}
-              snapToAngle={snapToAngle}
-              onSnapToAngleToggle={onSnapToAngleToggle}
-              snapToWalls={snapToWalls}
-              onSnapToWallsToggle={onSnapToWallsToggle}
-            />
-          ) : (
-            <PDFUploader onUpload={onPDFUpload} multipleUploads={true} />
-          )}
-        </div>
-        
-        <div className="absolute bottom-4 right-4 z-10">
-          <ZoomControls
-            scale={scale}
-            onZoomIn={onZoomIn}
-            onZoomOut={onZoomOut}
-            minScale={0.5}
-            maxScale={3.0}
-          />
-        </div>
-      </CardContent>
-    </Card>
+    <div className="h-full w-full flex flex-col items-center justify-center bg-gray-100 relative overflow-hidden">
+      <div className="flex-1 w-full flex items-center justify-center">
+        <PDFCanvas
+          ref={ref}
+          pdfFile={props.pdfFile}
+          symbols={props.symbols}
+          activeSymbolType={props.activeSymbolType}
+          onPDFUpload={props.onPDFUpload}
+          onDocumentLoadSuccess={props.onDocumentLoadSuccess}
+          onSymbolPlace={handleSymbolPlace}
+          onSymbolDragEnd={handleSymbolDragEnd}
+          onSymbolSelect={handleSymbolSelect}
+          onSymbolDelete={handleSymbolDelete}
+          pageNumber={props.pageNumber || 1}
+          scale={props.scale}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          setScale={props.setScale}
+          drawingWallMode={props.drawingWallMode}
+          wallStartPoint={props.wallStartPoint}
+          onWallPointSet={(x, y) => {
+            if (!props.wallStartPoint) {
+              props.setWallStartPoint({ x, y });
+            } else {
+              // Create wall logic (handled in parent component)
+              props.setWallStartPoint(null);
+            }
+          }}
+          similarityDetectionMode={props.similarityDetectionMode}
+          onSimilarWallsDetected={props.onSimilarWallsDetected}
+          onSimilarityModeToggle={props.setSimilarityDetectionMode}
+          layers={props.layers}
+          hideBackgroundPDF={props.hideBackgroundPDF}
+          currentStage={props.currentStage}
+          useManualWalls={props.useManualWalls}
+          wallThickness={props.wallThickness}
+          snapToAngle={props.snapToAngle}
+          snapToWalls={props.snapToWalls}
+          setSymbols={props.setSymbols}
+        />
+      </div>
+    </div>
   );
 });
 

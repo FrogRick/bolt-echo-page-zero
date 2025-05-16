@@ -54,12 +54,13 @@ export const PDFViewer = ({
     const containerWidth = container.clientWidth;
     const containerHeight = container.clientHeight;
     
-    // Calculate scale factor to fit PDF within container width
-    // Using 0.95 as a factor to leave some margin
-    const widthRatio = (containerWidth * 0.95) / pdfDimensions.width;
+    // Calculate scale factor to fit PDF within container
+    // Using 0.9 as a factor to leave some margin
+    const widthRatio = (containerWidth * 0.9) / pdfDimensions.width;
+    const heightRatio = (containerHeight * 0.9) / pdfDimensions.height;
     
-    // Use the width ratio to ensure PDF fits horizontally
-    const fitScale = widthRatio;
+    // Use the smaller ratio to ensure PDF fits both horizontally and vertically
+    const fitScale = Math.min(widthRatio, heightRatio);
     
     return {
       width: pdfDimensions.width * fitScale * scale,
@@ -74,20 +75,6 @@ export const PDFViewer = ({
     const { width, height } = page.getViewport({ scale: 1 });
     setPdfDimensions({ width, height });
     setPageLoaded(true);
-    
-    // Resize the container based on PDF dimensions
-    if (containerRef.current) {
-      const container = containerRef.current;
-      const containerWidth = container.clientWidth;
-      const widthRatio = (containerWidth * 0.95) / width;
-      const newHeight = height * widthRatio;
-      
-      // Adjust parent container height to match PDF proportions
-      const parentElement = containerRef.current.parentElement;
-      if (parentElement) {
-        parentElement.style.height = `${newHeight * scale + 80}px`;
-      }
-    }
   };
 
   // Find visibility of layers
@@ -119,17 +106,33 @@ export const PDFViewer = ({
     (('start' in s) || ('width' in s))
   );
 
+  // Update dimensions on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (pageLoaded && containerRef.current) {
+        // Force re-calculation of dimensions
+        setPdfDimensions(prev => ({...prev}));
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [pageLoaded, containerRef]);
+
   return (
-    <div style={{ 
-      transform: `translate(${panPosition.x}px, ${panPosition.y}px)`,
-      transition: isPanning ? 'none' : 'transform 0.1s ease-out',
-      height: '100%',
-      width: '100%',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      position: 'relative'
-    }}>
+    <div 
+      style={{ 
+        transform: `translate(${panPosition.x}px, ${panPosition.y}px)`,
+        transition: isPanning ? 'none' : 'transform 0.1s ease-out',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+        height: '100%',
+        width: '100%'
+      }}
+      className="pdf-viewer"
+    >
       {!hideBackgroundPDF && (
         <Document
           file={pdfFile}
@@ -139,12 +142,13 @@ export const PDFViewer = ({
         >
           <Page 
             pageNumber={pageNumber} 
-            scale={scale}
+            scale={1} // We're controlling the scale manually with width/height
             renderTextLayer={false}
             renderAnnotationLayer={false}
             onLoadSuccess={handlePageLoadSuccess}
             width={dimensions?.width}
             height={dimensions?.height}
+            className="shadow-xl"
           />
         </Document>
       )}

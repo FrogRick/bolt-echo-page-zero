@@ -1,18 +1,18 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useRef, useState, useEffect, ReactNode } from "react";
 import { PDFSection } from "./PDFSection";
-import SymbolsPalette from "./SymbolsPalette"; // Updated to use default import
-import { WorkflowSteps } from "./WorkflowSteps";
 import { WorkflowProgress } from "./WorkflowProgress";
-import { ModeSelection } from "./ModeSelection";
 import { ManualWallDrawing } from "./ManualWallDrawing";
+import { EvacuationSymbolsPalette } from "./EvacuationSymbolsPalette";
 import { ExportOptions } from "./ExportOptions";
 import { useEditorActions } from "@/hooks/useEditorActions";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { EvacuationSymbolsPalette } from "./EvacuationSymbolsPalette";
 import { Dialog } from "@/components/ui/dialog";
+import PDFUploader from "./PDFUploader";
+import { Separator } from "@/components/ui/separator";
+import { ZoomOut, ZoomIn, Save, FileOutput, PenLine, PanelLeft } from "lucide-react";
 
 export const LOCAL_PLANS_KEY = "local_floor_plans";
 
@@ -20,24 +20,23 @@ export const EditorContainer = (props) => {
   const { toast } = useToast();
   const pdfCanvasRef = useRef(null);
   const editorActions = useEditorActions(
-    null, // project
+    null,
     props.symbols, 
     props.pdfFile,
-    () => {}, // saveProject (we'll use dummy function as we're not using it here)
+    () => {}, // saveProject (dummy function as we're not using it here)
     props.setSymbols,
-    props.setIsSaved || (() => {}), // provide fallback if not available
+    props.setIsSaved || (() => {}),
     props.setPdfFile
   );
   const navigate = useNavigate();
   const location = useLocation();
   const { user, subscription } = useAuth();
 
-  // Nytt state för icke-inloggade användare
-  const [localPdfFile, setLocalPdfFile] = useState<File | null>(null);
-  const [showSyncDialog, setShowSyncDialog] = useState(false);
+  // State for local PDFs (non-logged in users)
   const [localPlans, setLocalPlans] = useState<any[]>([]);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
 
-  // Ladda lokala planer från localStorage vid mount
+  // Load local plans from localStorage on mount
   useEffect(() => {
     const plans = localStorage.getItem(LOCAL_PLANS_KEY);
     if (plans) {
@@ -45,7 +44,7 @@ export const EditorContainer = (props) => {
     }
   }, []);
 
-  // När användaren loggar in, visa dialog om det finns lokala planer
+  // Show dialog if user logs in and has local plans
   useEffect(() => {
     if (user && localPlans.length > 0) {
       setShowSyncDialog(true);
@@ -54,7 +53,7 @@ export const EditorContainer = (props) => {
     }
   }, [user, localPlans.length]);
 
-  // Spara plan till localStorage för utloggade
+  // Save plan to localStorage for logged-out users
   const saveLocalPlan = (file: File) => {
     const plans = JSON.parse(localStorage.getItem(LOCAL_PLANS_KEY) || "[]");
     plans.push({
@@ -62,13 +61,12 @@ export const EditorContainer = (props) => {
       name: file.name,
       fileName: file.name,
       createdAt: new Date().toISOString(),
-      // Du kan lägga till mer data här om du vill
     });
     localStorage.setItem(LOCAL_PLANS_KEY, JSON.stringify(plans));
     setLocalPlans(plans);
   };
 
-  // Check if we're in the export stage and user is not logged in
+  // Check for subscription on export
   useEffect(() => {
     if (props.currentStage === 'export' && !user) {
       // Store the current path to redirect back after subscription
@@ -105,8 +103,7 @@ export const EditorContainer = (props) => {
   // Navigation helpers
   const goToPrevStage = () => {
     if (props.currentStage === 'draw_walls') {
-      // Första steget, ingen back
-      return;
+      return; // First step, no back
     } else if (props.currentStage === 'place_symbols') {
       handleStageChange('draw_walls');
     } else if (props.currentStage === 'review') {
@@ -115,6 +112,7 @@ export const EditorContainer = (props) => {
       handleStageChange('review');
     }
   };
+
   const goToNextStage = () => {
     if (props.currentStage === 'draw_walls') {
       handleStageChange('place_symbols');
@@ -125,10 +123,10 @@ export const EditorContainer = (props) => {
     }
   };
 
-  // Hantera PDF-upload beroende på inloggning
+  // Handle PDF upload based on login status
   const handlePDFUpload = async (file: File) => {
     if (user) {
-      // Inloggad: skapa floor_plan i Supabase
+      // Logged in: create floor_plan in Supabase
       const { data: row, error } = await import("@/integrations/supabase/client").then(m => m.supabase.from("floor_plans").insert([
         {
           name: file.name,
@@ -136,19 +134,22 @@ export const EditorContainer = (props) => {
         }
       ]).select().single());
       if (!error && row) {
-        props.onPDFUpload && props.onPDFUpload(file); // Ladda in PDF i editorn
+        props.onPDFUpload && props.onPDFUpload(file); // Load PDF in editor
       } else {
-        toast({ title: "Could not create floor plan", description: error?.message || "Please try again.", variant: "destructive" });
+        toast({ 
+          title: "Could not create floor plan", 
+          description: error?.message || "Please try again.", 
+          variant: "destructive" 
+        });
       }
     } else {
-      // Ej inloggad: spara PDF i localStorage och låt användaren fortsätta
+      // Not logged in: save PDF in localStorage
       saveLocalPlan(file);
-      setLocalPdfFile(file);
       props.onPDFUpload && props.onPDFUpload(file);
     }
   };
 
-  // Synka lokala planer till Supabase
+  // Sync local plans to Supabase
   const syncLocalPlansToSupabase = async () => {
     const supabase = (await import("@/integrations/supabase/client")).supabase;
     let allSuccess = true;
@@ -162,92 +163,148 @@ export const EditorContainer = (props) => {
       if (error) allSuccess = false;
     }
     if (allSuccess) {
-      toast({ title: "Plans saved!", description: "Your local plans are now saved to your account." });
+      toast({ 
+        title: "Plans saved!", 
+        description: "Your local plans are now saved to your account." 
+      });
       localStorage.removeItem(LOCAL_PLANS_KEY);
       setLocalPlans([]);
     } else {
-      toast({ title: "Some plans could not be saved", description: "Try again or contact support.", variant: "destructive" });
+      toast({ 
+        title: "Some plans could not be saved", 
+        description: "Try again or contact support.", 
+        variant: "destructive" 
+      });
     }
     setShowSyncDialog(false);
   };
 
-  // Render appropriate stage content
-  const renderStageContent = () => {
-    switch (props.currentStage) {
-      case 'draw_walls':
-        return (
-          <ManualWallDrawing
-            isActive={props.drawingWallMode}
-            onDrawingModeToggle={props.setDrawingWallMode}
-            wallThickness={props.wallThickness}
-            onWallThicknessChange={props.setWallThickness}
-            snapToAngle={props.snapToAngle}
-            onSnapToAngleToggle={props.setSnapToAngle}
-            snapToWalls={props.snapToWalls}
-            onSnapToWallsToggle={props.setSnapToWalls}
-            onNext={goToNextStage}
-            onBack={undefined}
-          />
-        );
-      
-      case 'place_symbols':
-        return (
-          <EvacuationSymbolsPalette
-            activeSymbolType={props.activeSymbolType}
-            onSymbolSelect={props.setActiveSymbolType}
-            onNext={goToNextStage}
-            onBack={goToPrevStage}
-          />
-        );
-      
-      case 'export':
-        // If not logged in, show subscription required message
-        if (!user) {
-          return (
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold mb-4">Subscription Required</h2>
-              <p className="mb-4">To export your evacuation plan, you need to subscribe to one of our plans.</p>
-              <Button 
-                onClick={() => navigate('/pricing')}
-                className="w-full"
-              >
-                View Plans
-              </Button>
-            </div>
-          );
-        }
-        
-        // Otherwise show export options
-        return (
-          <ExportOptions
-            pdfFile={props.pdfFile}
-            symbols={props.symbols}
-            project={{}}
-            exportSettings={props.exportSettings}
-            setExportSettings={props.setExportSettings}
-            onExport={() => {
-              toast({
-                title: "Export Complete",
-                description: "Your evacuation plan has been exported successfully.",
-              });
-            }}
-            customLogoAllowed={subscription?.tier === 'premium' || subscription?.tier === 'enterprise'}
-            qrCodeAllowed={subscription?.tier === 'premium' || subscription?.tier === 'enterprise'}
-          />
-        );
-      
-      default:
-        return null;
+  // Zoom controls
+  const handleZoomIn = () => {
+    props.setScale(Math.min(props.scale + 0.1, 3.0));
+  };
+
+  const handleZoomOut = () => {
+    props.setScale(Math.max(props.scale - 0.1, 1.0));
+  };
+
+  // Toggle toolbar
+  const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
+
+  // Render the toolbar based on the current stage
+  const renderSidebar = () => {
+    if (toolbarCollapsed) {
+      return (
+        <div className="w-10 bg-white border-r flex flex-col items-center py-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => setToolbarCollapsed(false)}
+            className="mb-4"
+          >
+            <PanelLeft className="h-5 w-5" />
+          </Button>
+        </div>
+      );
     }
+
+    return (
+      <div className="w-64 bg-white border-r overflow-y-auto">
+        <div className="flex justify-between items-center p-4 border-b">
+          <h3 className="font-semibold">Tools</h3>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => setToolbarCollapsed(true)}
+          >
+            <PanelLeft className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <div className="p-4">
+          {props.currentStage === 'draw_walls' && (
+            <ManualWallDrawing
+              isActive={props.drawingWallMode}
+              onDrawingModeToggle={props.setDrawingWallMode}
+              wallThickness={props.wallThickness}
+              onWallThicknessChange={props.setWallThickness}
+              snapToAngle={props.snapToAngle}
+              onSnapToAngleToggle={props.setSnapToAngle}
+              snapToWalls={props.snapToWalls}
+              onSnapToWallsToggle={props.setSnapToWalls}
+              onNext={goToNextStage}
+              onBack={undefined}
+            />
+          )}
+          
+          {props.currentStage === 'place_symbols' && (
+            <EvacuationSymbolsPalette
+              activeSymbolType={props.activeSymbolType}
+              onSymbolSelect={props.setActiveSymbolType}
+              onNext={goToNextStage}
+              onBack={goToPrevStage}
+            />
+          )}
+          
+          {props.currentStage === 'export' && (
+            <>
+              {!user ? (
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                  <h2 className="text-xl font-semibold mb-4">Subscription Required</h2>
+                  <p className="mb-4">To export your evacuation plan, you need to subscribe to one of our plans.</p>
+                  <Button 
+                    onClick={() => navigate('/pricing')}
+                    className="w-full"
+                  >
+                    View Plans
+                  </Button>
+                </div>
+              ) : (
+                <ExportOptions
+                  pdfFile={props.pdfFile}
+                  symbols={props.symbols}
+                  project={{}}
+                  exportSettings={props.exportSettings}
+                  setExportSettings={props.setExportSettings}
+                  onExport={() => {
+                    toast({
+                      title: "Export Complete",
+                      description: "Your evacuation plan has been exported successfully.",
+                    });
+                  }}
+                  customLogoAllowed={subscription?.tier === 'premium' || subscription?.tier === 'enterprise'}
+                  qrCodeAllowed={subscription?.tier === 'premium' || subscription?.tier === 'enterprise'}
+                />
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Zoom controls always visible at the bottom */}
+        <div className="absolute bottom-0 left-0 w-64 p-4 border-t bg-white">
+          <div className="flex justify-between items-center">
+            <Button variant="outline" size="icon" onClick={handleZoomOut}>
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <span className="font-mono">{Math.round(props.scale * 100)}%</span>
+            <Button variant="outline" size="icon" onClick={handleZoomIn}>
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="flex flex-col h-full max-h-screen">
-      {/* Progress indicator */}
+      {/* Progress indicator at top */}
       <WorkflowProgress currentStage={props.currentStage} onStageChange={handleStageChange} />
+      
+      {/* Sync dialog for local plans */}
       <Dialog open={showSyncDialog && localPlans.length > 0} onOpenChange={setShowSyncDialog}>
         {localPlans.length > 0 && (
-          <div className="fixed inset-0 flex items-center justify-center z-50" onClick={() => setShowSyncDialog(false)}>
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30" onClick={() => setShowSyncDialog(false)}>
             <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full relative" onClick={e => e.stopPropagation()}>
               <button className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl" onClick={() => setShowSyncDialog(false)} aria-label="Close">×</button>
               <h2 className="text-xl font-bold mb-4">Save your local plans?</h2>
@@ -260,21 +317,70 @@ export const EditorContainer = (props) => {
           </div>
         )}
       </Dialog>
+      
       <div className="flex flex-1 overflow-hidden">
+        {/* Left sidebar - tools */}
+        {renderSidebar()}
+        
         {/* Main content area - PDF canvas */}
-        <div className="flex-1 overflow-auto p-4">
-          <PDFSection
-            ref={pdfCanvasRef}
-            {...props}
-            onPDFUpload={handlePDFUpload}
-          />
-        </div>
-
-        {/* Right sidebar - workflow and tools */}
-        <div className="w-80 flex-shrink-0 border-l bg-gray-50 overflow-auto">
-          <div className="p-4">
-            {renderStageContent()}
-          </div>
+        <div className="flex-1 relative bg-gray-50">
+          {props.pdfFile ? (
+            <PDFSection
+              ref={pdfCanvasRef}
+              {...props}
+              onPDFUpload={handlePDFUpload}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <PDFUploader onUpload={handlePDFUpload} />
+            </div>
+          )}
+          
+          {/* Actions toolbar (floating at the top-right of the canvas) */}
+          {props.pdfFile && (
+            <div className="absolute top-4 right-4 bg-white rounded-lg shadow p-2">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="flex items-center space-x-1"
+                onClick={() => {
+                  toast({
+                    title: "Changes saved",
+                    description: "Your progress has been saved successfully.",
+                  });
+                }}
+              >
+                <Save className="h-4 w-4" />
+                <span>Save</span>
+              </Button>
+              
+              <Separator orientation="vertical" className="mx-1 h-6 inline-block" />
+              
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="flex items-center space-x-1"
+                onClick={() => {
+                  if (props.currentStage !== 'export') {
+                    handleStageChange('export');
+                  }
+                }}
+              >
+                <FileOutput className="h-4 w-4" />
+                <span>Export</span>
+              </Button>
+            </div>
+          )}
+          
+          {/* Drawing mode indicator */}
+          {props.drawingWallMode && (
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/75 text-white py-2 px-4 rounded-full">
+              <div className="flex items-center space-x-2">
+                <PenLine className="h-4 w-4" />
+                <span>Wall Drawing Mode</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
