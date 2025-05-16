@@ -1,5 +1,5 @@
 
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, MoreVertical, Trash2 } from "lucide-react";
 import {
@@ -32,8 +32,10 @@ export function GenericCard({
   id,
   onDelete
 }: GenericCardProps) {
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  
   return (
-    <ContextMenu>
+    <ContextMenu onOpenChange={setShowContextMenu}>
       <ContextMenuTrigger>
         <Card
           className={`group overflow-hidden transition-all duration-200 hover:shadow-md border border-gray-200 hover:border-primary/20 rounded-xl h-[220px] flex flex-col cursor-pointer relative`}
@@ -52,6 +54,7 @@ export function GenericCard({
               className="p-1 rounded-full hover:bg-gray-100 transition-colors"
               onClick={(e) => {
                 e.stopPropagation(); // Prevent card click
+                setShowContextMenu(true);
               }}
             >
               <MoreVertical className="h-4 w-4 text-gray-500" />
@@ -83,7 +86,7 @@ export function GenericCard({
             onClick={onDelete}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+            Move to Trash
           </ContextMenuItem>
         )}
       </ContextMenuContent>

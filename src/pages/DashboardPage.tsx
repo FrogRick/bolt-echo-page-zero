@@ -4,7 +4,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { GenericCard } from "@/components/ui/GenericCard";
 import { Flame, Building, User, BookCopy, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { NewBuildingForm } from "@/pages/NewProjectPage";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -128,11 +127,6 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Add handleSearchChange function to update searchQuery state
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-  };
-
   // Helper: fetch data from Supabase for the current type
   async function fetchData() {
     setLoading(true);
@@ -147,8 +141,9 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
     
     try {
       const { data: rows, error } = await supabase
-        .from(table as any)
+        .from(table)
         .select("*")
+        .is('deleted_at', null)
         .order("updated_at", { ascending: false });
         
       if (error) {
@@ -208,6 +203,11 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
       clearTimeout(spinnerTimeout);
     };
   }, [loading]);
+
+  // Handle search change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+  };
 
   // --- CREATE handlers ---
   async function handleCreateBuilding(newBuilding: { name: string; description?: string; address?: string }) {
@@ -273,19 +273,26 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
   async function handleSoftDelete(id: string) {
     if (!user) return;
     
-    setLoading(true);
     let table = "";
     switch (type) {
       case "buildings": table = "buildings"; break;
       case "organizations": table = "organizations"; break;
       case "templates": table = "templates"; break;
       case "evacuation-plans": table = "floor_plans"; break;
-      default: setLoading(false); return;
+      default: return;
+    }
+    
+    // Create a temporary loading state for this specific card
+    const tempData = [...data];
+    const itemIndex = tempData.findIndex(item => item.id === id);
+    if (itemIndex >= 0) {
+      tempData[itemIndex].loading = true;
+      setData(tempData);
     }
     
     try {
       // Instead of hard delete, update with deleted_at timestamp
-      const { data: result, error } = await supabase
+      const { error } = await supabase
         .from(table)
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
@@ -312,8 +319,6 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
         description: `Failed to delete ${type.replace(/-/g, " ")}. Please try again.`,
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -324,13 +329,15 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
         <div className="flex flex-col items-center mb-6">
           <h2 className="text-3xl font-bold mb-6">{titles[type]}</h2>
           
-          <div className="flex flex-col md:flex-row items-center gap-4 w-full max-w-md">
-            <DashboardSearch 
-              value={searchQuery}
-              onChange={handleSearchChange}
-              placeholder={`Search ${titles[type].toLowerCase()}...`}
-              className="w-full"
-            />
+          <div className="flex justify-center w-full mb-4">
+            <div className="w-full max-w-md">
+              <DashboardSearch 
+                value={searchQuery}
+                onChange={handleSearchChange}
+                placeholder={`Search ${titles[type].toLowerCase()}...`}
+                className="w-full"
+              />
+            </div>
           </div>
         </div>
         
@@ -377,6 +384,8 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
               timestamp={{ label: `Last updated: ${item.updated_at ? new Date(item.updated_at).toLocaleDateString() : ""}` }}
               type={type as any}
               id={item.id}
+              loading={item.loading}
+              onClick={() => type === "evacuation-plans" ? navigate(`/editor/${item.id}`) : null}
               onDelete={() => handleSoftDelete(item.id)}
             />
           ))}
