@@ -72,6 +72,14 @@ const titles = {
   "templates": "Templates",
 };
 
+// Map dashboard types to actual Supabase table names
+const typeToTable = {
+  "buildings": "buildings",
+  "organizations": "organizations", 
+  "templates": "templates",
+  "evacuation-plans": "floor_plans"
+} as const;
+
 const SKELETON_COUNT = 6;
 
 function SkeletonCard() {
@@ -130,24 +138,25 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
   // Helper: fetch data from Supabase for the current type
   async function fetchData() {
     setLoading(true);
-    let table = "";
-    switch (type) {
-      case "buildings": table = "buildings"; break;
-      case "organizations": table = "organizations"; break;
-      case "templates": table = "templates"; break;
-      case "evacuation-plans": table = "floor_plans"; break;
-      default: setLoading(false); return;
+    
+    // Validate type is one of our valid types
+    if (!type || !Object.keys(typeToTable).includes(type)) {
+      setLoading(false);
+      return;
     }
+    
+    // Get the corresponding table name from our type
+    const tableName = typeToTable[type as keyof typeof typeToTable];
     
     try {
       const { data: rows, error } = await supabase
-        .from(table)
+        .from(tableName)
         .select("*")
         .is('deleted_at', null)
         .order("updated_at", { ascending: false });
         
       if (error) {
-        console.error(`Error fetching ${table}:`, error);
+        console.error(`Error fetching ${tableName}:`, error);
         toast({
           title: "Error",
           description: `Failed to load ${type}. Please try again.`,
@@ -160,7 +169,7 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
         setData([]);
       }
     } catch (err) {
-      console.error(`Error fetching ${table}:`, err);
+      console.error(`Error fetching ${tableName}:`, err);
       setData([]);
     } finally {
       setLoading(false);
@@ -273,14 +282,13 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
   async function handleSoftDelete(id: string) {
     if (!user) return;
     
-    let table = "";
-    switch (type) {
-      case "buildings": table = "buildings"; break;
-      case "organizations": table = "organizations"; break;
-      case "templates": table = "templates"; break;
-      case "evacuation-plans": table = "floor_plans"; break;
-      default: return;
+    // Validate type is one of our valid types
+    if (!type || !Object.keys(typeToTable).includes(type)) {
+      return;
     }
+    
+    // Get the corresponding table name from our type
+    const tableName = typeToTable[type as keyof typeof typeToTable];
     
     // Create a temporary loading state for this specific card
     const tempData = [...data];
@@ -292,13 +300,14 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
     
     try {
       // Instead of hard delete, update with deleted_at timestamp
+      // Use type assertion to handle the type checking
       const { error } = await supabase
-        .from(table)
-        .update({ deleted_at: new Date().toISOString() })
+        .from(tableName)
+        .update({ deleted_at: new Date().toISOString() } as any)
         .eq('id', id);
         
       if (error) {
-        console.error(`Error soft deleting ${table}:`, error);
+        console.error(`Error soft deleting ${tableName}:`, error);
         toast({
           title: "Error",
           description: `Failed to delete ${type.replace(/-/g, " ")}. Please try again.`,
@@ -313,7 +322,7 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
         fetchData();
       }
     } catch (err) {
-      console.error(`Error soft deleting ${table}:`, err);
+      console.error(`Error soft deleting ${tableName}:`, err);
       toast({
         title: "Error",
         description: `Failed to delete ${type.replace(/-/g, " ")}. Please try again.`,
