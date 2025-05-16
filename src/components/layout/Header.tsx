@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/context/AuthContext";
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
@@ -38,8 +37,8 @@ const Header = () => {
     { path: "/organizations", label: "Organizations", icon: <UserIcon className="h-5 w-5" /> },
     { path: "/templates", label: "Templates", icon: <BookCopy className="h-5 w-5" /> },
   ] : [
-    { path: "/editor", label: "Editor" },
-    { path: "/pricing", label: "Pricing" },
+    { path: "/editor", label: "Editor", icon: null },
+    { path: "/pricing", label: "Pricing", icon: null },
   ];
 
   // Find current page for mobile dropdown
