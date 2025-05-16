@@ -1,7 +1,7 @@
 
 import { ReactNode, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, MoreVertical, Trash2 } from "lucide-react";
+import { Loader2, MoreVertical, Trash2, ArchiveRestore } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -26,6 +26,7 @@ interface GenericCardProps {
   type: string; // Changed to string to allow for more flexibility
   id?: string;
   onDelete?: () => void;
+  onRestore?: () => void; // New prop for restore functionality
 }
 
 export function GenericCard({
@@ -37,7 +38,8 @@ export function GenericCard({
   loading = false,
   type,
   id,
-  onDelete
+  onDelete,
+  onRestore
 }: GenericCardProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
   
@@ -52,7 +54,7 @@ export function GenericCard({
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-lg">
               <div className="flex flex-col items-center">
                 <Loader2 className="h-8 w-8 text-white animate-spin mb-2" />
-                <p className="text-white font-medium">Deleting...</p>
+                <p className="text-white font-medium">{onRestore ? "Restoring..." : "Deleting..."}</p>
               </div>
             </div>
           )}
@@ -79,6 +81,18 @@ export function GenericCard({
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Move to Trash
+                  </DropdownMenuItem>
+                )}
+                {onRestore && (
+                  <DropdownMenuItem
+                    className="text-green-600 focus:text-green-600 focus:bg-green-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRestore();
+                    }}
+                  >
+                    <ArchiveRestore className="mr-2 h-4 w-4" />
+                    Restore
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -111,6 +125,15 @@ export function GenericCard({
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Move to Trash
+          </ContextMenuItem>
+        )}
+        {onRestore && (
+          <ContextMenuItem 
+            className="text-green-600 focus:text-green-600 focus:bg-green-50" 
+            onClick={onRestore}
+          >
+            <ArchiveRestore className="mr-2 h-4 w-4" />
+            Restore
           </ContextMenuItem>
         )}
       </ContextMenuContent>

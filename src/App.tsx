@@ -10,6 +10,7 @@ import AccountPage from "@/pages/AccountPage";
 import PricingPage from "@/pages/PricingPage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
 import DashboardPage from "@/pages/DashboardPage";
+import TrashPage from "@/pages/TrashPage"; // Import the new TrashPage
 import { AuthProvider } from "@/context/AuthContext";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -87,6 +88,7 @@ export default function App() {
             <Route path="/evacuation-plans" element={<DashboardPage typeOverride="evacuation-plans" />} />
             <Route path="/organizations" element={<DashboardPage typeOverride="organizations" />} />
             <Route path="/templates" element={<DashboardPage typeOverride="templates" />} />
+            <Route path="/trash" element={<TrashPage />} /> {/* New trash page route */}
             <Route path="/subscription" element={<SubscriptionPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/new" element={<NewProjectPage />} />

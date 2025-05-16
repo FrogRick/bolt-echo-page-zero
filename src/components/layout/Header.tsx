@@ -1,8 +1,9 @@
+
 import { useAuth } from "@/context/AuthContext";
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, Search, User as UserIcon, Settings, Building, HelpCircle, BookOpen, Flame, BookCopy, Shield, ChevronDown } from "lucide-react";
+import { LogOut, Search, User as UserIcon, Settings, Building, HelpCircle, BookOpen, Flame, BookCopy, Shield, ChevronDown, Trash2 } from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -185,6 +186,13 @@ const Header = () => {
                         <Settings className="mr-2 h-4 w-4 text-gray-500" />
                         Settings
                       </Link>
+                      <Link
+                        to="/trash"
+                        className="flex items-center px-3 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100 w-full text-left"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4 text-gray-500" />
+                        Trash
+                      </Link>
                     </div>
                     <div className="py-1 border-t border-gray-100">
                       <Link
@@ -229,6 +237,6 @@ const Header = () => {
       </div>
     </header>
   );
-};
+}
 
 export default Header;
