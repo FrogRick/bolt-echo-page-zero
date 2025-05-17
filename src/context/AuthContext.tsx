@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User, AuthChangeEvent } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +36,7 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   createCheckoutSession: (priceId?: string) => Promise<string | undefined>;
   createCustomerPortalSession: () => Promise<string | undefined>;
+  cancelSubscription: () => Promise<boolean>;
 };
 
 const defaultSubscription: SubscriptionInfo = {
@@ -104,6 +106,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Error checking subscription:", error);
     } finally {
       setIsRefreshingSubscription(false);
+    }
+  };
+
+  // Function to cancel a subscription
+  const cancelSubscription = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke("cancel-subscription");
+      
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Could not cancel subscription: " + error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      if (data?.success) {
+        toast({
+          title: "Subscription Canceled",
+          description: "Your subscription has been canceled successfully.",
+        });
+        
+        // Refresh subscription data
+        await refreshSubscription();
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error("Error canceling subscription:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while canceling your subscription.",
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
@@ -324,6 +363,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signOut,
         createCheckoutSession,
         createCustomerPortalSession,
+        cancelSubscription,
       }}
     >
       {children}

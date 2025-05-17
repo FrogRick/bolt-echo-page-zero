@@ -23,7 +23,9 @@ const PricingTierCard = ({
 }: PricingTierCardProps) => {
   return (
     <Card 
-      className="flex flex-col border-primary border"
+      className={`flex flex-col border-primary border shadow-md ${
+        tier.id === 'pro' ? 'shadow-lg' : ''
+      }`}
     >
       <CardHeader>
         <CardTitle className="text-2xl">{tier.name}</CardTitle>

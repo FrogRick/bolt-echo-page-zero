@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -5,7 +6,7 @@ import { BillingPeriod, PricingTier, pricingTiers } from "@/types/pricing";
 import PricingHeader from "@/components/pricing/PricingHeader";
 import PricingTierCard from "@/components/pricing/PricingTierCard";
 import PricingFooter from "@/components/pricing/PricingFooter";
-import { AlertCircle, CalendarIcon, CheckCircle2, CreditCard, Loader2 } from "lucide-react";
+import { AlertCircle, AlertTriangle, CalendarIcon, CheckCircle2, CreditCard, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,14 +22,26 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ResourceCounters } from "@/components/ResourceCounters";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const SubscriptionPage = () => {
-  const { user, subscription, buildingUsage, refreshSubscription, createCheckoutSession, createCustomerPortalSession } = useAuth();
+  const { user, subscription, buildingUsage, refreshSubscription, createCheckoutSession, createCustomerPortalSession, cancelSubscription } = useAuth();
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [hasInitiallyRefreshed, setHasInitiallyRefreshed] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("overview");
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -95,6 +108,20 @@ const SubscriptionPage = () => {
     }
   };
 
+  const handleCancelSubscription = async () => {
+    setIsCancelling(true);
+    try {
+      const success = await cancelSubscription();
+      if (success) {
+        setShowCancelDialog(false);
+        // Refresh subscription data
+        await refreshSubscription();
+      }
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const toggleBillingPeriod = () => {
     setBillingPeriod(billingPeriod === "monthly" ? "yearly" : "monthly");
   };
@@ -134,18 +161,30 @@ const SubscriptionPage = () => {
                 </Badge>
               </div>
             </div>
-            <Button 
-              onClick={handleManageSubscription}
-              disabled={isRedirecting}
-              className="whitespace-nowrap"
-            >
-              {isRedirecting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <CreditCard className="mr-2 h-4 w-4" />
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleManageSubscription}
+                disabled={isRedirecting}
+                className="whitespace-nowrap"
+                variant="outline"
+              >
+                {isRedirecting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CreditCard className="mr-2 h-4 w-4" />
+                )}
+                Manage Billing
+              </Button>
+              
+              {(subscription.status === "active" || subscription.status === "trialing") && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowCancelDialog(true)}
+                >
+                  Cancel Subscription
+                </Button>
               )}
-              Manage Subscription
-            </Button>
+            </div>
           </div>
           
           {subscription.endDate && (
@@ -347,6 +386,38 @@ const SubscriptionPage = () => {
         </div>
         
         <PricingFooter />
+
+        <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure you want to cancel?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Your subscription will remain active until the end of the current billing period. 
+                After that, your account will be downgraded to the free tier.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isCancelling}>Never mind</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleCancelSubscription();
+                }}
+                disabled={isCancelling}
+                className="bg-destructive text-destructive-foreground"
+              >
+                {isCancelling ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Canceling...
+                  </>
+                ) : (
+                  "Yes, cancel my subscription"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
