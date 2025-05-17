@@ -19,3 +19,10 @@ export interface BuildingUsage {
     monthly: number;
   };
 }
+
+export interface SubscriptionInfo {
+  tier: string;
+  status: string;
+  isTrial: boolean;
+  endDate?: string; // Changed from Date to string to match expected type
+}

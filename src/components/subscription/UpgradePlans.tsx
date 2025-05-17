@@ -11,7 +11,7 @@ interface UpgradePlansProps {
   loadingTier: string | null;
   subscriptionTier: string;
   calculateSavings: (monthlyPrice: number, yearlyPrice: number) => number;
-  handleSubscribe: (tier: PricingTier) => void;
+  handleSubscribe: (tier: PricingTier) => Promise<void>;
 }
 
 const UpgradePlans: React.FC<UpgradePlansProps> = ({

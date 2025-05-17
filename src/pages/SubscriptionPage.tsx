@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { BillingPeriod, PricingTier, pricingTiers } from "@/types/pricing";
-import { ResourceStatistics } from "@/types/subscription";
+import { ResourceStatistics, SubscriptionInfo } from "@/types/subscription";
 import PricingFooter from "@/components/pricing/PricingFooter";
 import { Loader2 } from "lucide-react";
 import {
@@ -89,22 +90,22 @@ const SubscriptionPage = () => {
           .from("floor_plans")
           .select("*", { count: "exact", head: true });
 
-        // Get the limits based on subscription tier - Fixed: Using the correct tier IDs from pricingTiers
+        // Get the limits based on subscription tier - Fixed tier comparison
         const limits = {
           buildings: buildingUsage.limits.total || 10,
           organizations: subscription.tier === 'free' ? 1 : 
-                        subscription.tier === 'basic' ? 3 : 
-                        subscription.tier === 'pro' ? 10 : 
-                        subscription.tier === 'team' ? 25 : 50,
+                         subscription.tier === 'basic' ? 3 : 
+                         subscription.tier === 'pro' ? 10 : 
+                         subscription.tier === 'team' ? 25 : 50,
           templates: subscription.tier === 'free' ? 2 : 
-                    subscription.tier === 'basic' ? 10 : 
-                    subscription.tier === 'pro' ? 25 : 
-                    subscription.tier === 'team' ? 50 : 100,
+                     subscription.tier === 'basic' ? 10 : 
+                     subscription.tier === 'pro' ? 25 : 
+                     subscription.tier === 'team' ? 50 : 100,
           evacuationPlans: subscription.tier === 'free' ? 5 : 
-                          subscription.tier === 'basic' ? buildingUsage.limits.total * 5 : 
-                          subscription.tier === 'pro' ? buildingUsage.limits.total * 10 : 
-                          subscription.tier === 'team' ? buildingUsage.limits.total * 15 : 
-                          buildingUsage.limits.total * 20
+                           subscription.tier === 'basic' ? buildingUsage.limits.total * 5 : 
+                           subscription.tier === 'pro' ? buildingUsage.limits.total * 10 : 
+                           subscription.tier === 'team' ? buildingUsage.limits.total * 15 : 
+                           buildingUsage.limits.total * 20
         };
 
         setResourceStats({
@@ -202,7 +203,12 @@ const SubscriptionPage = () => {
     return (
       <div className="container mx-auto py-12 px-4">
         <SubscriptionDetails 
-          subscription={subscription}
+          subscription={{
+            tier: subscription.tier,
+            status: subscription.status,
+            isTrial: subscription.isTrial,
+            endDate: subscription.endDate
+          }}
           isRedirecting={isRedirecting}
           currentTier={currentTier}
           onManageSubscription={handleManageSubscription}
@@ -223,7 +229,12 @@ const SubscriptionPage = () => {
           
           <TabsContent value="overview" className="mt-6">
             <SubscriptionOverview 
-              subscription={subscription}
+              subscription={{
+                tier: subscription.tier,
+                status: subscription.status,
+                endDate: subscription.endDate,
+                isTrial: subscription.isTrial
+              }}
               buildingUsage={buildingUsage}
               currentTier={currentTier}
             />
