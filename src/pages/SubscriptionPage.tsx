@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -111,7 +110,7 @@ const SubscriptionPage = () => {
           .from("floor_plans")
           .select("*", { count: "exact", head: true });
 
-        // Get the limits based on subscription tier - Fix: Use the correct string literals for tier comparison
+        // Get the limits based on subscription tier - Fixed: Using the correct tier IDs from pricingTiers
         const limits = {
           buildings: buildingUsage.limits.total || 10,
           organizations: subscription.tier === 'free' ? 1 : 
