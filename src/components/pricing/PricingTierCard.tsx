@@ -21,6 +21,30 @@ const PricingTierCard = ({
   calculateSavings,
   handleSubscribe,
 }: PricingTierCardProps) => {
+  
+  // Determine button text based on current subscription status
+  const getButtonText = () => {
+    if (tier.id === subscriptionTier) {
+      return "Current Plan";
+    } else if (subscriptionTier === "free") {
+      return tier.buttonText;
+    } else {
+      // User has an active subscription but not this tier
+      const tierIndex = {
+        free: 0,
+        basic: 1,
+        pro: 2,
+        team: 3,
+        enterprise: 4
+      };
+      
+      const currentTierIndex = tierIndex[subscriptionTier] || 0;
+      const thisTierIndex = tierIndex[tier.id] || 0;
+      
+      return thisTierIndex > currentTierIndex ? "Upgrade" : "Downgrade";
+    }
+  };
+  
   return (
     <Card 
       className={`flex flex-col border-primary border shadow-md ${
@@ -83,11 +107,7 @@ const PricingTierCard = ({
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Processing...
             </>
-          ) : tier.id === subscriptionTier ? (
-            "Current Plan"
-          ) : (
-            tier.buttonText
-          )}
+          ) : getButtonText()}
         </Button>
       </CardFooter>
     </Card>

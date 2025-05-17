@@ -32,6 +32,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+
+// Add interface for resource counts to track usage statistics
+interface ResourceUsage {
+  used: number;
+  total: number;
+}
+
+interface ResourceStatistics {
+  buildings: ResourceUsage;
+  organizations: ResourceUsage;
+  templates: ResourceUsage;
+  evacuationPlans: ResourceUsage;
+}
 
 const SubscriptionPage = () => {
   const { user, subscription, buildingUsage, refreshSubscription, createCheckoutSession, createCustomerPortalSession, cancelSubscription } = useAuth();
@@ -42,6 +56,13 @@ const SubscriptionPage = () => {
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [resourceStats, setResourceStats] = useState<ResourceStatistics>({
+    buildings: { used: 0, total: buildingUsage.limits.total || 10 },
+    organizations: { used: 0, total: 5 },
+    templates: { used: 0, total: 10 },
+    evacuationPlans: { used: 0, total: buildingUsage.limits.total * 5 || 50 }
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -62,6 +83,69 @@ const SubscriptionPage = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [refreshSubscription, user, hasInitiallyRefreshed]);
+
+  // Fetch detailed resource statistics
+  useEffect(() => {
+    const fetchResourceStatistics = async () => {
+      if (!user) return;
+      
+      setIsLoadingStats(true);
+      try {
+        // Get buildings count
+        const { count: buildingsCount } = await supabase
+          .from("buildings")
+          .select("*", { count: "exact", head: true });
+
+        // Get organizations count
+        const { count: orgsCount } = await supabase
+          .from("organizations")
+          .select("*", { count: "exact", head: true });
+
+        // Get templates count
+        const { count: templatesCount } = await supabase
+          .from("templates")
+          .select("*", { count: "exact", head: true });
+
+        // Get floor plans count (representing evacuation plans)
+        const { count: plansCount } = await supabase
+          .from("floor_plans")
+          .select("*", { count: "exact", head: true });
+
+        // Get the limits based on subscription tier
+        const limits = {
+          buildings: buildingUsage.limits.total || 10,
+          organizations: subscription.tier === 'free' ? 1 : 
+                        subscription.tier === 'basic' ? 3 : 
+                        subscription.tier === 'pro' ? 10 : 
+                        subscription.tier === 'team' ? 25 : 50,
+          templates: subscription.tier === 'free' ? 2 : 
+                    subscription.tier === 'basic' ? 10 : 
+                    subscription.tier === 'pro' ? 25 : 
+                    subscription.tier === 'team' ? 50 : 100,
+          evacuationPlans: subscription.tier === 'free' ? 5 : 
+                          subscription.tier === 'basic' ? buildingUsage.limits.total * 5 : 
+                          subscription.tier === 'pro' ? buildingUsage.limits.total * 10 : 
+                          subscription.tier === 'team' ? buildingUsage.limits.total * 15 : 
+                          buildingUsage.limits.total * 20
+        };
+
+        setResourceStats({
+          buildings: { used: buildingsCount || 0, total: limits.buildings },
+          organizations: { used: orgsCount || 0, total: limits.organizations },
+          templates: { used: templatesCount || 0, total: limits.templates },
+          evacuationPlans: { used: plansCount || 0, total: limits.evacuationPlans }
+        });
+      } catch (error) {
+        console.error("Error fetching resource statistics:", error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    if (user) {
+      fetchResourceStatistics();
+    }
+  }, [user, subscription.tier, buildingUsage.limits.total]);
 
   const handleSubscribe = async (tier: PricingTier) => {
     // Get redirect URL from session if available
@@ -131,6 +215,11 @@ const SubscriptionPage = () => {
     const monthlyCost = monthlyPrice * 12;
     const savings = monthlyCost - yearlyPrice;
     return Math.round((savings / monthlyCost) * 100);
+  };
+
+  // Calculate usage percentage for progress bars
+  const calculatePercentage = (used: number, total: number): number => {
+    return Math.min(Math.round((used / total) * 100), 100);
   };
 
   // Show subscription page if user has a subscription, otherwise show pricing tiers
@@ -299,20 +388,23 @@ const SubscriptionPage = () => {
                 <CardDescription>Overview of your resource usage compared to limits</CardDescription>
               </CardHeader>
               <CardContent>
-                {buildingUsage.total >= buildingUsage.limits.total || buildingUsage.monthly >= buildingUsage.limits.monthly ? (
+                {(buildingUsage.total >= buildingUsage.limits.total || 
+                  buildingUsage.monthly >= buildingUsage.limits.monthly ||
+                  resourceStats.organizations.used >= resourceStats.organizations.total ||
+                  resourceStats.templates.used >= resourceStats.templates.total ||
+                  resourceStats.evacuationPlans.used >= resourceStats.evacuationPlans.total) && (
                   <Alert variant="destructive" className="mb-6">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Usage Limit Reached</AlertTitle>
                     <AlertDescription>
-                      You've reached your plan's usage limits. Consider upgrading your plan to add more buildings.
+                      You've reached one or more of your plan's usage limits. Consider upgrading your plan to add more resources.
                     </AlertDescription>
                   </Alert>
-                ) : (
-                  <div className="text-sm text-muted-foreground mb-6">
-                    You can add {buildingUsage.limits.total - buildingUsage.total} more buildings in total, 
-                    with {buildingUsage.limits.monthly - buildingUsage.monthly} available this month.
-                  </div>
                 )}
+                
+                <div className="text-sm text-muted-foreground mb-6">
+                  Your {subscription.tier.toUpperCase()} plan includes limits for various resources. Here's your current usage:
+                </div>
                 
                 <Table>
                   <TableHeader>
@@ -321,20 +413,79 @@ const SubscriptionPage = () => {
                       <TableHead>Used</TableHead>
                       <TableHead>Limit</TableHead>
                       <TableHead>Available</TableHead>
+                      <TableHead>Usage</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     <TableRow>
-                      <TableCell>Total Buildings</TableCell>
-                      <TableCell>{buildingUsage.total}</TableCell>
-                      <TableCell>{buildingUsage.limits.total}</TableCell>
-                      <TableCell>{buildingUsage.limits.total - buildingUsage.total}</TableCell>
+                      <TableCell>Buildings</TableCell>
+                      <TableCell>{resourceStats.buildings.used}</TableCell>
+                      <TableCell>{resourceStats.buildings.total}</TableCell>
+                      <TableCell>{resourceStats.buildings.total - resourceStats.buildings.used}</TableCell>
+                      <TableCell>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary" 
+                            style={{ width: `${calculatePercentage(resourceStats.buildings.used, resourceStats.buildings.total)}%` }}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>Organizations</TableCell>
+                      <TableCell>{resourceStats.organizations.used}</TableCell>
+                      <TableCell>{resourceStats.organizations.total}</TableCell>
+                      <TableCell>{resourceStats.organizations.total - resourceStats.organizations.used}</TableCell>
+                      <TableCell>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary" 
+                            style={{ width: `${calculatePercentage(resourceStats.organizations.used, resourceStats.organizations.total)}%` }}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>Templates</TableCell>
+                      <TableCell>{resourceStats.templates.used}</TableCell>
+                      <TableCell>{resourceStats.templates.total}</TableCell>
+                      <TableCell>{resourceStats.templates.total - resourceStats.templates.used}</TableCell>
+                      <TableCell>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary" 
+                            style={{ width: `${calculatePercentage(resourceStats.templates.used, resourceStats.templates.total)}%` }}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>Evacuation Plans</TableCell>
+                      <TableCell>{resourceStats.evacuationPlans.used}</TableCell>
+                      <TableCell>{resourceStats.evacuationPlans.total}</TableCell>
+                      <TableCell>{resourceStats.evacuationPlans.total - resourceStats.evacuationPlans.used}</TableCell>
+                      <TableCell>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary" 
+                            style={{ width: `${calculatePercentage(resourceStats.evacuationPlans.used, resourceStats.evacuationPlans.total)}%` }}
+                          />
+                        </div>
+                      </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>Monthly New Buildings</TableCell>
                       <TableCell>{buildingUsage.monthly}</TableCell>
                       <TableCell>{buildingUsage.limits.monthly}</TableCell>
                       <TableCell>{buildingUsage.limits.monthly - buildingUsage.monthly}</TableCell>
+                      <TableCell>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary" 
+                            style={{ width: `${calculatePercentage(buildingUsage.monthly, buildingUsage.limits.monthly)}%` }}
+                          />
+                        </div>
+                      </TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
