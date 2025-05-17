@@ -27,7 +27,7 @@ export async function updateSubscriptionTiers() {
       .upsert({
         id: tier.id,
         name: tier.name,
-        buildings_limit: tier.buildingLimit,
+        buildings_limit: tier.buildingLimit === "unlimited" ? 9999 : tier.buildingLimit,
         price: tier.price.monthly || 0,
         description: tier.description || null
       });

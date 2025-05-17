@@ -46,8 +46,22 @@ serve(async (req) => {
       limit: 1 
     });
     
+    // Define tier limits based on the new subscription tiers
+    const getTierLimits = (tier: string) => {
+      switch(tier) {
+        case "basic":
+          return { buildings: 3, monthly: 3 };
+        case "pro":
+          return { buildings: "unlimited", monthly: "unlimited" };
+        case "team":
+          return { buildings: "unlimited", monthly: "unlimited" };
+        default: // free tier
+          return { buildings: 1, monthly: 1 };
+      }
+    };
+    
     // Set default building limits for free tier
-    const defaultLimits = { total: 2, monthly: 1 };
+    const defaultLimits = getTierLimits("free");
     let buildingUsage = {
       total: 0,
       monthly: 0,
@@ -98,11 +112,10 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    // Check for active subscriptions - fixing the expand issue
+    // Check for active subscriptions
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
-      // Don't try to expand too many levels
       expand: ['data.items.data.price'],
       limit: 1,
     });
@@ -111,7 +124,6 @@ serve(async (req) => {
     const trialSubscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "trialing",
-      // Don't try to expand too many levels
       expand: ['data.items.data.price'],
       limit: 1,
     });
@@ -136,19 +148,19 @@ serve(async (req) => {
       subscriptionStatus = subscription.status;
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       
-      // Instead of trying to expand product, get the priceId and determine tier from that
-      if (subscription.items.data.length > 0) {
+      // Check metadata or price ID to determine tier
+      if (subscription.metadata && subscription.metadata.tier) {
+        subscriptionTier = subscription.metadata.tier;
+      } else if (subscription.items.data.length > 0) {
         const priceId = subscription.items.data[0].price.id;
         
-        // Determine tier from price ID pattern (price_tier_billingperiod)
+        // Determine tier from price ID pattern
         if (priceId.includes('basic')) {
           subscriptionTier = 'basic';
         } else if (priceId.includes('pro')) {
           subscriptionTier = 'pro';
         } else if (priceId.includes('team')) {
           subscriptionTier = 'team';
-        } else if (priceId.includes('enterprise')) {
-          subscriptionTier = 'enterprise';
         }
       }
       
@@ -160,15 +172,7 @@ serve(async (req) => {
       });
       
       // Update building limits based on subscription tier
-      if (subscriptionTier === 'basic') {
-        buildingUsage.limits = { total: 5, monthly: 3 };
-      } else if (subscriptionTier === 'pro') {
-        buildingUsage.limits = { total: 25, monthly: 15 };
-      } else if (subscriptionTier === 'team') {
-        buildingUsage.limits = { total: 100, monthly: 50 };
-      } else if (subscriptionTier === 'enterprise') {
-        buildingUsage.limits = { total: 500, monthly: 100 };
-      }
+      buildingUsage.limits = getTierLimits(subscriptionTier);
     } else {
       logStep("No active subscription found");
     }

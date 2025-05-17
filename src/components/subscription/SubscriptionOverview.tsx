@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResourceCounters } from "@/components/ResourceCounters";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { BuildingUsage } from "@/types/subscription";
+import { PricingTier } from "@/types/pricing";
 
 interface SubscriptionOverviewProps {
   subscription: {
@@ -13,13 +14,7 @@ interface SubscriptionOverviewProps {
     isTrial: boolean;
   };
   buildingUsage: BuildingUsage;
-  currentTier?: {
-    name: string;
-    price: {
-      monthly: number | null;
-      yearly: number | null;
-    };
-  };
+  currentTier?: PricingTier;
 }
 
 const SubscriptionOverview: React.FC<SubscriptionOverviewProps> = ({
@@ -84,27 +79,39 @@ const SubscriptionOverview: React.FC<SubscriptionOverviewProps> = ({
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span>Total Buildings</span>
-                  <span className="font-medium">{buildingUsage.total} / {buildingUsage.limits.total}</span>
+                  <span className="font-medium">
+                    {buildingUsage.total} / 
+                    {typeof buildingUsage.limits.total === "number" ? 
+                      buildingUsage.limits.total : "Unlimited"}
+                  </span>
                 </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary" 
-                    style={{ width: `${Math.min((buildingUsage.total / buildingUsage.limits.total) * 100, 100)}%` }}
-                  />
-                </div>
+                {typeof buildingUsage.limits.total === "number" && (
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary" 
+                      style={{ width: `${Math.min((buildingUsage.total / buildingUsage.limits.total) * 100, 100)}%` }}
+                    />
+                  </div>
+                )}
               </div>
               
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span>New Buildings This Month</span>
-                  <span className="font-medium">{buildingUsage.monthly} / {buildingUsage.limits.monthly}</span>
+                  <span className="font-medium">
+                    {buildingUsage.monthly} / 
+                    {typeof buildingUsage.limits.monthly === "number" ? 
+                      buildingUsage.limits.monthly : "Unlimited"}
+                  </span>
                 </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary" 
-                    style={{ width: `${Math.min((buildingUsage.monthly / buildingUsage.limits.monthly) * 100, 100)}%` }}
-                  />
-                </div>
+                {typeof buildingUsage.limits.monthly === "number" && (
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary" 
+                      style={{ width: `${Math.min((buildingUsage.monthly / buildingUsage.limits.monthly) * 100, 100)}%` }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

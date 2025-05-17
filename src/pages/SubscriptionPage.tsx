@@ -36,13 +36,32 @@ const SubscriptionPage = () => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [resourceStats, setResourceStats] = useState<ResourceStatistics>({
-    buildings: { used: 0, total: buildingUsage.limits.total || 10 },
-    organizations: { used: 0, total: 5 },
-    templates: { used: 0, total: 10 },
-    evacuationPlans: { used: 0, total: buildingUsage.limits.total * 5 || 50 }
+    buildings: { used: 0, total: getTierLimit("buildings", subscription.tier) },
+    organizations: { used: 0, total: getTierLimit("organizations", subscription.tier) },
+    templates: { used: 0, total: getTierLimit("templates", subscription.tier) },
+    evacuationPlans: { used: 0, total: getTierLimit("evacuationPlans", subscription.tier) }
   });
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const navigate = useNavigate();
+
+  // Helper function to get limits based on subscription tier
+  function getTierLimit(resource: string, tierName: string): number | "unlimited" {
+    const tier = pricingTiers.find(t => t.id === tierName);
+    if (!tier) return 1; // Default for free tier
+    
+    switch(resource) {
+      case "buildings":
+        return tier.buildingLimit;
+      case "organizations":
+        return tier.organizationLimit;
+      case "templates":
+        return tier.templateLimit;
+      case "evacuationPlans":
+        return tier.evacuationPlanLimit;
+      default:
+        return 1;
+    }
+  }
 
   useEffect(() => {
     // Only refresh subscription data once when the component mounts
@@ -73,46 +92,40 @@ const SubscriptionPage = () => {
         // Get buildings count
         const { count: buildingsCount } = await supabase
           .from("buildings")
-          .select("*", { count: "exact", head: true });
+          .select("*", { count: 'exact', head: true });
 
         // Get organizations count
         const { count: orgsCount } = await supabase
           .from("organizations")
-          .select("*", { count: "exact", head: true });
+          .select("*", { count: 'exact', head: true });
 
         // Get templates count
         const { count: templatesCount } = await supabase
           .from("templates")
-          .select("*", { count: "exact", head: true });
+          .select("*", { count: 'exact', head: true });
 
         // Get floor plans count (representing evacuation plans)
         const { count: plansCount } = await supabase
           .from("floor_plans")
-          .select("*", { count: "exact", head: true });
-
-        // Get the limits based on subscription tier - Fixed tier comparison
-        const limits = {
-          buildings: buildingUsage.limits.total || 10,
-          organizations: subscription.tier === 'free' ? 1 : 
-                         subscription.tier === 'basic' ? 3 : 
-                         subscription.tier === 'pro' ? 10 : 
-                         subscription.tier === 'team' ? 25 : 50,
-          templates: subscription.tier === 'free' ? 2 : 
-                     subscription.tier === 'basic' ? 10 : 
-                     subscription.tier === 'pro' ? 25 : 
-                     subscription.tier === 'team' ? 50 : 100,
-          evacuationPlans: subscription.tier === 'free' ? 5 : 
-                           subscription.tier === 'basic' ? buildingUsage.limits.total * 5 : 
-                           subscription.tier === 'pro' ? buildingUsage.limits.total * 10 : 
-                           subscription.tier === 'team' ? buildingUsage.limits.total * 15 : 
-                           buildingUsage.limits.total * 20
-        };
+          .select("*", { count: 'exact', head: true });
 
         setResourceStats({
-          buildings: { used: buildingsCount || 0, total: limits.buildings },
-          organizations: { used: orgsCount || 0, total: limits.organizations },
-          templates: { used: templatesCount || 0, total: limits.templates },
-          evacuationPlans: { used: plansCount || 0, total: limits.evacuationPlans }
+          buildings: { 
+            used: buildingsCount || 0, 
+            total: getTierLimit("buildings", subscription.tier) 
+          },
+          organizations: { 
+            used: orgsCount || 0, 
+            total: getTierLimit("organizations", subscription.tier) 
+          },
+          templates: { 
+            used: templatesCount || 0, 
+            total: getTierLimit("templates", subscription.tier) 
+          },
+          evacuationPlans: { 
+            used: plansCount || 0, 
+            total: getTierLimit("evacuationPlans", subscription.tier) 
+          }
         });
       } catch (error) {
         console.error("Error fetching resource statistics:", error);
@@ -124,7 +137,7 @@ const SubscriptionPage = () => {
     if (user) {
       fetchResourceStatistics();
     }
-  }, [user, subscription.tier, buildingUsage.limits.total]);
+  }, [user, subscription.tier]);
 
   const handleSubscribe = async (tier: PricingTier) => {
     // Get redirect URL from session if available

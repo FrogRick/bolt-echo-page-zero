@@ -1,9 +1,10 @@
+
 export type BillingPeriod = "monthly" | "yearly";
 
 export type PricingTier = {
   id: string;
   name: string;
-  description: string; // We'll keep this in the type definition but not use it in the card
+  description: string;
   price: {
     monthly: number | null;
     yearly: number | null;
@@ -11,136 +12,111 @@ export type PricingTier = {
   features: string[];
   buttonText: string;
   popular?: boolean;
-  buildingLimit: number;
-  monthlyExportLimit: number;
-  customLogo: boolean;
-  qrCode: boolean;
-  templates: "none" | "single" | "unlimited";
-  organizationSupport: boolean;
-  reviewFeatures: boolean;
-  userInvites: "none" | "limited" | "unlimited";
-  statistics: boolean;
-  support: "none" | "email" | "priority" | "dedicated";
+  
+  // Limits
+  buildingLimit: number | "unlimited";
+  evacuationPlanLimit: number;
+  organizationLimit: number | "unlimited";
+  templateLimit: number;
+  inviteTeamMembers: boolean;
+  
   trial?: { days: number };
   color: string;
 };
 
 export const pricingTiers: PricingTier[] = [
   {
+    id: "free",
+    name: "Free",
+    description: "Limited functionality for individual use",
+    price: {
+      monthly: 0,
+      yearly: 0,
+    },
+    buildingLimit: 1,
+    evacuationPlanLimit: 1,
+    organizationLimit: 0,
+    templateLimit: 0,
+    inviteTeamMembers: false,
+    features: [
+      "1 evacuation plan",
+      "1 building",
+      "Limited features"
+    ],
+    buttonText: "Current Plan",
+    color: "gray"
+  },
+  {
     id: "basic",
     name: "Basic",
-    description: "Create evacuation plans with limited functionality",
+    description: "Essential features for small projects",
     price: {
-      monthly: 9,
-      yearly: 90,
+      monthly: 9.99,
+      yearly: 99.99,
     },
-    buildingLimit: 5,
-    monthlyExportLimit: 3,
+    buildingLimit: 3,
+    evacuationPlanLimit: 5,
+    organizationLimit: 1,
+    templateLimit: 1,
+    inviteTeamMembers: false,
     features: [
-      "Create evacuation plans",
-      "Export with Firemap logo",
-      "3 exports/month",
-      "5 buildings",
-      "QR code",
+      "5 evacuation plans",
+      "3 buildings",
+      "1 organization",
+      "1 template",
       "14-day trial upon registration"
     ],
     buttonText: "Start free trial",
-    popular: false,
-    customLogo: false,
-    qrCode: true,
-    templates: "none",
-    organizationSupport: false,
-    reviewFeatures: false,
-    userInvites: "none",
-    statistics: false,
-    support: "none",
     trial: { days: 14 },
     color: "green"
   },
   {
     id: "pro",
     name: "Pro",
-    description: "For small businesses or sole proprietors",
+    description: "Advanced features for professionals",
     price: {
-      monthly: 49,
-      yearly: 490,
+      monthly: 29.99,
+      yearly: 299.99,
     },
-    buildingLimit: 25,
-    monthlyExportLimit: 15,
+    buildingLimit: "unlimited",
+    evacuationPlanLimit: 100,
+    organizationLimit: "unlimited",
+    templateLimit: 10,
+    inviteTeamMembers: false,
     features: [
-      "Everything in Basic",
-      "15 exports/month",
-      "Up to 25 buildings",
-      "Custom logo",
-      "Custom template",
-      "Email support"
+      "100 evacuation plans",
+      "Unlimited buildings",
+      "Unlimited organizations",
+      "10 templates",
+      "Priority support"
     ],
     buttonText: "Subscribe",
     popular: true,
-    customLogo: true,
-    qrCode: true,
-    templates: "single",
-    organizationSupport: false,
-    reviewFeatures: false,
-    userInvites: "none",
-    statistics: false,
-    support: "email",
     color: "blue"
   },
   {
     id: "team",
     name: "Team",
-    description: "Small fire protection companies, housing companies, etc.",
+    description: "Collaborative features for teams",
     price: {
-      monthly: 149,
-      yearly: 1490,
+      monthly: 49.99,
+      yearly: 499.99,
     },
-    buildingLimit: 100,
-    monthlyExportLimit: 100,
+    buildingLimit: "unlimited",
+    evacuationPlanLimit: 500,
+    organizationLimit: "unlimited",
+    templateLimit: 25,
+    inviteTeamMembers: true,
     features: [
-      "Everything in Pro",
-      "100 exports/month",
-      "Invite unlimited users",
-      "Review functionality",
-      "Up to 100 buildings",
-      "Create organizations",
-      "Unlimited templates",
-      "Statistics / usage reports"
+      "500 evacuation plans",
+      "Unlimited buildings",
+      "Unlimited organizations",
+      "25 templates",
+      "Invite team members",
+      "Advanced analytics",
+      "Dedicated support"
     ],
     buttonText: "Subscribe",
-    customLogo: true,
-    qrCode: true,
-    templates: "unlimited",
-    organizationSupport: true,
-    reviewFeatures: true,
-    userInvites: "unlimited",
-    statistics: true,
-    support: "priority",
-    color: "yellow"
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    description: "Larger companies, municipalities, national actors",
-    price: {
-      monthly: null,
-      yearly: null,
-    },
-    buildingLimit: 500,
-    monthlyExportLimit: 500,
-    features: [
-      "Customized solution",
-      "Contact us for a custom quote"
-    ],
-    buttonText: "Contact us",
-    customLogo: true,
-    qrCode: true,
-    templates: "unlimited",
-    organizationSupport: true,
-    reviewFeatures: true,
-    userInvites: "unlimited",
-    statistics: true,
-    support: "dedicated",
-    color: "red"
+    color: "purple"
   }
 ];

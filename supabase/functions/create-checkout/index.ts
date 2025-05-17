@@ -65,7 +65,7 @@ serve(async (req) => {
     }
     
     // Determine the tier name and billing period
-    let tierName = priceId.split("-")[0]; // basic, pro, team, enterprise
+    let tierName = priceId.split("-")[0]; // basic, pro, team
     let billingPeriod = "monthly";
     
     if (priceId.includes("yearly")) {
@@ -74,12 +74,24 @@ serve(async (req) => {
     
     logStep("Determined tier and billing", { tierName, billingPeriod });
     
-    // Create a direct price ID based on tier and billing period
-    // This is a placeholder - you would need to create these products/prices in your Stripe dashboard
-    // and use the actual IDs here
-    const stripePriceId = `price_${tierName}_${billingPeriod}`;
+    // Calculate price based on tier and billing period
+    let unitAmount;
+    let trialPeriodDays;
     
-    logStep("Using Stripe price ID", { stripePriceId });
+    switch (tierName) {
+      case "basic":
+        unitAmount = billingPeriod === 'yearly' ? 9999 : 999; // $9.99/mo or $99.99/yr
+        trialPeriodDays = 14;
+        break;
+      case "pro":
+        unitAmount = billingPeriod === 'yearly' ? 29999 : 2999; // $29.99/mo or $299.99/yr
+        break;
+      case "team":
+        unitAmount = billingPeriod === 'yearly' ? 49999 : 4999; // $49.99/mo or $499.99/yr
+        break;
+      default:
+        throw new Error(`Unknown tier: ${tierName}`);
+    }
     
     // Common session parameters
     const origin = req.headers.get("origin") || "http://localhost:3000";
@@ -87,26 +99,24 @@ serve(async (req) => {
     const cancelUrl = new URL(redirectUrl, origin).toString();
     
     logStep("Creating checkout session", { 
-      stripePriceId, 
+      tierName,
+      unitAmount,
+      billingPeriod,
       successUrl, 
       cancelUrl
     });
     
-    // Only apply trial for basic tier and if not already a customer with past subscriptions
-    const trialPeriodDays = tierName === 'basic' ? 14 : undefined;
-    
-    // For testing purposes, we'll use a simple line item since the Stripe price may not exist
-    // In production, you would use the actual Stripe price ID
+    // For testing purposes, we'll use a simple line item
     const lineItems = [{
       price_data: {
         currency: 'eur',
         product_data: {
           name: `${tierName.charAt(0).toUpperCase() + tierName.slice(1)} Plan (${billingPeriod})`,
+          metadata: {
+            tier: tierName
+          }
         },
-        unit_amount: tierName === 'basic' ? 900 : 
-                     tierName === 'pro' ? 4900 : 
-                     tierName === 'team' ? 14900 : 
-                     29900, // enterprise
+        unit_amount: unitAmount,
         recurring: {
           interval: billingPeriod === 'yearly' ? 'year' : 'month',
         },

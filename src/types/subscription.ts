@@ -24,5 +24,5 @@ export interface SubscriptionInfo {
   tier: string;
   status: string;
   isTrial: boolean;
-  endDate?: string; // Changed from Date to string to match expected type
+  endDate?: string;
 }
