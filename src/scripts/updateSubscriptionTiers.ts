@@ -22,12 +22,15 @@ export async function updateSubscriptionTiers() {
 
   // Insert the subscription tiers from the pricing config
   for (const tier of pricingTiers) {
+    // Convert "unlimited" to 9999 for database storage
+    const buildingsLimit = tier.buildingLimit === "unlimited" ? 9999 : tier.buildingLimit;
+    
     const { error } = await supabase
       .from('subscription_tiers')
       .upsert({
         id: tier.id,
         name: tier.name,
-        buildings_limit: tier.buildingLimit === "unlimited" ? 9999 : tier.buildingLimit,
+        buildings_limit: buildingsLimit,
         price: tier.price.monthly || 0,
         description: tier.description || null
       });

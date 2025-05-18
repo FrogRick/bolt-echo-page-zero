@@ -1,7 +1,7 @@
 
 export interface ResourceUsage {
   used: number;
-  total: number;
+  total: number | "unlimited";
 }
 
 export interface ResourceStatistics {
@@ -15,8 +15,8 @@ export interface BuildingUsage {
   total: number;
   monthly: number;
   limits: {
-    total: number;
-    monthly: number;
+    total: number | "unlimited";
+    monthly: number | "unlimited";
   };
 }
 

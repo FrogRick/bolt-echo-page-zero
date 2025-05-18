@@ -22,10 +22,10 @@ const ResourceUsageTable: React.FC<ResourceUsageTableProps> = ({ resourceStats, 
   };
 
   const hasReachedLimit = 
-    (typeof resourceStats.buildings.total === "number" && resourceStats.buildings.used >= resourceStats.buildings.total) || 
-    (typeof resourceStats.organizations.total === "number" && resourceStats.organizations.used >= resourceStats.organizations.total) || 
-    (typeof resourceStats.templates.total === "number" && resourceStats.templates.used >= resourceStats.templates.total) || 
-    (typeof resourceStats.evacuationPlans.total === "number" && resourceStats.evacuationPlans.used >= resourceStats.evacuationPlans.total);
+    (resourceStats.buildings.total !== "unlimited" && resourceStats.buildings.used >= resourceStats.buildings.total) || 
+    (resourceStats.organizations.total !== "unlimited" && resourceStats.organizations.used >= resourceStats.organizations.total) || 
+    (resourceStats.templates.total !== "unlimited" && resourceStats.templates.used >= resourceStats.templates.total) || 
+    (resourceStats.evacuationPlans.total !== "unlimited" && resourceStats.evacuationPlans.used >= resourceStats.evacuationPlans.total);
 
   return (
     <Card>

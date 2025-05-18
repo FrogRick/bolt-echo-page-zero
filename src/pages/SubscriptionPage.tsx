@@ -213,6 +213,13 @@ const SubscriptionPage = () => {
   if (user && subscription && subscription.tier && subscription.tier !== "free") {
     const currentTier = pricingTiers.find(tier => tier.id === subscription.tier);
     
+    // Format date if it exists
+    const formattedEndDate = subscription.endDate 
+      ? (typeof subscription.endDate === 'string' 
+        ? subscription.endDate 
+        : subscription.endDate.toISOString())
+      : undefined;
+    
     return (
       <div className="container mx-auto py-12 px-4">
         <SubscriptionDetails 
@@ -220,7 +227,7 @@ const SubscriptionPage = () => {
             tier: subscription.tier,
             status: subscription.status,
             isTrial: subscription.isTrial,
-            endDate: subscription.endDate
+            endDate: formattedEndDate
           }}
           isRedirecting={isRedirecting}
           currentTier={currentTier}
@@ -245,7 +252,7 @@ const SubscriptionPage = () => {
               subscription={{
                 tier: subscription.tier,
                 status: subscription.status,
-                endDate: subscription.endDate,
+                endDate: formattedEndDate,
                 isTrial: subscription.isTrial
               }}
               buildingUsage={buildingUsage}
