@@ -10,10 +10,9 @@ import AccountPage from "@/pages/AccountPage";
 import PricingPage from "@/pages/PricingPage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
 import DashboardPage from "@/pages/DashboardPage";
-import TrashPage from "@/pages/TrashPage"; // Import the new TrashPage
+import TrashPage from "@/pages/TrashPage";
 import { AuthProvider } from "@/context/AuthContext";
 import { useAuth } from "@/context/AuthContext";
-import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import SettingsPage from "@/pages/SettingsPage";
 import { Toaster } from "@/components/ui/toaster";
@@ -48,26 +47,12 @@ const ProtectedRoute = ({ children, requiresSubscription = false }: {
   return <>{children}</>;
 };
 
-// Component that creates a new project and redirects to /editor/:projectId
-function AutoCreateAndRedirectToEditor() {
+// Component that redirects to editor with a new ID
+function RedirectToNewEditor() {
   const navigate = useNavigate();
   useEffect(() => {
-    // Create new project
-    const newProject = {
-      id: crypto.randomUUID(),
-      name: "New Evacuation Plan",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      pdfs: [],
-      symbols: [],
-    };
-    // Save to localStorage
-    const existing = localStorage.getItem("evacuation-projects");
-    const projects = existing ? JSON.parse(existing) : [];
-    projects.unshift(newProject);
-    localStorage.setItem("evacuation-projects", JSON.stringify(projects));
-    // Redirect
-    navigate(`/editor/${newProject.id}`, { replace: true });
+    const newId = crypto.randomUUID();
+    navigate(`/editor/${newId}`, { replace: true });
   }, [navigate]);
   return null;
 }
@@ -79,7 +64,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/editor" replace />} />
-            <Route path="/editor" element={<AutoCreateAndRedirectToEditor />} />
+            <Route path="/editor" element={<RedirectToNewEditor />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/editor/:projectId" element={<EditorPage />} />
@@ -88,7 +73,7 @@ export default function App() {
             <Route path="/evacuation-plans" element={<DashboardPage typeOverride="evacuation-plans" />} />
             <Route path="/organizations" element={<DashboardPage typeOverride="organizations" />} />
             <Route path="/templates" element={<DashboardPage typeOverride="templates" />} />
-            <Route path="/trash" element={<TrashPage />} /> {/* New trash page route */}
+            <Route path="/trash" element={<TrashPage />} />
             <Route path="/subscription" element={<SubscriptionPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/new" element={<NewProjectPage />} />

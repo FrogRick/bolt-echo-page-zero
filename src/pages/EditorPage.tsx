@@ -1,116 +1,53 @@
 
-import { pdfjs } from "react-pdf";
-import { EditorContainer } from "@/components/editor/EditorContainer";
-import { useEditorState } from "@/hooks/useEditorState";
+import { useParams, useNavigate } from "react-router-dom";
+import Canvas from "@/components/editor/Canvas";
 import { Toaster } from "@/components/ui/toaster";
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { useProject } from "@/hooks/useProject";
+import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-
-// Set PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 const EditorPage = () => {
   const { projectId } = useParams<{ projectId: string; }>();
-  const editorState = useEditorState();
-  const { project, loading, saveProject } = useProject(projectId);
-  const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  // Function to handle PDF upload directly from this page
-  const handlePDFUpload = (file: File) => {
-    if (!project) return;
-    
-    console.log("PDF upload initiated for file:", file.name);
-    
-    const reader = new FileReader();
-    reader.onload = e => {
-      if (e.target?.result) {
-        // Create a new PDF entry
-        const newPDF = {
-          id: crypto.randomUUID(),
-          name: file.name,
-          data: e.target.result as string,
-          createdAt: new Date()
-        };
-        
-        const updatedProject = {
-          ...project,
-          pdfs: [...(project.pdfs || []), newPDF],
-          pdfData: e.target.result as string,
-          updatedAt: new Date()
-        };
-        
-        saveProject(updatedProject);
-        editorState.setPdfFile(file);
-        
-        toast({
-          title: "PDF uploaded successfully",
-          description: `"${file.name}" has been added to your project.`
-        });
-
-        // Make sure the current stage is set correctly
-        editorState.setUseManualWalls(true);
-        editorState.setCurrentStage('draw_walls');
-
-        // Make sure we're initialized after uploading
-        setIsInitialized(true);
-      }
-    };
-    
-    reader.readAsDataURL(file);
-  };
-
-  // Ensure we only render the editor after the project has loaded
+  // Generate a new ID if not provided
   useEffect(() => {
-    if (!loading && project) {
-      console.log("Project loaded, checking for PDFs...");
-      
-      // Check if there are PDFs in the project
-      if (project.pdfs && project.pdfs.length > 0 && !editorState.pdfFile) {
-        console.log("Found PDFs in project, loading the first one");
-        // Load the first PDF
-        const firstPdf = project.pdfs[0];
-        if (!firstPdf.data || !firstPdf.data.startsWith("data:")) {
-          console.error("PDF data is missing or not a valid DataURL:", firstPdf.data);
-          return;
-        }
-        const byteString = atob(firstPdf.data.split(',')[1]);
-        const mimeString = firstPdf.data.split(',')[0].split(':')[1].split(';')[0];
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteString.length; i++) {
-          ia[i] = byteString.charCodeAt(i);
-        }
-        const blob = new Blob([ab], { type: mimeString });
-        const file = new File([blob], firstPdf.name, { type: mimeString });
-        editorState.setPdfFile(file);
-      }
-
-      // If we have PDFs or a pdfFile, initialize the state
-      if ((project.pdfs && project.pdfs.length > 0) || editorState.pdfFile) {
-        setIsInitialized(true);
-        editorState.setUseManualWalls(true);
-        editorState.setCurrentStage('draw_walls');
-      }
+    if (!projectId) {
+      const newId = crypto.randomUUID();
+      navigate(`/editor/${newId}`, { replace: true });
     }
-  }, [loading, project, editorState]);
+  }, [projectId, navigate]);
 
-  if (loading) {
+  if (!projectId) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="bg-white p-8 rounded-lg shadow-lg text-center">
-          <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-lg font-medium">Loading project...</p>
-        </div>
+        <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div>
       </div>
     );
   }
 
   return (
     <div className="h-screen flex flex-col">
-      <EditorContainer {...editorState} onPDFUpload={handlePDFUpload} />
+      <div className="bg-white border-b px-4 py-3 flex justify-between items-center">
+        <h1 className="text-lg font-semibold">Canvas Editor</h1>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">Canvas ID: {projectId.substring(0, 8)}...</span>
+          <button
+            onClick={() => {
+              toast({
+                title: "Canvas Saved",
+                description: "Your canvas has been saved.",
+              });
+            }}
+            className="px-4 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+      <div className="flex-grow overflow-hidden">
+        <Canvas />
+      </div>
       <Toaster />
     </div>
   );
