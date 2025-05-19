@@ -1,3 +1,4 @@
+
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -182,7 +183,7 @@ export const drawShapes = (
     }
   });
   
-  // STEP 2: Draw all line borders at once to ensure seamless connections
+  // STEP 2: Draw all line borders at once first to ensure seamless connections
   const lineShapes = sortedShapes.filter(shape => shape.type === 'line');
   if (lineShapes.length > 0) {
     ctx.save();
