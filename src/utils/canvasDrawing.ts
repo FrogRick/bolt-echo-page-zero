@@ -18,6 +18,9 @@ export const drawShapes = (
       const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
       const strokeColor = 'strokeColor' in shape ? shape.strokeColor : '#000000';
       
+      // Save the current state
+      ctx.save();
+      
       // Draw the thick gray line
       ctx.beginPath();
       ctx.moveTo(shape.start.x, shape.start.y);
@@ -27,17 +30,19 @@ export const drawShapes = (
       ctx.lineCap = 'butt'; // Flat ends for the gray part
       ctx.stroke();
       
-      // Draw the thin black border for the entire line (including ends)
+      // Draw the thin black border with consistent 2px width
       ctx.beginPath();
       ctx.moveTo(shape.start.x, shape.start.y);
       ctx.lineTo(shape.end.x, shape.end.y);
-      ctx.lineWidth = lineWidth + 2; // Slightly wider for the border
+      ctx.lineWidth = lineWidth + 2; // Consistently 2px wider for the border
       ctx.strokeStyle = strokeColor;
-      ctx.lineCap = 'square'; // Square ends to ensure border at the tips
+      ctx.lineCap = 'butt'; // Match the gray line's end style
       ctx.globalCompositeOperation = 'destination-over';
       ctx.stroke();
-      ctx.lineCap = 'butt'; // Reset to default
+      
+      // Restore to default state
       ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
       
     } else if (shape.type === 'rectangle') {
       ctx.beginPath();
@@ -129,6 +134,9 @@ export const drawPreviewLine = (
   end: Point,
   color: string
 ): void => {
+  // Save the current state
+  ctx.save();
+  
   // Draw the thick gray preview line
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
@@ -138,15 +146,17 @@ export const drawPreviewLine = (
   ctx.lineCap = 'butt'; // Flat ends for the gray part
   ctx.stroke();
   
-  // Draw the thin black border (including the ends)
+  // Draw the thin black border with consistent 2px width
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
   ctx.lineWidth = 8 + 2; // Consistently 2px wider for border
   ctx.strokeStyle = '#000000'; // Black border
-  ctx.lineCap = 'square'; // Square ends to ensure border at the tips
+  ctx.lineCap = 'butt'; // Match the gray line's end style
   ctx.globalCompositeOperation = 'destination-over';
   ctx.stroke();
-  ctx.lineCap = 'butt'; // Reset to default
+  
+  // Restore to default state
   ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
 };
