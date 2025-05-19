@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect } from 'react';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
@@ -73,7 +72,7 @@ export const useCanvasEditor = () => {
     }
   };
 
-  // Function to snap angle to nearest 45 degrees
+  // Function to snap angle to nearest 45 degrees if within threshold
   const snapAngleToGrid = (startPoint: Point, endPoint: Point): Point => {
     if (!snapToAngle) return endPoint;
 
@@ -83,8 +82,14 @@ export const useCanvasEditor = () => {
     // Calculate angle in radians and convert to degrees
     const angle = Math.atan2(dy, dx) * (180 / Math.PI);
     
-    // Snap to nearest 45 degree increment
+    // Determine nearest 45 degree increment
     const snapAngle = Math.round(angle / 45) * 45;
+    
+    // Check if we're within the threshold (10 degrees) of a 45-degree increment
+    const angleDiff = Math.abs((angle % 45) - 45) % 45;
+    const shouldSnap = angleDiff < 10 || angleDiff > 35; // Within 10 degrees of a 45 degree angle
+    
+    if (!shouldSnap) return endPoint;
     
     // Convert back to radians
     const snapRadians = snapAngle * (Math.PI / 180);
@@ -187,8 +192,7 @@ export const useCanvasEditor = () => {
     if (isDragging && selectedShape) {
       handleDragMove(point);
     } else if (activeTool === 'line' && startPoint) {
-      // Update the current point for live line preview - no need to set previewLine here
-      // The redrawCanvas function will handle drawing with snapping
+      // Update the current point for live line preview
       redrawCanvas();
     } else if (isDrawing && activeTool === 'rectangle') {
       redrawCanvas();
