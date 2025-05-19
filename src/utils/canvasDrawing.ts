@@ -217,17 +217,19 @@ export const drawShapes = (
   });
 
   // Create a collection to track all welding points to draw
-  const weldingPoints: Point[] = [];
+  const weldingPoints: {point: Point, lineWidth?: number}[] = [];
   
   // STEP 3: Find all intersection points first
   sortedShapes.forEach((shape1) => {
     if (shape1.type === 'line') {
+      const shape1LineWidth = 'lineWidth' in shape1 ? shape1.lineWidth : 8;
+      
       // Check for line endpoints that connect with other lines
       [shape1.start, shape1.end].forEach(endpoint => {
         const connectedLines = findConnectedLines(shapes, endpoint, shape1.id);
         if (connectedLines.length > 0) {
           // Add this endpoint for welding
-          weldingPoints.push(endpoint);
+          weldingPoints.push({ point: endpoint, lineWidth: shape1LineWidth });
         }
       });
       
@@ -237,7 +239,10 @@ export const drawShapes = (
           const intersection = findLineIntersection(shape1, shape2);
           if (intersection) {
             // Add this intersection point for welding
-            weldingPoints.push(intersection);
+            // Use the larger of the two line widths for a better look
+            const shape2LineWidth = 'lineWidth' in shape2 ? shape2.lineWidth : 8;
+            const maxLineWidth = Math.max(shape1LineWidth, shape2LineWidth);
+            weldingPoints.push({ point: intersection, lineWidth: maxLineWidth });
           }
         }
       });
@@ -248,20 +253,19 @@ export const drawShapes = (
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
   
-  weldingPoints.forEach(point => {
-    // Calculate the appropriate size for the welding point
-    const jointSize = 8; // Default line width
-    
-    // Draw the welding circle
+  weldingPoints.forEach(({ point, lineWidth = 8 }) => {
+    // Draw the welding point with border
+    // First draw the border (black circle slightly larger)
     ctx.beginPath();
-    ctx.arc(point.x, point.y, jointSize / 2, 0, Math.PI * 2);
-    ctx.fillStyle = '#8E9196'; // Gray color matching the line
+    ctx.arc(point.x, point.y, (lineWidth / 2) + 1, 0, Math.PI * 2);
+    ctx.fillStyle = '#000000'; // Black border
     ctx.fill();
     
-    // Draw a black border around the welding point for seamless look
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = '#000000';
-    ctx.stroke();
+    // Then draw the actual welding circle (gray) on top
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, lineWidth / 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#8E9196'; // Gray color matching the line
+    ctx.fill();
   });
   
   ctx.restore();
