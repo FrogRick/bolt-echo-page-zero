@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect } from 'react';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine, lineSnappingHelpers } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
@@ -9,7 +8,7 @@ export const useCanvasEditor = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [currentColor, setCurrentColor] = useState<string>('#000000');
-  const [fillColor, setFillColor] = useState<string>('#FFFBCC'); // Changed to #FFFBCC (light yellow)
+  const [fillColor, setFillColor] = useState<string>('#FFFBCC'); // Light yellow
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<Point | null>(null);
   const [currentPoint, setCurrentPoint] = useState<Point | null>(null);
@@ -20,7 +19,6 @@ export const useCanvasEditor = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
   const [previewLine, setPreviewLine] = useState<PreviewLine | null>(null);
-  const [lineDrawMode, setLineDrawMode] = useState<'click' | 'drag'>('click');
   const [mouseMoved, setMouseMoved] = useState(false);
   
   // Rectangle drawing mode: 'click' for click-release-click or 'drag' for click-drag-release
@@ -219,10 +217,8 @@ export const useCanvasEditor = () => {
         snappedPoint = endpointSnap;
       }
       
-      // Start drawing a line - will detect if it's click or drag mode based on mouse movement
-      handleLineToolMouseDown(snappedPoint);
-      // Set isDrawing to true for potential drag mode
-      setIsDrawing(true);
+      // Use click-point-click mode exclusively for lines
+      handleLineToolClick(snappedPoint);
     } else if (activeTool === 'rectangle') {
       if (rectangleDrawMode === 'click') {
         // In click mode, first click sets start point, second click completes
@@ -266,18 +262,10 @@ export const useCanvasEditor = () => {
     
     setCurrentPoint(point);
     
-    if (isDrawing) {
-      setMouseMoved(true);
-      
-      if (activeTool === 'line' && startPoint) {
-        setLineDrawMode('drag');
-      }
-    }
-    
     if (isDragging && selectedShape) {
       handleDragMove(point);
     } else if (activeTool === 'line' && startPoint) {
-      // Update the current point for live line preview
+      // Update the current point for line preview
       redrawCanvas();
     } else if (isDrawing && activeTool === 'rectangle' && rectangleDrawMode === 'drag') {
       redrawCanvas();
@@ -312,15 +300,14 @@ export const useCanvasEditor = () => {
     }
   };
 
-  // Handle line tool mouse down
-  const handleLineToolMouseDown = (point: Point) => {
+  // Handle line tool mouse down - exclusively click-point-click mode
+  const handleLineToolClick = (point: Point) => {
     // If there's no start point, set it
     if (!startPoint) {
       setStartPoint(point);
       setCurrentPoint(point);
-      // Don't set previewLine here - it will be drawn in redrawCanvas based on current point
     } else {
-      // This will only happen in click mode
+      // Complete the line on second click
       completeLine(point);
     }
   };
@@ -455,7 +442,7 @@ export const useCanvasEditor = () => {
     const point: Point = { x, y };
     
     if (activeTool === 'rectangle' && rectangleDrawMode === 'drag' && startPoint) {
-      // Complete rectangle on mouse up with no border (using currentColor, but no stroke will be drawn)
+      // Complete rectangle on mouse up with no border
       const newRectangle = {
         id: generateId(),
         type: 'rectangle' as const,
@@ -468,35 +455,6 @@ export const useCanvasEditor = () => {
       setShapes([...shapes, newRectangle]);
       setIsDrawing(false);
       setStartPoint(null);
-    } else if (activeTool === 'line' && startPoint && isDrawing) {
-      // If the mouse was moved while drawing, complete line in drag mode
-      if (mouseMoved && lineDrawMode === 'drag') {
-        // Apply snapping for the end point - first check line snapping
-        let endPoint = point;
-        
-        if (snapToLines) {
-          const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
-          if (lineSnap) {
-            endPoint = lineSnap.point;
-          }
-        }
-        
-        // Then check endpoint snapping (takes priority)
-        const snappedToEndpoint = findNearestEndpoint(endPoint);
-        if (snappedToEndpoint) {
-          endPoint = snappedToEndpoint;
-        } else if (snapToAngle && endPoint === point) {
-          // If not snapped to endpoint or line, try angle snapping
-          endPoint = snapAngleToGrid(startPoint, point);
-        }
-        
-        completeLine(endPoint);
-        // Reset to click mode for next interaction
-        setLineDrawMode('click');
-      } else if (!mouseMoved) {
-        // If mouse didn't move, keep the startPoint for click-point-click mode
-        setIsDrawing(false);
-      }
     }
     
     setIsDragging(false);
@@ -547,7 +505,7 @@ export const useCanvasEditor = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // If we're in polygon drawing mode with at least 3 points
       if (activeTool === 'polygon' && polygonPoints.length >= 3) {
-        if (e.key === 'Escape' || e.key === 'Enter') {  // Using Enter instead of Backspace
+        if (e.key === 'Escape' || e.key === 'Enter') {
           // Close the polygon on Escape or Enter
           completePolygon();
         }
@@ -597,4 +555,3 @@ export const useCanvasEditor = () => {
     toggleRectangleDrawMode
   };
 };
-

@@ -1,4 +1,3 @@
-
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -134,8 +133,16 @@ export const drawShapes = (
   selectedShapeId: string | null, 
   defaultFillColor: string
 ): void => {
+  // Sort shapes to ensure rectangles and polygons are drawn first (below lines)
+  const sortedShapes = [...shapes].sort((a, b) => {
+    // Lines should be drawn last (on top)
+    if (a.type === 'line' && b.type !== 'line') return 1;
+    if (a.type !== 'line' && b.type === 'line') return -1;
+    return 0;
+  });
+
   // First pass: Draw all shapes except lines
-  shapes.forEach(shape => {
+  sortedShapes.forEach(shape => {
     if (shape.type !== 'line') {
       if (shape.type === 'rectangle') {
         // For rectangles, only fill with color and no stroke
@@ -176,7 +183,7 @@ export const drawShapes = (
   });
 
   // Second pass: Draw lines with special handling for connected lines and intersections
-  shapes.forEach(shape => {
+  sortedShapes.forEach(shape => {
     if (shape.type === 'line') {
       // Find if any lines are connected to this line's start or end points
       const connectedToStart = findConnectedLines(shapes, shape.start, shape.id);
@@ -486,4 +493,3 @@ export const lineSnappingHelpers = {
   findClosestPointOnLine,
   isPointOnLine
 };
-
