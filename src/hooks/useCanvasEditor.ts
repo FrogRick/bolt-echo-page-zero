@@ -76,17 +76,18 @@ export const useCanvasEditor = () => {
     // Draw all saved shapes
     drawShapes(ctx, shapes, selectedShape?.id || null, fillColor);
 
-    // Draw polygon in progress
-    if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length > 0) {
-      const polygonFillColor = activeTool === 'green-polygon' ? greenFillColor : fillColor;
-      drawInProgressPolygon(ctx, polygonPoints, currentPoint, currentColor, polygonFillColor);
-    }
-
     // Draw wall polygon in progress (using same drawing function as regular polygon)
+    // This is drawn FIRST (before regular polygons) so it appears below other elements
     if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
       // For wall polygon, we draw lines without fill - use black border and gray fill like walls
       // Pass false for showStartPoint to hide the red circle
       drawInProgressPolygon(ctx, wallPolygonPoints, currentPoint, '#000000', 'transparent', true, false);
+    }
+
+    // Draw polygon in progress
+    if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length > 0) {
+      const polygonFillColor = activeTool === 'green-polygon' ? greenFillColor : fillColor;
+      drawInProgressPolygon(ctx, polygonPoints, currentPoint, currentColor, polygonFillColor);
     }
 
     // Draw preview line when using the wall tool - only if we have a start and current point
@@ -122,8 +123,24 @@ export const useCanvasEditor = () => {
     
     // Draw preview rectangle if we're in click mode and have a start point
     if ((activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'click' && startPoint && currentPoint) {
-      // Use the appropriate fill color based on the active tool
-      ctx.fillStyle = activeTool === 'green-rectangle' ? greenFillColor : fillColor;
+      const rectFillColor = activeTool === 'green-rectangle' ? greenFillColor : fillColor;
+      
+      // Create semi-transparent fill color for in-progress rectangles (50% opacity)
+      let semiTransparentColor = rectFillColor;
+      
+      // Handle both hex and rgb formats
+      if (rectFillColor.startsWith('#')) {
+        // Convert hex to rgba
+        const r = parseInt(rectFillColor.slice(1, 3), 16);
+        const g = parseInt(rectFillColor.slice(3, 5), 16);
+        const b = parseInt(rectFillColor.slice(5, 7), 16);
+        semiTransparentColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+      } else if (rectFillColor.startsWith('rgb(')) {
+        // Convert rgb to rgba
+        semiTransparentColor = rectFillColor.replace(/rgb\((.+)\)/, 'rgba($1, 0.5)');
+      }
+      
+      ctx.fillStyle = semiTransparentColor;
       ctx.beginPath();
       ctx.rect(
         startPoint.x,
@@ -132,6 +149,11 @@ export const useCanvasEditor = () => {
         currentPoint.y - startPoint.y
       );
       ctx.fill();
+      
+      // Add a subtle border
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
   };
 
@@ -498,7 +520,7 @@ export const useCanvasEditor = () => {
     setStartPoint(point);
     setIsDrawing(true);
   };
-
+  
   // Handle polygon tool mouse down
   const handlePolygonToolMouseDown = (point: Point) => {
     if (polygonPoints.length === 0) {

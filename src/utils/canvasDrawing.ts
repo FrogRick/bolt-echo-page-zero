@@ -1,3 +1,4 @@
+
 import { Point, Shape, PreviewLine } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -358,10 +359,22 @@ export const drawInProgressPolygon = (
     
     // Apply 50% opacity for in-progress polygons
     const baseColor = fillColor;
-    // Create a semi-transparent version by adding alpha channel (0.5 opacity)
-    const semiTransparentColor = baseColor.replace(/rgb\((.+)\)/, 'rgba($1, 0.5)');
-    ctx.fillStyle = semiTransparentColor;
+    // Extract the RGB components and create a semi-transparent version
+    let semiTransparentColor = baseColor;
     
+    // Handle both hex and rgb formats
+    if (baseColor.startsWith('#')) {
+      // Convert hex to rgba
+      const r = parseInt(baseColor.slice(1, 3), 16);
+      const g = parseInt(baseColor.slice(3, 5), 16);
+      const b = parseInt(baseColor.slice(5, 7), 16);
+      semiTransparentColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+    } else if (baseColor.startsWith('rgb(')) {
+      // Convert rgb to rgba
+      semiTransparentColor = baseColor.replace(/rgb\((.+)\)/, 'rgba($1, 0.5)');
+    }
+    
+    ctx.fillStyle = semiTransparentColor;
     ctx.lineWidth = 2;
     
     // Draw the polygon lines
