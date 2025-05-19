@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -141,7 +142,7 @@ const Canvas: React.FC = () => {
             className={`bg-white border border-gray-200 ${
               activeTool === "select" 
                 ? "cursor-default" 
-                : activeTool === "line" || activeTool === "polygon"
+                : (activeTool === "wall" || activeTool === "wall-alt" || activeTool === "yellow-polygon" || activeTool === "yellow-polygon-alt")
                   ? "cursor-crosshair" 
                   : "cursor-crosshair"
             }`}

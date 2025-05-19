@@ -38,19 +38,19 @@ export const useCanvasEditor = () => {
 
   // Function to cancel the current drawing operation
   const cancelDrawing = () => {
-    if (activeTool === 'line' && startPoint) {
-      // Cancel line drawing - clear the start point
+    if ((activeTool === 'wall' || activeTool === 'wall-alt') && startPoint) {
+      // Cancel wall drawing - clear the start point
       setStartPoint(null);
       setPreviewLine(null);
       setIsDrawing(false);
-    } else if (activeTool === 'rectangle') {
+    } else if ((activeTool === 'yellow-rectangle' || activeTool === 'yellow-rectangle-alt')) {
       // Cancel rectangle drawing - clear the start point
       if (rectangleDrawMode === 'click' && startPoint) {
         setStartPoint(null);
         setCurrentPoint(null);
       }
       setIsDrawing(false);
-    } else if (activeTool === 'polygon' && polygonPoints.length > 0) {
+    } else if ((activeTool === 'yellow-polygon' || activeTool === 'yellow-polygon-alt') && polygonPoints.length > 0) {
       // Cancel polygon drawing - clear all polygon points
       setPolygonPoints([]);
     }
@@ -222,7 +222,7 @@ export const useCanvasEditor = () => {
     
     if (activeTool === 'select') {
       handleSelectToolMouseDown(point);
-    } else if (activeTool === 'line') {
+    } else if (activeTool === 'wall' || activeTool === 'wall-alt') {
       // Apply both endpoint and line snapping before starting to draw
       let snappedPoint = point;
       
@@ -242,7 +242,7 @@ export const useCanvasEditor = () => {
       
       // Use click-point-click mode exclusively for lines
       handleLineToolClick(snappedPoint);
-    } else if (activeTool === 'rectangle') {
+    } else if (activeTool === 'yellow-rectangle' || activeTool === 'yellow-rectangle-alt') {
       if (rectangleDrawMode === 'click') {
         // In click mode, first click sets start point, second click completes
         if (!startPoint) {
@@ -267,7 +267,7 @@ export const useCanvasEditor = () => {
         // Traditional drag mode
         handleRectangleToolMouseDown(point);
       }
-    } else if (activeTool === 'polygon') {
+    } else if (activeTool === 'yellow-polygon' || activeTool === 'yellow-polygon-alt') {
       handlePolygonToolMouseDown(point);
     }
   };
@@ -287,15 +287,15 @@ export const useCanvasEditor = () => {
     
     if (isDragging && selectedShape) {
       handleDragMove(point);
-    } else if (activeTool === 'line' && startPoint) {
+    } else if ((activeTool === 'wall' || activeTool === 'wall-alt') && startPoint) {
       // Update the current point for line preview
       redrawCanvas();
-    } else if (isDrawing && activeTool === 'rectangle' && rectangleDrawMode === 'drag') {
+    } else if (isDrawing && (activeTool === 'yellow-rectangle' || activeTool === 'yellow-rectangle-alt') && rectangleDrawMode === 'drag') {
       redrawCanvas();
-    } else if (activeTool === 'rectangle' && rectangleDrawMode === 'click' && startPoint) {
+    } else if ((activeTool === 'yellow-rectangle' || activeTool === 'yellow-rectangle-alt') && rectangleDrawMode === 'click' && startPoint) {
       // Update preview for click mode rectangle
       redrawCanvas();
-    } else if (activeTool === 'polygon' && polygonPoints.length > 0) {
+    } else if ((activeTool === 'yellow-polygon' || activeTool === 'yellow-polygon-alt') && polygonPoints.length > 0) {
       // Update the current point for polygon preview
       redrawCanvas();
     }
@@ -464,7 +464,7 @@ export const useCanvasEditor = () => {
     
     const point: Point = { x, y };
     
-    if (activeTool === 'rectangle' && rectangleDrawMode === 'drag' && startPoint) {
+    if ((activeTool === 'yellow-rectangle' || activeTool === 'yellow-rectangle-alt') && rectangleDrawMode === 'drag' && startPoint) {
       // Complete rectangle on mouse up with no border
       const newRectangle = {
         id: generateId(),
@@ -533,7 +533,7 @@ export const useCanvasEditor = () => {
       }
       
       // If we're in polygon drawing mode with at least 3 points
-      if (activeTool === 'polygon' && polygonPoints.length >= 3) {
+      if ((activeTool === 'yellow-polygon' || activeTool === 'yellow-polygon-alt') && polygonPoints.length >= 3) {
         if (e.key === 'Enter') {
           // Close the polygon on Enter
           completePolygon();

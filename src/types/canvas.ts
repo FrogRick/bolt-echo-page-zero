@@ -4,7 +4,7 @@ export type Point = {
   y: number;
 };
 
-export type Tool = 'select' | 'line' | 'rectangle' | 'polygon';
+export type Tool = 'select' | 'wall' | 'yellow-rectangle' | 'yellow-polygon' | 'wall-alt' | 'yellow-rectangle-alt' | 'yellow-polygon-alt';
 
 export type LineShape = {
   id: string;
