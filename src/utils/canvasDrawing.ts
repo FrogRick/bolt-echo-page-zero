@@ -1,4 +1,3 @@
-
 import { Point, Shape, PreviewLine } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -151,7 +150,7 @@ export const drawShapes = (
       // Save context state
       ctx.save();
       
-      // Draw only fills in this pass
+      // Draw only fills in this pass - using full opacity (100%) for completed shapes
       if (shape.type === 'rectangle') {
         ctx.fillStyle = 'fillColor' in shape ? shape.fillColor : defaultFillColor;
         ctx.beginPath();
@@ -356,7 +355,13 @@ export const drawInProgressPolygon = (
   } else {
     // Regular polygon style
     ctx.strokeStyle = strokeColor;
-    ctx.fillStyle = fillColor;
+    
+    // Apply 50% opacity for in-progress polygons
+    const baseColor = fillColor;
+    // Create a semi-transparent version by adding alpha channel (0.5 opacity)
+    const semiTransparentColor = baseColor.replace(/rgb\((.+)\)/, 'rgba($1, 0.5)');
+    ctx.fillStyle = semiTransparentColor;
+    
     ctx.lineWidth = 2;
     
     // Draw the polygon lines
@@ -376,7 +381,7 @@ export const drawInProgressPolygon = (
       ctx.lineTo(polygonPoints[0].x, polygonPoints[0].y);
     }
     
-    // Fill with the correct color
+    // Fill with the correct color at 50% opacity
     ctx.fill();
     
     // Then stroke the shape
