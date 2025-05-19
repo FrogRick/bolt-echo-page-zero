@@ -31,11 +31,9 @@ export const drawShapes = (
   // First pass: Draw all shapes except lines
   shapes.forEach(shape => {
     if (shape.type !== 'line') {
-      ctx.strokeStyle = shape.color;
-      ctx.lineWidth = 2;
-      ctx.fillStyle = 'fillColor' in shape ? shape.fillColor : defaultFillColor;
-
       if (shape.type === 'rectangle') {
+        // For rectangles, only fill with color and no stroke
+        ctx.fillStyle = 'fillColor' in shape ? shape.fillColor : defaultFillColor;
         ctx.beginPath();
         ctx.rect(
           shape.start.x,
@@ -44,8 +42,12 @@ export const drawShapes = (
           shape.end.y - shape.start.y
         );
         ctx.fill();
-        ctx.stroke();
+        // No stroke for rectangles
       } else if (shape.type === 'polygon') {
+        ctx.strokeStyle = shape.color;
+        ctx.lineWidth = 2;
+        ctx.fillStyle = 'fillColor' in shape ? shape.fillColor : defaultFillColor;
+        
         if (shape.points.length > 0) {
           ctx.beginPath();
           ctx.moveTo(shape.points[0].x, shape.points[0].y);
@@ -193,6 +195,7 @@ export const drawShapes = (
         ctx.lineTo(selectedShape.end.x, selectedShape.end.y);
         ctx.stroke();
       } else if (selectedShape.type === 'rectangle') {
+        // Draw only a selection border for rectangles
         ctx.strokeRect(
           selectedShape.start.x,
           selectedShape.start.y,
@@ -223,10 +226,13 @@ export const drawInProgressPolygon = (
   strokeColor: string,
   fillColor: string
 ): void => {
+  if (polygonPoints.length === 0) return;
+  
   ctx.strokeStyle = strokeColor;
   ctx.fillStyle = fillColor;
   ctx.lineWidth = 2;
   
+  // Draw the polygon lines
   ctx.beginPath();
   ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
   
@@ -238,6 +244,27 @@ export const drawInProgressPolygon = (
     ctx.lineTo(currentPoint.x, currentPoint.y);
   }
   
+  // Draw circle at the starting point to indicate where to close the polygon
+  const startPoint = polygonPoints[0];
+  
+  // First fill with semi-transparent yellow
+  ctx.fillStyle = 'rgba(255, 251, 204, 0.5)';
+  if (currentPoint) {
+    // Close back to the first point for the fill
+    ctx.lineTo(startPoint.x, startPoint.y);
+  }
+  ctx.fill();
+  
+  // Now stroke the shape
+  ctx.stroke();
+  
+  // Draw a circle marker at the starting point
+  ctx.beginPath();
+  ctx.arc(startPoint.x, startPoint.y, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#FF0000'; // Red circle to indicate start point
+  ctx.fill();
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 1;
   ctx.stroke();
 };
 

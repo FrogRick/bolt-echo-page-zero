@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect } from 'react';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
@@ -8,7 +9,7 @@ export const useCanvasEditor = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [currentColor, setCurrentColor] = useState<string>('#000000');
-  const [fillColor, setFillColor] = useState<string>('#ffffff');
+  const [fillColor, setFillColor] = useState<string>('#FFFBCC'); // Changed to #FFFBCC (light yellow)
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<Point | null>(null);
   const [currentPoint, setCurrentPoint] = useState<Point | null>(null);
@@ -364,13 +365,13 @@ export const useCanvasEditor = () => {
     const point: Point = { x, y };
     
     if (activeTool === 'rectangle' && startPoint) {
-      // Complete rectangle on mouse up
+      // Complete rectangle on mouse up with no border (using currentColor, but no stroke will be drawn)
       const newRectangle = {
         id: generateId(),
         type: 'rectangle' as const,
         start: { ...startPoint },
         end: point,
-        color: currentColor,
+        color: 'transparent', // Make the border transparent
         fillColor: fillColor
       };
       
