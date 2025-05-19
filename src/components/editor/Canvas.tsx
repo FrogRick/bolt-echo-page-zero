@@ -1,6 +1,7 @@
 
 import React from "react";
-import { useCanvasEditor, Tool } from "@/hooks/useCanvasEditor";
+import { useCanvasEditor } from "@/hooks/useCanvasEditor";
+import { Tool } from "@/types/canvas";
 import { Toolbar } from "./Toolbar";
 
 const Canvas: React.FC = () => {
@@ -17,8 +18,7 @@ const Canvas: React.FC = () => {
     endDrawing,
     deleteSelected,
     clearCanvas,
-    canvasSize,
-    handleCanvasClick
+    canvasSize
   } = useCanvasEditor();
 
   return (
@@ -64,7 +64,6 @@ const Canvas: React.FC = () => {
             onMouseMove={draw}
             onMouseUp={endDrawing}
             onMouseLeave={endDrawing}
-            onClick={handleCanvasClick}
             className={`bg-white border border-gray-200 ${
               activeTool === "select" 
                 ? "cursor-default" 
