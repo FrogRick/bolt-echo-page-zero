@@ -71,12 +71,12 @@ export const useCanvasEditor = () => {
     drawShapes(ctx, shapes, selectedShape?.id || null, fillColor);
 
     // Draw polygon in progress
-    if (activeTool === 'polygon' && polygonPoints.length > 0) {
+    if ((activeTool === 'yellow-polygon' || activeTool === 'yellow-polygon-alt') && polygonPoints.length > 0) {
       drawInProgressPolygon(ctx, polygonPoints, currentPoint, currentColor, fillColor);
     }
 
-    // Draw preview line when using the line tool - only if we have a start and current point
-    if (activeTool === 'line' && startPoint && currentPoint) {
+    // Draw preview line when using the wall tool - only if we have a start and current point
+    if ((activeTool === 'wall' || activeTool === 'wall-alt') && startPoint && currentPoint) {
       // Get the snapped point for preview
       let endPoint = currentPoint;
       
@@ -107,7 +107,7 @@ export const useCanvasEditor = () => {
     }
     
     // Draw preview rectangle if we're in click mode and have a start point
-    if (activeTool === 'rectangle' && rectangleDrawMode === 'click' && startPoint && currentPoint) {
+    if ((activeTool === 'yellow-rectangle' || activeTool === 'yellow-rectangle-alt') && rectangleDrawMode === 'click' && startPoint && currentPoint) {
       ctx.fillStyle = fillColor;
       ctx.beginPath();
       ctx.rect(
