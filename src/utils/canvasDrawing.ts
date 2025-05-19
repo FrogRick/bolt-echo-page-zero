@@ -1,4 +1,3 @@
-
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -280,6 +279,8 @@ export const drawShapes = (
       
       // Calculate perpendicular angle for end caps (90 degrees to the line)
       const perpAngle = angle + Math.PI / 2;
+      const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
+      const strokeColor = 'strokeColor' in shape ? shape.strokeColor : '#000000';
       const dx = Math.cos(perpAngle) * (lineWidth / 2);
       const dy = Math.sin(perpAngle) * (lineWidth / 2);
       
