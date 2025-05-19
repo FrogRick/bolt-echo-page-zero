@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect } from 'react';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine, lineSnappingHelpers } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
@@ -9,10 +10,12 @@ export const useCanvasEditor = () => {
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [currentColor, setCurrentColor] = useState<string>('#000000');
   const [fillColor, setFillColor] = useState<string>('#FFFBCC'); // Light yellow
+  const [greenFillColor, setGreenFillColor] = useState<string>('#C9E5D1'); // Green fill color
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<Point | null>(null);
   const [currentPoint, setCurrentPoint] = useState<Point | null>(null);
   const [polygonPoints, setPolygonPoints] = useState<Point[]>([]);
+  const [wallPolygonPoints, setWallPolygonPoints] = useState<Point[]>([]);
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedShape, setSelectedShape] = useState<Shape | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
@@ -37,19 +40,23 @@ export const useCanvasEditor = () => {
 
   // Function to cancel the current drawing operation
   const cancelDrawing = () => {
-    if ((activeTool === 'wall' || activeTool === 'wall-alt') && startPoint) {
+    if (activeTool === 'wall' && startPoint) {
       // Cancel wall drawing - clear the start point
       setStartPoint(null);
       setPreviewLine(null);
       setIsDrawing(false);
-    } else if ((activeTool === 'yellow-rectangle' || activeTool === 'yellow-rectangle-alt')) {
+    } else if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
+      // Cancel wall polygon drawing - clear all wall polygon points
+      setWallPolygonPoints([]);
+      setIsDrawing(false);
+    } else if ((activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle')) {
       // Cancel rectangle drawing - clear the start point
       if (rectangleDrawMode === 'click' && startPoint) {
         setStartPoint(null);
         setCurrentPoint(null);
       }
       setIsDrawing(false);
-    } else if ((activeTool === 'yellow-polygon' || activeTool === 'yellow-polygon-alt') && polygonPoints.length > 0) {
+    } else if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length > 0) {
       // Cancel polygon drawing - clear all polygon points
       setPolygonPoints([]);
     }
@@ -71,12 +78,19 @@ export const useCanvasEditor = () => {
     drawShapes(ctx, shapes, selectedShape?.id || null, fillColor);
 
     // Draw polygon in progress
-    if ((activeTool === 'yellow-polygon' || activeTool === 'yellow-polygon-alt') && polygonPoints.length > 0) {
-      drawInProgressPolygon(ctx, polygonPoints, currentPoint, currentColor, fillColor);
+    if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length > 0) {
+      const polygonFillColor = activeTool === 'green-polygon' ? greenFillColor : fillColor;
+      drawInProgressPolygon(ctx, polygonPoints, currentPoint, currentColor, polygonFillColor);
+    }
+
+    // Draw wall polygon in progress (using same drawing function as regular polygon)
+    if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
+      // For wall polygon, we draw lines without fill
+      drawInProgressPolygon(ctx, wallPolygonPoints, currentPoint, currentColor, 'transparent');
     }
 
     // Draw preview line when using the wall tool - only if we have a start and current point
-    if ((activeTool === 'wall' || activeTool === 'wall-alt') && startPoint && currentPoint) {
+    if (activeTool === 'wall' && startPoint && currentPoint) {
       // Get the snapped point for preview
       let endPoint = currentPoint;
       
@@ -107,8 +121,9 @@ export const useCanvasEditor = () => {
     }
     
     // Draw preview rectangle if we're in click mode and have a start point
-    if ((activeTool === 'yellow-rectangle' || activeTool === 'yellow-rectangle-alt') && rectangleDrawMode === 'click' && startPoint && currentPoint) {
-      ctx.fillStyle = fillColor;
+    if ((activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'click' && startPoint && currentPoint) {
+      // Use the appropriate fill color based on the active tool
+      ctx.fillStyle = activeTool === 'green-rectangle' ? greenFillColor : fillColor;
       ctx.beginPath();
       ctx.rect(
         startPoint.x,
@@ -195,16 +210,49 @@ export const useCanvasEditor = () => {
       return;
     }
     
+    // Determine fill color based on active tool
+    const polygonFillColor = activeTool === 'green-polygon' ? greenFillColor : fillColor;
+    
     const newPolygon = {
       id: generateId(),
       type: 'polygon' as const,
       points: [...polygonPoints],
       color: 'transparent', // Make the border transparent
-      fillColor: fillColor
+      fillColor: polygonFillColor
     };
     
     setShapes([...shapes, newPolygon]);
     setPolygonPoints([]);
+  };
+  
+  // Complete the wall polygon drawing and save it as series of lines
+  const completeWallPolygon = () => {
+    if (wallPolygonPoints.length < 2) {
+      // Need at least 2 points to form lines
+      setWallPolygonPoints([]);
+      return;
+    }
+    
+    // Create a new array to hold all the new lines
+    const newLines: Shape[] = [];
+    
+    // Create lines between consecutive points
+    for (let i = 0; i < wallPolygonPoints.length - 1; i++) {
+      const newLine = {
+        id: generateId(),
+        type: 'line' as const,
+        start: { ...wallPolygonPoints[i] },
+        end: { ...wallPolygonPoints[i + 1] },
+        color: currentColor,
+        lineWidth: 8, // Make the line thicker
+        strokeColor: '#000000' // Black border color
+      };
+      newLines.push(newLine);
+    }
+    
+    // Add all new lines to shapes
+    setShapes([...shapes, ...newLines]);
+    setWallPolygonPoints([]);
   };
 
   // Handle mouse down event
@@ -221,7 +269,7 @@ export const useCanvasEditor = () => {
     
     if (activeTool === 'select') {
       handleSelectToolMouseDown(point);
-    } else if (activeTool === 'wall' || activeTool === 'wall-alt') {
+    } else if (activeTool === 'wall') {
       // Apply both endpoint and line snapping before starting to draw
       let snappedPoint = point;
       
@@ -241,7 +289,9 @@ export const useCanvasEditor = () => {
       
       // Use click-point-click mode exclusively for lines
       handleLineToolClick(snappedPoint);
-    } else if (activeTool === 'yellow-rectangle' || activeTool === 'yellow-rectangle-alt') {
+    } else if (activeTool === 'wall-polygon') {
+      handleWallPolygonToolMouseDown(point);
+    } else if (activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') {
       if (rectangleDrawMode === 'click') {
         // In click mode, first click sets start point, second click completes
         if (!startPoint) {
@@ -255,7 +305,7 @@ export const useCanvasEditor = () => {
             start: { ...startPoint },
             end: point,
             color: 'transparent',
-            fillColor: fillColor
+            fillColor: activeTool === 'green-rectangle' ? greenFillColor : fillColor
           };
           
           setShapes([...shapes, newRectangle]);
@@ -266,7 +316,7 @@ export const useCanvasEditor = () => {
         // Traditional drag mode
         handleRectangleToolMouseDown(point);
       }
-    } else if (activeTool === 'yellow-polygon' || activeTool === 'yellow-polygon-alt') {
+    } else if (activeTool === 'yellow-polygon' || activeTool === 'green-polygon') {
       handlePolygonToolMouseDown(point);
     }
   };
@@ -286,15 +336,18 @@ export const useCanvasEditor = () => {
     
     if (isDragging && selectedShape) {
       handleDragMove(point);
-    } else if ((activeTool === 'wall' || activeTool === 'wall-alt') && startPoint) {
+    } else if (activeTool === 'wall' && startPoint) {
       // Update the current point for line preview
       redrawCanvas();
-    } else if (isDrawing && (activeTool === 'yellow-rectangle' || activeTool === 'yellow-rectangle-alt') && rectangleDrawMode === 'drag') {
+    } else if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
+      // Update the current point for wall polygon preview
       redrawCanvas();
-    } else if ((activeTool === 'yellow-rectangle' || activeTool === 'yellow-rectangle-alt') && rectangleDrawMode === 'click' && startPoint) {
+    } else if (isDrawing && (activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'drag') {
+      redrawCanvas();
+    } else if ((activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'click' && startPoint) {
       // Update preview for click mode rectangle
       redrawCanvas();
-    } else if ((activeTool === 'yellow-polygon' || activeTool === 'yellow-polygon-alt') && polygonPoints.length > 0) {
+    } else if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length > 0) {
       // Update the current point for polygon preview
       redrawCanvas();
     }
@@ -331,6 +384,47 @@ export const useCanvasEditor = () => {
     } else {
       // Complete the line on second click
       completeLine(point);
+    }
+  };
+  
+  // Handle wall polygon tool mouse down - multiple connected lines
+  const handleWallPolygonToolMouseDown = (point: Point) => {
+    // Apply snapping to the point
+    let snappedPoint = point;
+    
+    // First check if we can snap to a line
+    if (snapToLines) {
+      const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
+      if (lineSnap) {
+        snappedPoint = lineSnap.point;
+      }
+    }
+    
+    // Then check endpoint snapping (this takes priority)
+    const endpointSnap = findNearestEndpoint(snappedPoint);
+    if (endpointSnap) {
+      snappedPoint = endpointSnap;
+    }
+    
+    // If we don't have any points yet, add this as the first point
+    if (wallPolygonPoints.length === 0) {
+      setWallPolygonPoints([snappedPoint]);
+      setIsDrawing(true);
+    } else {
+      // If we already have points, check if this is a double-click (close to last point)
+      const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
+      const distance = Math.sqrt(
+        Math.pow(snappedPoint.x - lastPoint.x, 2) + 
+        Math.pow(snappedPoint.y - lastPoint.y, 2)
+      );
+      
+      if (distance < 10) {
+        // Double-click detected, complete the wall polygon
+        completeWallPolygon();
+      } else {
+        // Add this as a new point
+        setWallPolygonPoints([...wallPolygonPoints, snappedPoint]);
+      }
     }
   };
 
@@ -463,7 +557,7 @@ export const useCanvasEditor = () => {
     
     const point: Point = { x, y };
     
-    if ((activeTool === 'yellow-rectangle' || activeTool === 'yellow-rectangle-alt') && rectangleDrawMode === 'drag' && startPoint) {
+    if ((activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'drag' && startPoint) {
       // Complete rectangle on mouse up with no border
       const newRectangle = {
         id: generateId(),
@@ -471,7 +565,7 @@ export const useCanvasEditor = () => {
         start: { ...startPoint },
         end: point,
         color: 'transparent', // Make the border transparent
-        fillColor: fillColor
+        fillColor: activeTool === 'green-rectangle' ? greenFillColor : fillColor
       };
       
       setShapes([...shapes, newRectangle]);
@@ -496,6 +590,7 @@ export const useCanvasEditor = () => {
     setShapes([]);
     setSelectedShape(null);
     setPolygonPoints([]);
+    setWallPolygonPoints([]);
     setStartPoint(null);
     setCurrentPoint(null);
     setIsDrawing(false);
@@ -532,10 +627,18 @@ export const useCanvasEditor = () => {
       }
       
       // If we're in polygon drawing mode with at least 3 points
-      if ((activeTool === 'yellow-polygon' || activeTool === 'yellow-polygon-alt') && polygonPoints.length >= 3) {
+      if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length >= 3) {
         if (e.key === 'Enter') {
           // Close the polygon on Enter
           completePolygon();
+        }
+      }
+      
+      // If we're in wall polygon drawing mode with at least 2 points
+      if (activeTool === 'wall-polygon' && wallPolygonPoints.length >= 2) {
+        if (e.key === 'Enter') {
+          // Complete the wall polygon on Enter
+          completeWallPolygon();
         }
       }
     };
@@ -544,7 +647,7 @@ export const useCanvasEditor = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeTool, polygonPoints, startPoint, rectangleDrawMode]);
+  }, [activeTool, polygonPoints, wallPolygonPoints, startPoint, rectangleDrawMode]);
 
   // Redraw the canvas whenever shapes or selected shapes change
   useEffect(() => {
@@ -553,6 +656,7 @@ export const useCanvasEditor = () => {
     shapes,
     selectedShape,
     polygonPoints,
+    wallPolygonPoints,
     activeTool,
     startPoint,
     currentPoint,

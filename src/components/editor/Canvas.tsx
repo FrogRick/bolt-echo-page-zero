@@ -142,7 +142,7 @@ const Canvas: React.FC = () => {
             className={`bg-white border border-gray-200 ${
               activeTool === "select" 
                 ? "cursor-default" 
-                : (activeTool === "wall" || activeTool === "wall-alt" || activeTool === "yellow-polygon" || activeTool === "yellow-polygon-alt")
+                : (activeTool === "wall" || activeTool === "wall-polygon" || activeTool === "yellow-polygon" || activeTool === "green-polygon")
                   ? "cursor-crosshair" 
                   : "cursor-crosshair"
             }`}

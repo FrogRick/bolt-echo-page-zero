@@ -22,9 +22,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     { id: "wall", icon: Square, label: "Wall" },
     { id: "yellow-rectangle", icon: Square, label: "Yellow Rectangle" },
     { id: "yellow-polygon", icon: Triangle, label: "Yellow Polygon" },
-    { id: "wall-alt", icon: Square, label: "Wall Alt" },
-    { id: "yellow-rectangle-alt", icon: Square, label: "Yellow Rectangle Alt" },
-    { id: "yellow-polygon-alt", icon: Triangle, label: "Yellow Polygon Alt" },
+    { id: "wall-polygon", icon: Square, label: "Wall Polygon" },
+    { id: "green-rectangle", icon: Square, label: "Green Rectangle" },
+    { id: "green-polygon", icon: Triangle, label: "Green Polygon" },
   ];
 
   return (
