@@ -1,3 +1,4 @@
+
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -117,15 +118,18 @@ export const drawShapes = (
             // Save context
             ctx.save();
             
+            // Calculate the joint radius - now about half the previous size
+            const jointRadius = (lineWidth + 1) / 4; // Reduced to about half the previous size
+            
             // Draw a filled circle at the connection point
             ctx.beginPath();
-            ctx.arc(endpoint.x, endpoint.y, (8 + 1) / 2, 0, Math.PI * 2); // Radius matches the line thickness
+            ctx.arc(endpoint.x, endpoint.y, jointRadius, 0, Math.PI * 2);
             ctx.fillStyle = '#8E9196'; // Same color as the line
             ctx.fill();
             
             // Draw the border
             ctx.beginPath();
-            ctx.arc(endpoint.x, endpoint.y, (8 + 2 + 1) / 2, 0, Math.PI * 2); // Radius includes border
+            ctx.arc(endpoint.x, endpoint.y, jointRadius + 1, 0, Math.PI * 2); // Radius includes border
             ctx.fillStyle = '#000000'; // Border color
             ctx.globalCompositeOperation = 'destination-over';
             ctx.fill();
