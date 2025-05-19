@@ -29,7 +29,7 @@ const Canvas: React.FC = () => {
     toggleRectangleDrawMode
   } = useCanvasEditor();
 
-  // Force canvas redraw when tool changes to ensure correct rendering
+  // Force canvas redraw when tool or styling changes to ensure correct rendering
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -43,7 +43,8 @@ const Canvas: React.FC = () => {
         }, 0);
       }
     }
-  }, [activeTool, rectangleDrawMode, currentColor, fillColor]); // Also redraw when colors change
+  }, [activeTool, rectangleDrawMode, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines]); 
+  // Added all snap settings to the dependency array to ensure proper redrawing
 
   return (
     <div className="flex flex-col h-full">

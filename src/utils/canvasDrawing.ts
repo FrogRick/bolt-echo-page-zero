@@ -144,7 +144,7 @@ export const drawShapes = (
   // Clear the canvas with a normal composite operation
   ctx.globalCompositeOperation = 'source-over';
   
-  // Step 1: Draw all fills for rectangles and polygons first
+  // STEP 1: Draw all fills for rectangles and polygons first
   sortedShapes.forEach(shape => {
     if (shape.type !== 'line') {
       // Save context state
@@ -182,7 +182,74 @@ export const drawShapes = (
     }
   });
 
-  // Step 2: Now draw all lines with their borders, they will be on top of other shapes
+  // STEP 2: Draw all welding joints UNDER the lines first
+  const drawnJoints = new Set<string>();
+
+  sortedShapes.forEach(shape => {
+    if (shape.type === 'line') {
+      // Get all joint positions first
+      const jointPositions: {point: Point, jointKey: string}[] = [];
+      
+      // Check each end of the line for connections and intersections
+      [shape.start, shape.end].forEach(endpoint => {
+        // Create a unique key for this joint to avoid drawing it multiple times
+        const jointKey = `${Math.round(endpoint.x)},${Math.round(endpoint.y)}`;
+        
+        if (!drawnJoints.has(jointKey)) {
+          const connectedLines = findConnectedLines(shapes, endpoint);
+          const intersectingLines = findIntersectingLines(shapes, endpoint);
+          
+          // If we have multiple lines connected at this point OR any intersecting lines, add a welding circle
+          if (connectedLines.length > 1 || intersectingLines.length > 0) {
+            jointPositions.push({point: endpoint, jointKey});
+            drawnJoints.add(jointKey);
+          }
+        }
+      });
+
+      // Also check for intersections along the line
+      sortedShapes.forEach(otherShape => {
+        if (otherShape.type === 'line' && otherShape.id !== shape.id) {
+          // Check if the lines intersect
+          const intersection = findLineIntersection(shape, otherShape);
+          if (intersection) {
+            const intersectionKey = `${Math.round(intersection.x)},${Math.round(intersection.y)}`;
+            
+            if (!drawnJoints.has(intersectionKey)) {
+              jointPositions.push({point: intersection, jointKey: intersectionKey});
+              drawnJoints.add(intersectionKey);
+            }
+          }
+        }
+      });
+      
+      // Draw the joint circles FIRST (below the lines)
+      jointPositions.forEach(({point, jointKey}) => {
+        // Find the line width to use for the joint (defaulting to 8 if not found)
+        const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
+        
+        // Save context
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        
+        // Draw the black border circle first
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, lineWidth / 2 + 1, 0, Math.PI * 2);
+        ctx.fillStyle = '#000000';
+        ctx.fill();
+        
+        // Draw the gray center circle that matches the line color
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, lineWidth / 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#8E9196';
+        ctx.fill();
+        
+        ctx.restore();
+      });
+    }
+  });
+
+  // STEP 3: Now draw all the lines with their borders on top of the welding joints
   sortedShapes.forEach(shape => {
     if (shape.type === 'line') {
       // Find if any lines are connected to this line's start or end points
@@ -252,92 +319,7 @@ export const drawShapes = (
     }
   });
 
-  // Step 3: Draw welding joints at connections
-  const drawnJoints = new Set<string>();
-  
-  sortedShapes.forEach(shape => {
-    if (shape.type === 'line') {
-      // Check each end of the line for connections and intersections
-      [shape.start, shape.end].forEach(endpoint => {
-        // Create a unique key for this joint to avoid drawing it multiple times
-        const jointKey = `${Math.round(endpoint.x)},${Math.round(endpoint.y)}`;
-        
-        if (!drawnJoints.has(jointKey)) {
-          const connectedLines = findConnectedLines(shapes, endpoint);
-          const intersectingLines = findIntersectingLines(shapes, endpoint);
-          
-          // If we have multiple lines connected at this point OR any intersecting lines, add a welding circle
-          if (connectedLines.length > 1 || intersectingLines.length > 0) {
-            // Find the line width to use for the joint (defaulting to 8 if not found)
-            const firstLine = connectedLines.length > 0 ? connectedLines[0] : 
-                              intersectingLines.length > 0 ? intersectingLines[0] : null;
-                              
-            const lineWidth = firstLine && firstLine.type === 'line' && 'lineWidth' in firstLine
-              ? firstLine.lineWidth
-              : 8;
-            
-            // Save context
-            ctx.save();
-            ctx.globalCompositeOperation = 'source-over';
-            
-            // Draw the black border circle first
-            ctx.beginPath();
-            ctx.arc(endpoint.x, endpoint.y, lineWidth / 2 + 1, 0, Math.PI * 2);
-            ctx.fillStyle = '#000000';
-            ctx.fill();
-            
-            // Draw the gray center circle that matches the line color
-            ctx.beginPath();
-            ctx.arc(endpoint.x, endpoint.y, lineWidth / 2, 0, Math.PI * 2);
-            ctx.fillStyle = '#8E9196';
-            ctx.fill();
-            
-            ctx.restore();
-            
-            // Mark this joint as processed
-            drawnJoints.add(jointKey);
-          }
-        }
-      });
-      
-      // Also check for intersections along the line
-      sortedShapes.forEach(otherShape => {
-        if (otherShape.type === 'line' && otherShape.id !== shape.id) {
-          // Check if the lines intersect
-          const intersection = findLineIntersection(shape, otherShape);
-          if (intersection) {
-            const intersectionKey = `${Math.round(intersection.x)},${Math.round(intersection.y)}`;
-            
-            if (!drawnJoints.has(intersectionKey)) {
-              const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
-              
-              // Save context
-              ctx.save();
-              ctx.globalCompositeOperation = 'source-over';
-              
-              // Draw black border circle first
-              ctx.beginPath();
-              ctx.arc(intersection.x, intersection.y, lineWidth / 2 + 1, 0, Math.PI * 2);
-              ctx.fillStyle = '#000000';
-              ctx.fill();
-              
-              // Draw gray center circle
-              ctx.beginPath();
-              ctx.arc(intersection.x, intersection.y, lineWidth / 2, 0, Math.PI * 2);
-              ctx.fillStyle = '#8E9196';
-              ctx.fill();
-              
-              ctx.restore();
-              
-              drawnJoints.add(intersectionKey);
-            }
-          }
-        }
-      });
-    }
-  });
-
-  // Step 4: Highlight selected shape - always on top
+  // STEP 4: Highlight selected shape - always on top
   if (selectedShapeId) {
     const selectedShape = shapes.find(shape => shape.id === selectedShapeId);
     if (selectedShape) {
