@@ -1,4 +1,3 @@
-
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -19,6 +18,54 @@ const findConnectedLines = (
     (currentShapeId ? shape.id !== currentShapeId : true) &&
     (arePointsConnected(shape.start, connectionPoint) || 
      arePointsConnected(shape.end, connectionPoint))
+  );
+};
+
+// New helper function to check if a point lies on a line
+const isPointOnLine = (
+  point: Point, 
+  lineStart: Point, 
+  lineEnd: Point,
+  threshold: number = 5
+): boolean => {
+  // Convert line to parametric form
+  const lineLength = Math.sqrt(
+    Math.pow(lineEnd.x - lineStart.x, 2) + 
+    Math.pow(lineEnd.y - lineStart.y, 2)
+  );
+  
+  if (lineLength === 0) return false;
+  
+  // Calculate distance from point to line
+  const dist = Math.abs(
+    (lineEnd.x - lineStart.x) * (lineStart.y - point.y) - 
+    (lineStart.x - point.x) * (lineEnd.y - lineStart.y)
+  ) / lineLength;
+  
+  // Check if point is close enough to line
+  if (dist > threshold) return false;
+  
+  // Check if point is within line segment bounds (not just on the infinite line)
+  const dotProduct = 
+    ((point.x - lineStart.x) * (lineEnd.x - lineStart.x) + 
+    (point.y - lineStart.y) * (lineEnd.y - lineStart.y)) / 
+    (lineLength * lineLength);
+  
+  return dotProduct >= 0 && dotProduct <= 1;
+};
+
+// Find lines that this point intersects with (connects in the middle)
+const findIntersectingLines = (
+  shapes: Shape[],
+  point: Point,
+  currentShapeId?: string
+): Shape[] => {
+  return shapes.filter(shape => 
+    shape.type === 'line' && 
+    (currentShapeId ? shape.id !== currentShapeId : true) &&
+    !arePointsConnected(shape.start, point) && 
+    !arePointsConnected(shape.end, point) &&
+    isPointOnLine(point, shape.start, shape.end)
   );
 };
 
@@ -69,12 +116,16 @@ export const drawShapes = (
     }
   });
 
-  // Second pass: Draw lines with special handling for connected lines
+  // Second pass: Draw lines with special handling for connected lines and intersections
   shapes.forEach(shape => {
     if (shape.type === 'line') {
       // Find if any lines are connected to this line's start or end points
       const connectedToStart = findConnectedLines(shapes, shape.start, shape.id);
       const connectedToEnd = findConnectedLines(shapes, shape.end, shape.id);
+      
+      // Find if any lines are intersected by this line's start or end points
+      const intersectingWithStart = findIntersectingLines(shapes, shape.start, shape.id);
+      const intersectingWithEnd = findIntersectingLines(shapes, shape.end, shape.id);
       
       const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
       const strokeColor = 'strokeColor' in shape ? shape.strokeColor : '#000000';
@@ -118,16 +169,16 @@ export const drawShapes = (
       ctx.strokeStyle = strokeColor;
       ctx.lineWidth = borderThickness;
       
-      // Draw cap at start point if not connected
-      if (connectedToStart.length === 0) {
+      // Draw cap at start point if not connected or intersecting
+      if (connectedToStart.length === 0 && intersectingWithStart.length === 0) {
         ctx.beginPath();
         ctx.moveTo(shape.start.x - dx, shape.start.y - dy);
         ctx.lineTo(shape.start.x + dx, shape.start.y + dy);
         ctx.stroke();
       }
       
-      // Draw cap at end point if not connected
-      if (connectedToEnd.length === 0) {
+      // Draw cap at end point if not connected or intersecting
+      if (connectedToEnd.length === 0 && intersectingWithEnd.length === 0) {
         ctx.beginPath();
         ctx.moveTo(shape.end.x - dx, shape.end.y - dy);
         ctx.lineTo(shape.end.x + dx, shape.end.y + dy);
@@ -140,24 +191,27 @@ export const drawShapes = (
     }
   });
 
-  // Third pass - draw connection points at joints to ensure proper welding
+  // Third pass - draw connection points at joints AND intersection points to ensure proper welding
   const drawnJoints = new Set<string>();
   
   shapes.forEach(shape => {
     if (shape.type === 'line') {
-      // Check each end of the line for connections
+      // Check each end of the line for connections and intersections
       [shape.start, shape.end].forEach(endpoint => {
         // Create a unique key for this joint to avoid drawing it multiple times
         const jointKey = `${Math.round(endpoint.x)},${Math.round(endpoint.y)}`;
         
         if (!drawnJoints.has(jointKey)) {
           const connectedLines = findConnectedLines(shapes, endpoint);
+          const intersectingLines = findIntersectingLines(shapes, endpoint);
           
-          // If we have multiple lines connected at this point, add a welding circle
-          if (connectedLines.length > 1) {
+          // If we have multiple lines connected at this point OR any intersecting lines, add a welding circle
+          if (connectedLines.length > 1 || intersectingLines.length > 0) {
             // Find the line width to use for the joint (defaulting to 8 if not found)
-            const firstLine = connectedLines[0];
-            const lineWidth = firstLine.type === 'line' && 'lineWidth' in firstLine
+            const firstLine = connectedLines.length > 0 ? connectedLines[0] : 
+                              intersectingLines.length > 0 ? intersectingLines[0] : null;
+                              
+            const lineWidth = firstLine && firstLine.type === 'line' && 'lineWidth' in firstLine
               ? firstLine.lineWidth
               : 8;
             
@@ -181,6 +235,41 @@ export const drawShapes = (
             
             // Mark this joint as processed
             drawnJoints.add(jointKey);
+          }
+        }
+      });
+      
+      // Also check for intersections along the line
+      shapes.forEach(otherShape => {
+        if (otherShape.type === 'line' && otherShape.id !== shape.id) {
+          // Check if the lines intersect
+          const intersection = findLineIntersection(shape, otherShape);
+          if (intersection) {
+            const intersectionKey = `${Math.round(intersection.x)},${Math.round(intersection.y)}`;
+            
+            if (!drawnJoints.has(intersectionKey)) {
+              // Add welding circle at intersection
+              const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
+              
+              ctx.save();
+              
+              // Draw gray center circle
+              ctx.beginPath();
+              ctx.arc(intersection.x, intersection.y, lineWidth / 2, 0, Math.PI * 2);
+              ctx.fillStyle = '#8E9196';
+              ctx.fill();
+              
+              // Draw black border circle
+              ctx.beginPath();
+              ctx.arc(intersection.x, intersection.y, lineWidth / 2 + 1, 0, Math.PI * 2);
+              ctx.fillStyle = '#000000';
+              ctx.globalCompositeOperation = 'destination-over';
+              ctx.fill();
+              
+              ctx.restore();
+              
+              drawnJoints.add(intersectionKey);
+            }
           }
         }
       });
@@ -222,6 +311,32 @@ export const drawShapes = (
       }
     }
   }
+};
+
+// Helper function to find intersection point of two lines if they intersect
+const findLineIntersection = (line1: Shape, line2: Shape): Point | null => {
+  if (line1.type !== 'line' || line2.type !== 'line') return null;
+
+  const x1 = line1.start.x, y1 = line1.start.y;
+  const x2 = line1.end.x, y2 = line1.end.y;
+  const x3 = line2.start.x, y3 = line2.start.y;
+  const x4 = line2.end.x, y4 = line2.end.y;
+
+  // Calculate denominators
+  const den = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+  if (den === 0) return null; // Lines are parallel
+
+  const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / den;
+  const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / den;
+
+  // Check if intersection is within both line segments
+  if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
+    const x = x1 + ua * (x2 - x1);
+    const y = y1 + ua * (y2 - y1);
+    return { x, y };
+  }
+
+  return null;
 };
 
 export const drawInProgressPolygon = (

@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect } from 'react';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
@@ -102,9 +101,9 @@ export const useCanvasEditor = () => {
     // Determine nearest 45 degree increment
     const snapAngle = Math.round(angle / 45) * 45;
     
-    // Check if we're within the threshold (10 degrees) of a 45-degree increment
+    // Check if we're within the threshold (5 degrees) of a 45-degree increment - stricter threshold
     const angleDiff = Math.abs((angle % 45) - 45) % 45;
-    const shouldSnap = angleDiff < 10 || angleDiff > 35; // Stricter threshold - within 10 degrees of a 45 degree angle
+    const shouldSnap = angleDiff < 5 || angleDiff > 40; // Much stricter threshold - within 5 degrees of a 45 degree angle
     
     if (!shouldSnap) return endPoint;
     
@@ -493,13 +492,13 @@ export const useCanvasEditor = () => {
     setRectangleDrawMode(rectangleDrawMode === 'click' ? 'drag' : 'click');
   };
 
-  // Handle keyboard events for polygon escape and backspace
+  // Handle keyboard events for polygon escape and enter (changed from backspace to enter)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // If we're in polygon drawing mode with at least 3 points
       if (activeTool === 'polygon' && polygonPoints.length >= 3) {
-        if (e.key === 'Escape' || e.key === 'Backspace') {
-          // Close the polygon on Escape or Backspace
+        if (e.key === 'Escape' || e.key === 'Enter') {  // Changed to Enter instead of Backspace
+          // Close the polygon on Escape or Enter
           completePolygon();
         }
       }
