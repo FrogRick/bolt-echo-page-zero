@@ -118,8 +118,15 @@ export const drawShapes = (
             // Save context
             ctx.save();
             
+            // Find the line width to use for the joint radius (defaulting to 8 if not found)
+            const firstLine = connectedLines[0];
+            const defaultLineWidth = 8;
+            const jointLineWidth = firstLine.type === 'line' && 'lineWidth' in firstLine 
+              ? firstLine.lineWidth 
+              : defaultLineWidth;
+            
             // Calculate the joint radius - now about half the previous size
-            const jointRadius = (lineWidth + 1) / 4; // Reduced to about half the previous size
+            const jointRadius = (jointLineWidth + 1) / 4; // Reduced to about half the previous size
             
             // Draw a filled circle at the connection point
             ctx.beginPath();
