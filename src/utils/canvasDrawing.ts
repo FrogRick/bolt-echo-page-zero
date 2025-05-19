@@ -1,4 +1,3 @@
-
 import { Point, Shape } from '@/types/canvas';
 
 export const drawShapes = (
@@ -21,27 +20,25 @@ export const drawShapes = (
       // Save the current state
       ctx.save();
       
-      // Draw the thick gray line
-      ctx.beginPath();
-      ctx.moveTo(shape.start.x, shape.start.y);
-      ctx.lineTo(shape.end.x, shape.end.y);
-      ctx.lineWidth = lineWidth;
-      ctx.strokeStyle = '#8E9196'; // Gray color for the main line
-      ctx.lineCap = 'butt'; // Flat ends for the gray part
-      ctx.stroke();
-      
-      // Draw the thin black border with consistent 2px width
+      // Draw the black border first (under everything) - this ensures the ends have borders too
       ctx.beginPath();
       ctx.moveTo(shape.start.x, shape.start.y);
       ctx.lineTo(shape.end.x, shape.end.y);
       ctx.lineWidth = lineWidth + 2; // Consistently 2px wider for the border
       ctx.strokeStyle = strokeColor;
-      ctx.lineCap = 'butt'; // Match the gray line's end style
-      ctx.globalCompositeOperation = 'destination-over';
+      ctx.lineCap = 'butt';
+      ctx.stroke();
+      
+      // Then draw the gray line on top, but slightly shorter
+      ctx.beginPath();
+      ctx.moveTo(shape.start.x, shape.start.y);
+      ctx.lineTo(shape.end.x, shape.end.y);
+      ctx.lineWidth = lineWidth;
+      ctx.strokeStyle = '#8E9196'; // Gray color for the main line
+      ctx.lineCap = 'butt';
       ctx.stroke();
       
       // Restore to default state
-      ctx.globalCompositeOperation = 'source-over';
       ctx.restore();
       
     } else if (shape.type === 'rectangle') {
@@ -137,26 +134,24 @@ export const drawPreviewLine = (
   // Save the current state
   ctx.save();
   
-  // Draw the thick gray preview line
-  ctx.beginPath();
-  ctx.moveTo(start.x, start.y);
-  ctx.lineTo(end.x, end.y);
-  ctx.lineWidth = 8;
-  ctx.strokeStyle = '#8E9196'; // Gray color
-  ctx.lineCap = 'butt'; // Flat ends for the gray part
-  ctx.stroke();
-  
-  // Draw the thin black border with consistent 2px width
+  // Draw the black border first (under everything)
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
   ctx.lineWidth = 8 + 2; // Consistently 2px wider for border
   ctx.strokeStyle = '#000000'; // Black border
-  ctx.lineCap = 'butt'; // Match the gray line's end style
-  ctx.globalCompositeOperation = 'destination-over';
+  ctx.lineCap = 'butt';
+  ctx.stroke();
+  
+  // Then draw the gray line on top
+  ctx.beginPath();
+  ctx.moveTo(start.x, start.y);
+  ctx.lineTo(end.x, end.y);
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = '#8E9196'; // Gray color
+  ctx.lineCap = 'butt';
   ctx.stroke();
   
   // Restore to default state
-  ctx.globalCompositeOperation = 'source-over';
   ctx.restore();
 };

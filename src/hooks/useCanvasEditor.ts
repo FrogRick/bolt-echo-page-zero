@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect } from 'react';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
@@ -26,6 +27,8 @@ export const useCanvasEditor = () => {
   const [snapToAngle, setSnapToAngle] = useState<boolean>(true);
   const [snapToEndpoints, setSnapToEndpoints] = useState<boolean>(true);
   const [snapDistance, setSnapDistance] = useState<number>(10); // Pixels
+  // Track connected lines for continuous rendering
+  const [connectedLines, setConnectedLines] = useState<Map<string, string[]>>(new Map());
 
   // Import shape detection functions
   const { findShapeAtPoint } = useShapeDetection();
@@ -258,6 +261,29 @@ export const useCanvasEditor = () => {
       lineWidth: 8, // Make the line thicker
       strokeColor: '#000000' // Black border color
     };
+    
+    // Check if we're connecting to another line's endpoint
+    const connectedToPoint = snappedEndpoint !== endPoint ? snappedEndpoint : null;
+    if (connectedToPoint) {
+      // Find which shape(s) have this endpoint
+      const connections = shapes.filter(shape => {
+        if (shape.type === 'line') {
+          const isStartEqual = Math.abs(shape.start.x - connectedToPoint.x) < 1 && 
+                               Math.abs(shape.start.y - connectedToPoint.y) < 1;
+          const isEndEqual = Math.abs(shape.end.x - connectedToPoint.x) < 1 && 
+                             Math.abs(shape.end.y - connectedToPoint.y) < 1;
+          return isStartEqual || isEndEqual;
+        }
+        return false;
+      }).map(shape => shape.id);
+      
+      // Update connections map
+      if (connections.length > 0) {
+        const newConnections = new Map(connectedLines);
+        newConnections.set(newLine.id, connections);
+        setConnectedLines(newConnections);
+      }
+    }
     
     setShapes([...shapes, newLine]);
     setStartPoint(null);
