@@ -1,9 +1,9 @@
 
 import { useRef, useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
 import { Tool, Point, Shape, PreviewLine } from '@/types/canvas';
+import { generateId } from '@/utils/idGenerator';
 
 export const useCanvasEditor = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -140,7 +140,7 @@ export const useCanvasEditor = () => {
     } else {
       // If there's already a start point, complete the line and reset
       const newLine = {
-        id: uuidv4(),
+        id: generateId(),
         type: 'line' as const,
         start: { ...startPoint },
         end: point,
@@ -174,7 +174,7 @@ export const useCanvasEditor = () => {
       if (polygonPoints.length > 2 && distance < 10) {
         // Close the polygon and save it
         const newPolygon = {
-          id: uuidv4(),
+          id: generateId(),
           type: 'polygon' as const,
           points: [...polygonPoints],
           color: currentColor,
@@ -256,7 +256,7 @@ export const useCanvasEditor = () => {
     if (activeTool === 'rectangle' && startPoint) {
       // Complete rectangle on mouse up
       const newRectangle = {
-        id: uuidv4(),
+        id: generateId(),
         type: 'rectangle' as const,
         start: { ...startPoint },
         end: point,
