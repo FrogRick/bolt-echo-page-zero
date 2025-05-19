@@ -1,5 +1,4 @@
-
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import HomePage from "@/pages/HomePage";
 import EditorPage from "@/pages/EditorPage";
