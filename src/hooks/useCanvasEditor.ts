@@ -203,11 +203,32 @@ export const useCanvasEditor = () => {
         setSelectedShape(null);
       }
     } else if (activeTool === 'line') {
-      // Set the starting point for the line
-      setStartPoint({ x, y });
-      setCurrentPoint({ x, y });
-      setIsDrawing(true);
-      setPreviewLine(null);
+      // Modified line tool behavior:
+      // If there's no start point, set it and show preview immediately
+      if (!startPoint) {
+        setStartPoint({ x, y });
+        setCurrentPoint({ x, y });
+        setPreviewLine({
+          start: { x, y },
+          end: { x, y }
+        });
+      } else {
+        // If there's already a start point, complete the line and reset
+        const shape = {
+          id: uuidv4(),
+          type: 'line',
+          start: { ...startPoint },
+          end: { x, y },
+          color: currentColor
+        };
+        
+        setShapes([...shapes, shape]);
+        setStartPoint(null);
+        setPreviewLine(null);
+        
+        // Switch back to select tool after drawing one line
+        setActiveTool('select');
+      }
     } else if (activeTool === 'rectangle') {
       setStartPoint({ x, y });
       setIsDrawing(true);
@@ -296,50 +317,34 @@ export const useCanvasEditor = () => {
       
       setShapes(updatedShapes);
       setSelectedShape(updatedShapes.find(shape => shape.id === selectedShape.id));
-    } else if (isDrawing) {
-      if (activeTool === 'line' || activeTool === 'rectangle') {
-        redrawCanvas();
-      }
-    } else if (activeTool === 'polygon' && polygonPoints.length > 0) {
-      // Update the current point for polygon preview
-      redrawCanvas();
     } else if (activeTool === 'line' && startPoint) {
-      // Show live preview of the line as mouse moves
+      // Update the preview line as mouse moves
       setPreviewLine({
         start: startPoint,
         end: { x, y }
       });
+      redrawCanvas();
+    } else if (isDrawing) {
+      if (activeTool === 'rectangle') {
+        redrawCanvas();
+      }
+    } else if (activeTool === 'polygon' && polygonPoints.length > 0) {
+      // Update the current point for polygon preview
       redrawCanvas();
     }
   };
 
   // Handle mouse up event
   const endDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || !isDrawing) return;
+    if (!canvasRef.current) return;
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    if (activeTool === 'line' && startPoint) {
-      // Finish drawing a line
-      const shape = {
-        id: uuidv4(),
-        type: 'line',
-        start: { ...startPoint },
-        end: { x, y },
-        color: currentColor
-      };
-      
-      setShapes([...shapes, shape]);
-      setIsDrawing(false);
-      setStartPoint(null);
-      setCurrentPoint(null);
-      // Reset active tool to select after drawing one line
-      setActiveTool('select');
-    } else if (activeTool === 'rectangle' && startPoint) {
-      // Finish drawing a rectangle
+    if (activeTool === 'rectangle' && startPoint) {
+      // Complete rectangle on mouse up
       const shape = {
         id: uuidv4(),
         type: 'rectangle',
@@ -355,35 +360,11 @@ export const useCanvasEditor = () => {
     }
     
     setIsDragging(false);
-    setPreviewLine(null);
   };
 
-  // Handle canvas click for single click operations
+  // Handle canvas click for single click operations - now only used for other tools
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (activeTool === 'line' && startPoint && !isDrawing) {
-      // Complete the line on second click
-      if (!canvasRef.current) return;
-      
-      const canvas = canvasRef.current;
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      // Create the line
-      const shape = {
-        id: uuidv4(),
-        type: 'line',
-        start: { ...startPoint },
-        end: { x, y },
-        color: currentColor
-      };
-      
-      setShapes([...shapes, shape]);
-      setStartPoint(null);
-      setPreviewLine(null);
-      // Reset active tool to select after creating one line
-      setActiveTool('select');
-    }
+    // Other click operations can remain here if needed in the future
   };
 
   // Delete selected shape
@@ -408,7 +389,15 @@ export const useCanvasEditor = () => {
   // Redraw the canvas whenever shapes or selected shapes change
   useEffect(() => {
     redrawCanvas();
-  }, [shapes, selectedShape, polygonPoints, activeTool, startPoint, currentPoint, previewLine]);
+  }, [
+    shapes,
+    selectedShape,
+    polygonPoints,
+    activeTool,
+    startPoint,
+    currentPoint,
+    previewLine
+  ]);
   
   return {
     canvasRef,
