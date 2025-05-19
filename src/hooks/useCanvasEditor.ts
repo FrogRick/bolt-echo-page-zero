@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect } from 'react';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
@@ -48,13 +49,26 @@ export const useCanvasEditor = () => {
       drawInProgressPolygon(ctx, polygonPoints, currentPoint, currentColor, fillColor);
     }
 
-    // Draw preview line when using the line tool
+    // Draw preview line when using the line tool - only if we have a start and current point
     if (activeTool === 'line' && startPoint && currentPoint) {
-      drawPreviewLine(ctx, startPoint, currentPoint, currentColor);
+      // Get the snapped point for preview
+      let endPoint = currentPoint;
+      
+      // First check endpoint snapping
+      const snappedToEndpoint = findNearestEndpoint(currentPoint);
+      if (snappedToEndpoint) {
+        endPoint = snappedToEndpoint;
+      } else if (snapToAngle) {
+        // If not snapped to endpoint, try angle snapping
+        endPoint = snapAngleToGrid(startPoint, currentPoint);
+      }
+      
+      // Draw only one line - the snapped one
+      drawPreviewLine(ctx, startPoint, endPoint, currentColor);
     }
     
-    // Draw preview line for single click line tool
-    if (previewLine) {
+    // Draw preview line for single click line tool if previewLine exists
+    else if (previewLine) {
       drawPreviewLine(ctx, previewLine.start, previewLine.end, currentColor);
     }
   };
@@ -173,23 +187,8 @@ export const useCanvasEditor = () => {
     if (isDragging && selectedShape) {
       handleDragMove(point);
     } else if (activeTool === 'line' && startPoint) {
-      // Apply snapping for lines
-      let endPoint = point;
-      
-      // First check endpoint snapping
-      const snappedToEndpoint = findNearestEndpoint(point);
-      if (snappedToEndpoint) {
-        endPoint = snappedToEndpoint;
-      } else if (snapToAngle) {
-        // If not snapped to endpoint, try angle snapping
-        endPoint = snapAngleToGrid(startPoint, point);
-      }
-      
-      // Update the preview line with possibly snapped endpoint
-      setPreviewLine({
-        start: startPoint,
-        end: endPoint
-      });
+      // Update the current point for live line preview - no need to set previewLine here
+      // The redrawCanvas function will handle drawing with snapping
       redrawCanvas();
     } else if (isDrawing && activeTool === 'rectangle') {
       redrawCanvas();
@@ -223,14 +222,11 @@ export const useCanvasEditor = () => {
 
   // Handle line tool mouse down
   const handleLineToolMouseDown = (point: Point) => {
-    // If there's no start point, set it and show preview immediately
+    // If there's no start point, set it
     if (!startPoint) {
       setStartPoint(point);
       setCurrentPoint(point);
-      setPreviewLine({
-        start: point,
-        end: point
-      });
+      // Don't set previewLine here - it will be drawn in redrawCanvas based on current point
     } else {
       // This will only happen in click mode
       completeLine(point);
@@ -380,8 +376,20 @@ export const useCanvasEditor = () => {
     } else if (activeTool === 'line' && startPoint && isDrawing) {
       // If the mouse was moved while drawing, complete line in drag mode
       if (mouseMoved && lineDrawMode === 'drag') {
-        completeLine(point);
-        // Reset to click mode for next interaction if they didn't move the mouse much
+        // Apply snapping for the end point
+        let endPoint = point;
+        
+        // First check endpoint snapping
+        const snappedToEndpoint = findNearestEndpoint(point);
+        if (snappedToEndpoint) {
+          endPoint = snappedToEndpoint;
+        } else if (snapToAngle) {
+          // If not snapped to endpoint, try angle snapping
+          endPoint = snapAngleToGrid(startPoint, point);
+        }
+        
+        completeLine(endPoint);
+        // Reset to click mode for next interaction
         setLineDrawMode('click');
       } else if (!mouseMoved) {
         // If mouse didn't move, keep the startPoint for click-point-click mode

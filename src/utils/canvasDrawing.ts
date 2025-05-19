@@ -1,3 +1,4 @@
+
 import { Point, Shape } from '@/types/canvas';
 
 export const drawShapes = (
