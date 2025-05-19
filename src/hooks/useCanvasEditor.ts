@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -203,7 +204,7 @@ export const useCanvasEditor = () => {
         setSelectedShape(null);
       }
     } else if (activeTool === 'line') {
-      // Modified line tool behavior:
+      // Updated line tool behavior for the new workflow:
       // If there's no start point, set it and show preview immediately
       if (!startPoint) {
         setStartPoint({ x, y });
@@ -226,8 +227,8 @@ export const useCanvasEditor = () => {
         setStartPoint(null);
         setPreviewLine(null);
         
-        // Switch back to select tool after drawing one line
-        setActiveTool('select');
+        // No longer automatically switch back to select tool
+        // The user must click again to start a new line
       }
     } else if (activeTool === 'rectangle') {
       setStartPoint({ x, y });
@@ -362,9 +363,9 @@ export const useCanvasEditor = () => {
     setIsDragging(false);
   };
 
-  // Handle canvas click for single click operations - now only used for other tools
+  // Handle canvas click for single click operations
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    // Other click operations can remain here if needed in the future
+    // This is now empty as the clicks are handled directly in startDrawing
   };
 
   // Delete selected shape
