@@ -15,7 +15,8 @@ const Canvas: React.FC = () => {
     endDrawing,
     deleteSelected,
     clearCanvas,
-    canvasSize
+    canvasSize,
+    handleCanvasClick
   } = useCanvasEditor();
 
   return (
@@ -50,11 +51,12 @@ const Canvas: React.FC = () => {
             onMouseMove={draw}
             onMouseUp={endDrawing}
             onMouseLeave={endDrawing}
+            onClick={handleCanvasClick}
             className={`bg-white border border-gray-200 ${
               activeTool === "select" 
                 ? "cursor-default" 
-                : activeTool === "draw" 
-                  ? "cursor-pencil" 
+                : activeTool === "line" || activeTool === "polygon"
+                  ? "cursor-crosshair" 
                   : "cursor-crosshair"
             }`}
           />
