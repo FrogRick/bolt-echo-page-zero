@@ -21,6 +21,11 @@ export const useCanvasEditor = () => {
   const [previewLine, setPreviewLine] = useState<PreviewLine | null>(null);
   const [lineDrawMode, setLineDrawMode] = useState<'click' | 'drag'>('click');
   const [mouseMoved, setMouseMoved] = useState(false);
+  
+  // New state for snapping controls
+  const [snapToAngle, setSnapToAngle] = useState<boolean>(true);
+  const [snapToEndpoints, setSnapToEndpoints] = useState<boolean>(true);
+  const [snapDistance, setSnapDistance] = useState<number>(10); // Pixels
 
   // Import shape detection functions
   const { findShapeAtPoint } = useShapeDetection();
@@ -54,6 +59,67 @@ export const useCanvasEditor = () => {
     }
   };
 
+  // Function to snap angle to nearest 45 degrees
+  const snapAngleToGrid = (startPoint: Point, endPoint: Point): Point => {
+    if (!snapToAngle) return endPoint;
+
+    const dx = endPoint.x - startPoint.x;
+    const dy = endPoint.y - startPoint.y;
+    
+    // Calculate angle in radians and convert to degrees
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    
+    // Snap to nearest 45 degree increment
+    const snapAngle = Math.round(angle / 45) * 45;
+    
+    // Convert back to radians
+    const snapRadians = snapAngle * (Math.PI / 180);
+    
+    // Calculate distance
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Calculate new endpoint
+    return {
+      x: startPoint.x + distance * Math.cos(snapRadians),
+      y: startPoint.y + distance * Math.sin(snapRadians)
+    };
+  };
+
+  // Function to find nearest endpoint to snap to
+  const findNearestEndpoint = (point: Point): Point | null => {
+    if (!snapToEndpoints) return null;
+    
+    let closestPoint: Point | null = null;
+    let minDistance = snapDistance;
+    
+    shapes.forEach(shape => {
+      if (shape.type === 'line') {
+        // Check distance to start point
+        const distToStart = Math.sqrt(
+          Math.pow(shape.start.x - point.x, 2) + 
+          Math.pow(shape.start.y - point.y, 2)
+        );
+        if (distToStart < minDistance) {
+          minDistance = distToStart;
+          closestPoint = { ...shape.start };
+        }
+        
+        // Check distance to end point
+        const distToEnd = Math.sqrt(
+          Math.pow(shape.end.x - point.x, 2) + 
+          Math.pow(shape.end.y - point.y, 2)
+        );
+        if (distToEnd < minDistance) {
+          minDistance = distToEnd;
+          closestPoint = { ...shape.end };
+        }
+      }
+      // Add support for rectangle and polygon endpoints if needed
+    });
+    
+    return closestPoint;
+  };
+
   // Handle mouse down event
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
@@ -69,8 +135,11 @@ export const useCanvasEditor = () => {
     if (activeTool === 'select') {
       handleSelectToolMouseDown(point);
     } else if (activeTool === 'line') {
+      // Check for endpoint snapping
+      const snappedPoint = findNearestEndpoint(point) || point;
+      
       // Start drawing a line - will detect if it's click or drag mode based on mouse movement
-      handleLineToolMouseDown(point);
+      handleLineToolMouseDown(snappedPoint);
       // Set isDrawing to true for potential drag mode
       setIsDrawing(true);
     } else if (activeTool === 'rectangle') {
@@ -104,10 +173,22 @@ export const useCanvasEditor = () => {
     if (isDragging && selectedShape) {
       handleDragMove(point);
     } else if (activeTool === 'line' && startPoint) {
-      // Update the preview line as mouse moves
+      // Apply snapping for lines
+      let endPoint = point;
+      
+      // First check endpoint snapping
+      const snappedToEndpoint = findNearestEndpoint(point);
+      if (snappedToEndpoint) {
+        endPoint = snappedToEndpoint;
+      } else if (snapToAngle) {
+        // If not snapped to endpoint, try angle snapping
+        endPoint = snapAngleToGrid(startPoint, point);
+      }
+      
+      // Update the preview line with possibly snapped endpoint
       setPreviewLine({
         start: startPoint,
-        end: point
+        end: endPoint
       });
       redrawCanvas();
     } else if (isDrawing && activeTool === 'rectangle') {
@@ -160,12 +241,22 @@ export const useCanvasEditor = () => {
   const completeLine = (endPoint: Point) => {
     if (!startPoint) return;
 
+    // Apply endpoint snapping for the final point if needed
+    const snappedEndpoint = findNearestEndpoint(endPoint) || endPoint;
+    
+    // Apply angle snapping if not snapped to endpoint
+    const finalEndpoint = snappedEndpoint === endPoint && snapToAngle ? 
+      snapAngleToGrid(startPoint, endPoint) : 
+      snappedEndpoint;
+
     const newLine = {
       id: generateId(),
       type: 'line' as const,
       start: { ...startPoint },
-      end: endPoint,
-      color: currentColor
+      end: finalEndpoint,
+      color: currentColor,
+      lineWidth: 8, // Make the line thicker
+      strokeColor: '#000000' // Black border color
     };
     
     setShapes([...shapes, newLine]);
@@ -326,6 +417,16 @@ export const useCanvasEditor = () => {
     setPreviewLine(null);
   };
 
+  // Toggle snap to angle
+  const toggleSnapToAngle = () => {
+    setSnapToAngle(!snapToAngle);
+  };
+
+  // Toggle snap to endpoints
+  const toggleSnapToEndpoints = () => {
+    setSnapToEndpoints(!snapToEndpoints);
+  };
+
   // Redraw the canvas whenever shapes or selected shapes change
   useEffect(() => {
     redrawCanvas();
@@ -353,6 +454,10 @@ export const useCanvasEditor = () => {
     deleteSelected,
     clearCanvas,
     canvasSize,
-    handleCanvasClick
+    handleCanvasClick,
+    snapToAngle,
+    toggleSnapToAngle,
+    snapToEndpoints,
+    toggleSnapToEndpoints
   };
 };

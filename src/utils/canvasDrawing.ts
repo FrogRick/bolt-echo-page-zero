@@ -1,4 +1,3 @@
-
 import { Point, Shape } from '@/types/canvas';
 
 export const drawShapes = (
@@ -14,10 +13,27 @@ export const drawShapes = (
     ctx.fillStyle = 'fillColor' in shape ? shape.fillColor : defaultFillColor;
 
     if (shape.type === 'line') {
+      // Special drawing for lines with thick gray center and thin black border
+      const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
+      const strokeColor = 'strokeColor' in shape ? shape.strokeColor : '#000000';
+      
+      // Draw the thick gray line
       ctx.beginPath();
       ctx.moveTo(shape.start.x, shape.start.y);
       ctx.lineTo(shape.end.x, shape.end.y);
+      ctx.lineWidth = lineWidth;
+      ctx.strokeStyle = '#8E9196'; // Gray color for the main line
       ctx.stroke();
+      
+      // Draw the thin black border
+      ctx.beginPath();
+      ctx.moveTo(shape.start.x, shape.start.y);
+      ctx.lineTo(shape.end.x, shape.end.y);
+      ctx.lineWidth = lineWidth + 2; // Slightly wider for the border
+      ctx.strokeStyle = strokeColor;
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
     } else if (shape.type === 'rectangle') {
       ctx.beginPath();
       ctx.rect(
@@ -108,11 +124,22 @@ export const drawPreviewLine = (
   end: Point,
   color: string
 ): void => {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  
+  // Draw preview line with thick gray line and thin black border
+  // Draw the thick gray preview line
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = '#8E9196'; // Gray color
   ctx.stroke();
+  
+  // Draw the thin black border
+  ctx.beginPath();
+  ctx.moveTo(start.x, start.y);
+  ctx.lineTo(end.x, end.y);
+  ctx.lineWidth = 10; // Slightly wider for border
+  ctx.strokeStyle = '#000000'; // Black border
+  ctx.globalCompositeOperation = 'destination-over';
+  ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over';
 };

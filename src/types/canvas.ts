@@ -12,6 +12,8 @@ export type LineShape = {
   start: Point;
   end: Point;
   color: string;
+  lineWidth?: number;
+  strokeColor?: string;
 };
 
 export type RectangleShape = {
