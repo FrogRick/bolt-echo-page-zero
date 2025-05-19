@@ -308,7 +308,7 @@ export const drawInProgressPolygon = (
   strokeColor: string,
   fillColor: string,
   isWallPolygon: boolean = false,
-  showStartPoint: boolean = true
+  showStartPoint: boolean = false
 ): void => {
   if (polygonPoints.length === 0) return;
   
