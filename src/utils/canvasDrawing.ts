@@ -138,8 +138,6 @@ const findLineExtensionPoint = (
   return findPerpendicularExtension(startPoint, currentPoint, shapes, threshold);
 };
 
-// REMOVED: parallel extension finding is removed since we only want perpendicular extensions
-
 // UPDATED: Helper function to find perpendicular line extensions from endpoints
 const findPerpendicularExtension = (
   startPoint: Point,
@@ -591,7 +589,7 @@ export const drawPreviewLine = (
   ctx.restore();
 };
 
-// UPDATED: Improved extension line drawing with clearer visual indicators and green color
+// UPDATED: Extension line drawing with green color and better visual indicators
 export const drawExtensionLine = (
   ctx: CanvasRenderingContext2D,
   start: Point,

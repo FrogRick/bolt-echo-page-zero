@@ -524,9 +524,20 @@ export const useCanvasEditor = () => {
   const handleWallPolygonToolMouseDown = (point: Point) => {
     // Apply snapping to the point
     let snappedPoint = point;
+    let extensionFound = false;
     
-    // First check if we can snap to a line
-    if (snapToLines) {
+    // Check for extension snapping
+    if (snapToExtensions && wallPolygonPoints.length > 0) {
+      const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
+      const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, shapes);
+      if (extensionSnap) {
+        snappedPoint = extensionSnap.point;
+        extensionFound = true;
+      }
+    }
+    
+    // First check if we can snap to a line and extension wasn't found
+    if (!extensionFound && snapToLines) {
       const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
       if (lineSnap) {
         snappedPoint = lineSnap.point;
@@ -540,7 +551,17 @@ export const useCanvasEditor = () => {
     } else if (snapToAngle && wallPolygonPoints.length > 0) {
       // Apply angle snapping from the last polygon point
       const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
-      snappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
+      const angleSnappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
+      
+      // Only use the angle-snapped point if it's close enough to our snapped point
+      const distToSnapped = Math.sqrt(
+        Math.pow(angleSnappedPoint.x - snappedPoint.x, 2) + 
+        Math.pow(angleSnappedPoint.y - snappedPoint.y, 2)
+      );
+      
+      if (distToSnapped < 20) { // Only apply angle snapping if close to current angle
+        snappedPoint = angleSnappedPoint;
+      }
     }
     
     // If we don't have any points yet, add this as the first point
@@ -561,6 +582,8 @@ export const useCanvasEditor = () => {
       } else {
         // Add this as a new point
         setWallPolygonPoints([...wallPolygonPoints, snappedPoint]);
+        // Clear extension line after adding a point
+        setExtensionLine(null);
       }
     }
   };
