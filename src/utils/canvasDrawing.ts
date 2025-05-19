@@ -1,3 +1,4 @@
+
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -67,6 +68,64 @@ const findIntersectingLines = (
     !arePointsConnected(shape.end, point) &&
     isPointOnLine(point, shape.start, shape.end)
   );
+};
+
+// Find the closest point on a line to a given point
+const findClosestPointOnLine = (
+  point: Point,
+  lineStart: Point,
+  lineEnd: Point
+): Point => {
+  const lineLength = Math.sqrt(
+    Math.pow(lineEnd.x - lineStart.x, 2) + 
+    Math.pow(lineEnd.y - lineStart.y, 2)
+  );
+  
+  if (lineLength === 0) return lineStart;
+  
+  // Calculate projection of point onto line
+  const dotProduct = 
+    ((point.x - lineStart.x) * (lineEnd.x - lineStart.x) + 
+    (point.y - lineStart.y) * (lineEnd.y - lineStart.y)) / 
+    (lineLength * lineLength);
+  
+  // Clamp to line segment
+  const t = Math.max(0, Math.min(1, dotProduct));
+  
+  // Calculate the closest point on the line
+  return {
+    x: lineStart.x + t * (lineEnd.x - lineStart.x),
+    y: lineStart.y + t * (lineEnd.y - lineStart.y)
+  };
+};
+
+// Find the nearest point on any line in the shapes
+const findNearestPointOnAnyLine = (
+  point: Point,
+  shapes: Shape[],
+  currentShapeId?: string,
+  threshold: number = 10
+): { point: Point, distance: number } | null => {
+  let closestPoint = null;
+  let minDistance = threshold;
+  
+  shapes.forEach(shape => {
+    if (shape.type === 'line' && (currentShapeId ? shape.id !== currentShapeId : true)) {
+      const pointOnLine = findClosestPointOnLine(point, shape.start, shape.end);
+      
+      const distance = Math.sqrt(
+        Math.pow(point.x - pointOnLine.x, 2) + 
+        Math.pow(point.y - pointOnLine.y, 2)
+      );
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestPoint = { point: pointOnLine, distance };
+      }
+    }
+  });
+  
+  return closestPoint;
 };
 
 export const drawShapes = (
@@ -420,3 +479,11 @@ export const drawPreviewLine = (
   ctx.globalCompositeOperation = 'source-over';
   ctx.restore();
 };
+
+// Export the helper functions for line snapping
+export const lineSnappingHelpers = {
+  findNearestPointOnAnyLine,
+  findClosestPointOnLine,
+  isPointOnLine
+};
+

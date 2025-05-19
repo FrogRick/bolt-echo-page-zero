@@ -1,5 +1,6 @@
+
 import { useRef, useState, useEffect } from 'react';
-import { drawShapes, drawInProgressPolygon, drawPreviewLine } from '@/utils/canvasDrawing';
+import { drawShapes, drawInProgressPolygon, drawPreviewLine, lineSnappingHelpers } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
 import { Tool, Point, Shape, PreviewLine } from '@/types/canvas';
 import { generateId } from '@/utils/idGenerator';
@@ -29,6 +30,9 @@ export const useCanvasEditor = () => {
   const [snapToAngle, setSnapToAngle] = useState<boolean>(true);
   const [snapToEndpoints, setSnapToEndpoints] = useState<boolean>(true);
   const [snapDistance, setSnapDistance] = useState<number>(10); // Pixels
+  
+  // Add a state for line-to-line snapping
+  const [snapToLines, setSnapToLines] = useState<boolean>(true);
 
   // Import shape detection functions
   const { findShapeAtPoint } = useShapeDetection();
@@ -56,13 +60,21 @@ export const useCanvasEditor = () => {
       // Get the snapped point for preview
       let endPoint = currentPoint;
       
-      // First check endpoint snapping
-      const snappedToEndpoint = findNearestEndpoint(currentPoint);
+      // First check if we should snap to an existing line
+      if (snapToLines) {
+        const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(currentPoint, shapes);
+        if (lineSnap) {
+          endPoint = lineSnap.point;
+        }
+      }
+      
+      // Then check endpoint snapping (takes priority over line snapping)
+      const snappedToEndpoint = findNearestEndpoint(endPoint);
       if (snappedToEndpoint) {
         endPoint = snappedToEndpoint;
       } else if (snapToAngle) {
         // If not snapped to endpoint, try angle snapping
-        endPoint = snapAngleToGrid(startPoint, currentPoint);
+        endPoint = snapAngleToGrid(startPoint, endPoint);
       }
       
       // Draw only one line - the snapped one
@@ -190,8 +202,22 @@ export const useCanvasEditor = () => {
     if (activeTool === 'select') {
       handleSelectToolMouseDown(point);
     } else if (activeTool === 'line') {
-      // Check for endpoint snapping
-      const snappedPoint = findNearestEndpoint(point) || point;
+      // Apply both endpoint and line snapping before starting to draw
+      let snappedPoint = point;
+      
+      // First check if we can snap to a line
+      if (snapToLines) {
+        const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
+        if (lineSnap) {
+          snappedPoint = lineSnap.point;
+        }
+      }
+      
+      // Then check endpoint snapping (this takes priority)
+      const endpointSnap = findNearestEndpoint(snappedPoint);
+      if (endpointSnap) {
+        snappedPoint = endpointSnap;
+      }
       
       // Start drawing a line - will detect if it's click or drag mode based on mouse movement
       handleLineToolMouseDown(snappedPoint);
@@ -303,13 +329,25 @@ export const useCanvasEditor = () => {
   const completeLine = (endPoint: Point) => {
     if (!startPoint) return;
 
-    // Apply endpoint snapping for the final point if needed
-    const snappedEndpoint = findNearestEndpoint(endPoint) || endPoint;
+    // First check if we can snap to a line
+    let finalEndpoint = endPoint;
     
-    // Apply angle snapping if not snapped to endpoint
-    const finalEndpoint = snappedEndpoint === endPoint && snapToAngle ? 
-      snapAngleToGrid(startPoint, endPoint) : 
-      snappedEndpoint;
+    if (snapToLines) {
+      const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(endPoint, shapes);
+      if (lineSnap) {
+        finalEndpoint = lineSnap.point;
+      }
+    }
+    
+    // Apply endpoint snapping for the final point if needed (takes priority)
+    const snappedEndpoint = findNearestEndpoint(finalEndpoint);
+    if (snappedEndpoint) {
+      finalEndpoint = snappedEndpoint;
+    } 
+    // Apply angle snapping if not snapped to endpoint or line
+    else if (snapToAngle && finalEndpoint === endPoint) { 
+      finalEndpoint = snapAngleToGrid(startPoint, endPoint);
+    }
 
     const newLine = {
       id: generateId(),
@@ -433,15 +471,22 @@ export const useCanvasEditor = () => {
     } else if (activeTool === 'line' && startPoint && isDrawing) {
       // If the mouse was moved while drawing, complete line in drag mode
       if (mouseMoved && lineDrawMode === 'drag') {
-        // Apply snapping for the end point
+        // Apply snapping for the end point - first check line snapping
         let endPoint = point;
         
-        // First check endpoint snapping
-        const snappedToEndpoint = findNearestEndpoint(point);
+        if (snapToLines) {
+          const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
+          if (lineSnap) {
+            endPoint = lineSnap.point;
+          }
+        }
+        
+        // Then check endpoint snapping (takes priority)
+        const snappedToEndpoint = findNearestEndpoint(endPoint);
         if (snappedToEndpoint) {
           endPoint = snappedToEndpoint;
-        } else if (snapToAngle) {
-          // If not snapped to endpoint, try angle snapping
+        } else if (snapToAngle && endPoint === point) {
+          // If not snapped to endpoint or line, try angle snapping
           endPoint = snapAngleToGrid(startPoint, point);
         }
         
@@ -486,18 +531,23 @@ export const useCanvasEditor = () => {
   const toggleSnapToEndpoints = () => {
     setSnapToEndpoints(!snapToEndpoints);
   };
+  
+  // Toggle snap to lines
+  const toggleSnapToLines = () => {
+    setSnapToLines(!snapToLines);
+  };
 
   // Toggle rectangle drawing mode
   const toggleRectangleDrawMode = () => {
     setRectangleDrawMode(rectangleDrawMode === 'click' ? 'drag' : 'click');
   };
 
-  // Handle keyboard events for polygon escape and enter (changed from backspace to enter)
+  // Handle keyboard events for polygon escape and enter
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // If we're in polygon drawing mode with at least 3 points
       if (activeTool === 'polygon' && polygonPoints.length >= 3) {
-        if (e.key === 'Escape' || e.key === 'Enter') {  // Changed to Enter instead of Backspace
+        if (e.key === 'Escape' || e.key === 'Enter') {  // Using Enter instead of Backspace
           // Close the polygon on Escape or Enter
           completePolygon();
         }
@@ -541,7 +591,10 @@ export const useCanvasEditor = () => {
     toggleSnapToAngle,
     snapToEndpoints,
     toggleSnapToEndpoints,
+    snapToLines,
+    toggleSnapToLines,
     rectangleDrawMode,
     toggleRectangleDrawMode
   };
 };
+

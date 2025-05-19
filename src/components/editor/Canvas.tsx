@@ -23,6 +23,8 @@ const Canvas: React.FC = () => {
     toggleSnapToAngle,
     snapToEndpoints,
     toggleSnapToEndpoints,
+    snapToLines,
+    toggleSnapToLines,
     rectangleDrawMode,
     toggleRectangleDrawMode
   } = useCanvasEditor();
@@ -89,6 +91,19 @@ const Canvas: React.FC = () => {
           <label className="inline-flex items-center cursor-pointer">
             <input 
               type="checkbox" 
+              checked={snapToLines} 
+              onChange={toggleSnapToLines}
+              className="sr-only peer"
+            />
+            <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+            <span className="ml-2 text-sm font-medium">Snap to lines</span>
+          </label>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <label className="inline-flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
               checked={rectangleDrawMode === 'click'}
               onChange={toggleRectangleDrawMode}
               className="sr-only peer"
@@ -124,3 +139,4 @@ const Canvas: React.FC = () => {
 };
 
 export default Canvas;
+
