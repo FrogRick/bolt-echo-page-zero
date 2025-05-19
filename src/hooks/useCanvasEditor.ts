@@ -340,7 +340,28 @@ export const useCanvasEditor = () => {
       // Update the current point for line preview
       redrawCanvas();
     } else if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
-      // Update the current point for wall polygon preview
+      // For wall-polygon, apply the same snapping as wall tool
+      let snappedPoint = point;
+      
+      // First check if we can snap to a line
+      if (snapToLines) {
+        const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
+        if (lineSnap) {
+          snappedPoint = lineSnap.point;
+        }
+      }
+      
+      // Then check endpoint snapping (this takes priority)
+      const endpointSnap = findNearestEndpoint(snappedPoint);
+      if (endpointSnap) {
+        snappedPoint = endpointSnap;
+      } else if (snapToAngle && wallPolygonPoints.length > 0) {
+        // Apply angle snapping from the last polygon point
+        const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
+        snappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
+      }
+      
+      setCurrentPoint(snappedPoint);
       redrawCanvas();
     } else if (isDrawing && (activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'drag') {
       redrawCanvas();
@@ -404,6 +425,10 @@ export const useCanvasEditor = () => {
     const endpointSnap = findNearestEndpoint(snappedPoint);
     if (endpointSnap) {
       snappedPoint = endpointSnap;
+    } else if (snapToAngle && wallPolygonPoints.length > 0) {
+      // Apply angle snapping from the last polygon point
+      const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
+      snappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
     }
     
     // If we don't have any points yet, add this as the first point
