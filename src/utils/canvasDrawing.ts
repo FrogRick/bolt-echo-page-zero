@@ -1,4 +1,3 @@
-
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -306,41 +305,84 @@ export const drawInProgressPolygon = (
   polygonPoints: Point[],
   currentPoint: Point | null,
   strokeColor: string,
-  fillColor: string
+  fillColor: string,
+  isWallPolygon: boolean = false
 ): void => {
   if (polygonPoints.length === 0) return;
   
-  ctx.strokeStyle = strokeColor;
-  ctx.fillStyle = fillColor;
-  ctx.lineWidth = 2;
-  
-  // Draw the polygon lines
-  ctx.beginPath();
-  ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
-  
-  for (let i = 1; i < polygonPoints.length; i++) {
-    ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
-  }
-  
-  if (currentPoint) {
-    ctx.lineTo(currentPoint.x, currentPoint.y);
-  }
-  
-  // Draw circle at the starting point to indicate where to close the polygon
-  const startPoint = polygonPoints[0];
-  
-  // First fill with semi-transparent yellow
-  ctx.fillStyle = 'rgba(255, 251, 204, 0.5)';
-  if (currentPoint) {
+  // Save original context state
+  ctx.save();
+
+  // Different styling based on polygon type
+  if (isWallPolygon) {
+    // Draw the polygon lines - wall style with thick black border and gray fill
+    ctx.beginPath();
+    ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
+    
+    for (let i = 1; i < polygonPoints.length; i++) {
+      ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
+    }
+    
+    if (currentPoint) {
+      ctx.lineTo(currentPoint.x, currentPoint.y);
+    }
+
+    // Draw thick black border for each line
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = '#000000';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    
+    // Draw gray inner line for each segment
+    ctx.beginPath();
+    ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
+    
+    for (let i = 1; i < polygonPoints.length; i++) {
+      ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
+    }
+    
+    if (currentPoint) {
+      ctx.lineTo(currentPoint.x, currentPoint.y);
+    }
+    
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#8E9196';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  } else {
+    // Regular polygon style
+    ctx.strokeStyle = strokeColor;
+    ctx.fillStyle = fillColor;
+    ctx.lineWidth = 2;
+    
+    // Draw the polygon lines
+    ctx.beginPath();
+    ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
+    
+    for (let i = 1; i < polygonPoints.length; i++) {
+      ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
+    }
+    
+    if (currentPoint) {
+      ctx.lineTo(currentPoint.x, currentPoint.y);
+    }
+    
     // Close back to the first point for the fill
-    ctx.lineTo(startPoint.x, startPoint.y);
+    if (currentPoint) {
+      ctx.lineTo(polygonPoints[0].x, polygonPoints[0].y);
+    }
+    
+    // Fill with the correct color
+    ctx.fill();
+    
+    // Then stroke the shape
+    ctx.stroke();
   }
-  ctx.fill();
   
-  // Now stroke the shape
-  ctx.stroke();
-  
-  // Draw a circle marker at the starting point
+  // Draw a circle marker at the starting point for both types
+  const startPoint = polygonPoints[0];
   ctx.beginPath();
   ctx.arc(startPoint.x, startPoint.y, 5, 0, Math.PI * 2);
   ctx.fillStyle = '#FF0000'; // Red circle to indicate start point
@@ -348,6 +390,9 @@ export const drawInProgressPolygon = (
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 1;
   ctx.stroke();
+  
+  // Restore context state
+  ctx.restore();
 };
 
 export const drawPreviewLine = (

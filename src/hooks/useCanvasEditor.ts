@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect } from 'react';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine, lineSnappingHelpers } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
@@ -85,8 +84,8 @@ export const useCanvasEditor = () => {
 
     // Draw wall polygon in progress (using same drawing function as regular polygon)
     if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
-      // For wall polygon, we draw lines without fill
-      drawInProgressPolygon(ctx, wallPolygonPoints, currentPoint, currentColor, 'transparent');
+      // For wall polygon, we draw lines without fill - use black border and gray fill like walls
+      drawInProgressPolygon(ctx, wallPolygonPoints, currentPoint, '#000000', 'transparent', true);
     }
 
     // Draw preview line when using the wall tool - only if we have a start and current point
