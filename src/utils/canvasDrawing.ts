@@ -1,3 +1,4 @@
+
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
