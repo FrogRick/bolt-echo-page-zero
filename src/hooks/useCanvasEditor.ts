@@ -96,8 +96,9 @@ export const useCanvasEditor = () => {
 
     // Draw preview line when using the wall tool - only if we have a start and current point
     if (activeTool === 'wall' && startPoint && currentPoint) {
-      // Get the snapped point for preview
+      // Start with the current point as our end point
       let endPoint = currentPoint;
+      let extensionFound = false;
       
       // Check for extension snapping first
       if (snapToExtensions && !isDragging) {
@@ -110,13 +111,14 @@ export const useCanvasEditor = () => {
             start: currentPoint,
             end: endPoint
           });
+          extensionFound = true;
         } else {
           setExtensionLine(null);
         }
       }
       
-      // Then check if we should snap to an existing line
-      if (!extensionLine && snapToLines) {
+      // Then check if we should snap to an existing line (if no extension found)
+      if (!extensionFound && snapToLines) {
         const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(currentPoint, shapes);
         if (lineSnap) {
           endPoint = lineSnap.point;
@@ -129,9 +131,21 @@ export const useCanvasEditor = () => {
         endPoint = snappedToEndpoint;
         // Clear the extension line if we're snapping to an endpoint
         setExtensionLine(null);
-      } else if (snapToAngle && !extensionLine) {
-        // If not snapped to endpoint, try angle snapping
-        endPoint = snapAngleToGrid(startPoint, endPoint);
+      } else if (snapToAngle && !isDragging) {
+        // Always apply angle snapping unless we're dragging a shape
+        // Even if we have an extension line, we can still apply angle snapping to it
+        const snappedAnglePoint = snapAngleToGrid(startPoint, endPoint);
+        
+        // Only use the angle-snapped point if it's close enough to our current point
+        // This prevents angle snapping from taking precedence over extension snapping when far away
+        const distToSnapped = Math.sqrt(
+          Math.pow(snappedAnglePoint.x - endPoint.x, 2) + 
+          Math.pow(snappedAnglePoint.y - endPoint.y, 2)
+        );
+        
+        if (distToSnapped < 20) { // Only apply angle snapping if close to current angle
+          endPoint = snappedAnglePoint;
+        }
       }
       
       // Draw only one line - the snapped one
@@ -401,6 +415,7 @@ export const useCanvasEditor = () => {
     else if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
       // For wall-polygon, apply the same snapping as wall tool
       let snappedPoint = point;
+      let extensionFound = false;
       
       // Check for extension snapping
       if (snapToExtensions) {
@@ -412,13 +427,14 @@ export const useCanvasEditor = () => {
             start: point,
             end: snappedPoint
           });
+          extensionFound = true;
         } else {
           setExtensionLine(null);
         }
       }
       
       // First check if we can snap to a line
-      if (!extensionLine && snapToLines) {
+      if (!extensionFound && snapToLines) {
         const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
         if (lineSnap) {
           snappedPoint = lineSnap.point;
@@ -430,10 +446,22 @@ export const useCanvasEditor = () => {
       if (endpointSnap) {
         snappedPoint = endpointSnap;
         setExtensionLine(null);
-      } else if (snapToAngle && wallPolygonPoints.length > 0 && !extensionLine) {
-        // Apply angle snapping from the last polygon point
+      } 
+      // Apply angle snapping if no other snap found
+      else if (snapToAngle && wallPolygonPoints.length > 0) {
+        // Always try to apply angle snapping
         const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
-        snappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
+        const angleSnappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
+        
+        // Only use the angle-snapped point if it's close enough to our snapped point
+        const distToSnapped = Math.sqrt(
+          Math.pow(angleSnappedPoint.x - snappedPoint.x, 2) + 
+          Math.pow(angleSnappedPoint.y - snappedPoint.y, 2)
+        );
+        
+        if (distToSnapped < 20) { // Only apply angle snapping if close to current angle
+          snappedPoint = angleSnappedPoint;
+        }
       }
       
       setCurrentPoint(snappedPoint);
@@ -534,6 +562,7 @@ export const useCanvasEditor = () => {
 
     // First check for extension snapping
     let finalEndpoint = endPoint;
+    let extensionFound = false;
     
     if (snapToExtensions) {
       const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(startPoint, endPoint, shapes);
@@ -541,11 +570,12 @@ export const useCanvasEditor = () => {
         finalEndpoint = extensionSnap.point;
         // Clear the extension line after using it
         setExtensionLine(null);
+        extensionFound = true;
       }
     }
     
     // If not extension snapped, check line snapping
-    if (finalEndpoint === endPoint && snapToLines) {
+    if (!extensionFound && snapToLines) {
       const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(endPoint, shapes);
       if (lineSnap) {
         finalEndpoint = lineSnap.point;
@@ -557,9 +587,19 @@ export const useCanvasEditor = () => {
     if (snappedEndpoint) {
       finalEndpoint = snappedEndpoint;
     } 
-    // Apply angle snapping if not snapped to endpoint or line
-    else if (snapToAngle && finalEndpoint === endPoint) { 
-      finalEndpoint = snapAngleToGrid(startPoint, endPoint);
+    // Apply angle snapping if endpoint is not snapped to something else
+    else if (snapToAngle) {
+      const snappedAnglePoint = snapAngleToGrid(startPoint, finalEndpoint);
+      
+      // Only use the angle-snapped point if it's close enough to our current endpoint
+      const distToSnapped = Math.sqrt(
+        Math.pow(snappedAnglePoint.x - finalEndpoint.x, 2) + 
+        Math.pow(snappedAnglePoint.y - finalEndpoint.y, 2)
+      );
+      
+      if (distToSnapped < 20) { // Only apply angle snapping if close to current angle
+        finalEndpoint = snappedAnglePoint;
+      }
     }
 
     const newLine = {
