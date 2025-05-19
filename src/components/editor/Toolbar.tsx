@@ -1,7 +1,8 @@
+
 import React from "react";
 import { Tool } from "@/hooks/useCanvasEditor";
 import { Button } from "@/components/ui/button";
-import { Square, MoveHorizontal, LineChart, Polygon } from "lucide-react";
+import { Square, MoveHorizontal, LineChart, Triangle } from "lucide-react";
 
 interface ToolbarProps {
   activeTool: Tool;
@@ -20,7 +21,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     { id: "select", icon: MoveHorizontal, label: "Select" },
     { id: "line", icon: LineChart, label: "Line" },
     { id: "rectangle", icon: Square, label: "Rectangle" },
-    { id: "polygon", icon: Polygon, label: "Polygon" },
+    { id: "polygon", icon: Triangle, label: "Polygon" },
   ];
 
   return (
