@@ -1,3 +1,4 @@
+
 import { Point, Shape } from '@/types/canvas';
 
 export const drawShapes = (
@@ -25,14 +26,17 @@ export const drawShapes = (
       ctx.strokeStyle = '#8E9196'; // Gray color for the main line
       ctx.stroke();
       
-      // Draw the thin black border
+      // Draw the thin black border for the entire line (including ends)
+      // Using lineCap: 'square' ensures the ends have the border too
       ctx.beginPath();
       ctx.moveTo(shape.start.x, shape.start.y);
       ctx.lineTo(shape.end.x, shape.end.y);
       ctx.lineWidth = lineWidth + 2; // Slightly wider for the border
       ctx.strokeStyle = strokeColor;
+      ctx.lineCap = 'square'; // Square ends to ensure border at the tips
       ctx.globalCompositeOperation = 'destination-over';
       ctx.stroke();
+      ctx.lineCap = 'butt'; // Reset to default
       ctx.globalCompositeOperation = 'source-over';
       
     } else if (shape.type === 'rectangle') {
@@ -125,22 +129,24 @@ export const drawPreviewLine = (
   end: Point,
   color: string
 ): void => {
-  // Draw preview line with thick gray line and thin black border
   // Draw the thick gray preview line
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
   ctx.lineWidth = 8;
   ctx.strokeStyle = '#8E9196'; // Gray color
+  ctx.lineCap = 'square'; // Square ends to ensure the ends are not rounded
   ctx.stroke();
   
-  // Draw the thin black border
+  // Draw the thin black border (including the ends)
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
   ctx.lineWidth = 10; // Slightly wider for border
   ctx.strokeStyle = '#000000'; // Black border
+  ctx.lineCap = 'square'; // Square ends to ensure border at the tips
   ctx.globalCompositeOperation = 'destination-over';
   ctx.stroke();
+  ctx.lineCap = 'butt'; // Reset to default
   ctx.globalCompositeOperation = 'source-over';
 };
