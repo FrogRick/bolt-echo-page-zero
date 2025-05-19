@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -37,14 +36,12 @@ const Canvas: React.FC = () => {
       if (ctx) {
         // Force a clean redraw by clearing and triggering the redraw in useCanvasEditor
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        setTimeout(() => {
-          // This will trigger the redraw effect in useCanvasEditor
-          setActiveTool(activeTool);
-        }, 0);
+        // This will trigger the redraw effect in useCanvasEditor
+        setActiveTool(activeTool);
       }
     }
-  }, [activeTool, rectangleDrawMode, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines]); 
-  // Added all snap settings to the dependency array to ensure proper redrawing
+  }, [activeTool, rectangleDrawMode, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines]);
+  // Added all snap settings and colors to the dependency array to ensure proper redrawing
 
   return (
     <div className="flex flex-col h-full">

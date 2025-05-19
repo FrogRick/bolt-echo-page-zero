@@ -1,3 +1,4 @@
+
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -182,7 +183,40 @@ export const drawShapes = (
     }
   });
 
-  // STEP 2: Draw all welding joints UNDER the lines first
+  // STEP 2: Draw all the lines with their borders on top of the fills
+  sortedShapes.forEach(shape => {
+    if (shape.type === 'line') {
+      const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
+      const strokeColor = 'strokeColor' in shape ? shape.strokeColor : '#000000';
+      
+      // Save the current state
+      ctx.save();
+      
+      // Draw the black border first using source-over
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.beginPath();
+      ctx.moveTo(shape.start.x, shape.start.y);
+      ctx.lineTo(shape.end.x, shape.end.y);
+      ctx.lineWidth = lineWidth + 2; // 2px wider for the border
+      ctx.strokeStyle = strokeColor;
+      ctx.lineCap = 'butt';
+      ctx.stroke();
+      
+      // Then draw the gray line on top of the border
+      ctx.beginPath();
+      ctx.moveTo(shape.start.x, shape.start.y);
+      ctx.lineTo(shape.end.x, shape.end.y);
+      ctx.lineWidth = lineWidth;
+      ctx.strokeStyle = '#8E9196'; // Gray color for the main line
+      ctx.lineCap = 'butt';
+      ctx.stroke();
+      
+      // Restore to default state
+      ctx.restore();
+    }
+  });
+
+  // STEP 3: Draw all welding joints AFTER the lines
   const drawnJoints = new Set<string>();
 
   sortedShapes.forEach(shape => {
@@ -223,7 +257,7 @@ export const drawShapes = (
         }
       });
       
-      // Draw the joint circles FIRST (below the lines)
+      // Draw the welding joint circles AFTER the lines
       jointPositions.forEach(({point, jointKey}) => {
         // Find the line width to use for the joint (defaulting to 8 if not found)
         const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
@@ -232,59 +266,15 @@ export const drawShapes = (
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         
-        // Draw the black border circle first
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, lineWidth / 2 + 1, 0, Math.PI * 2);
-        ctx.fillStyle = '#000000';
-        ctx.fill();
-        
-        // Draw the gray center circle that matches the line color
+        // Draw the connecting circle at the joint with the color of the line
         ctx.beginPath();
         ctx.arc(point.x, point.y, lineWidth / 2, 0, Math.PI * 2);
-        ctx.fillStyle = '#8E9196';
+        ctx.fillStyle = '#8E9196'; // Gray color matching the line
         ctx.fill();
         
         ctx.restore();
       });
-    }
-  });
 
-  // STEP 3: Now draw all the lines with their borders on top of the welding joints
-  sortedShapes.forEach(shape => {
-    if (shape.type === 'line') {
-      // Find if any lines are connected to this line's start or end points
-      const connectedToStart = findConnectedLines(shapes, shape.start, shape.id);
-      const connectedToEnd = findConnectedLines(shapes, shape.end, shape.id);
-      
-      // Find if any lines are intersected by this line's start or end points
-      const intersectingWithStart = findIntersectingLines(shapes, shape.start, shape.id);
-      const intersectingWithEnd = findIntersectingLines(shapes, shape.end, shape.id);
-      
-      const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
-      const strokeColor = 'strokeColor' in shape ? shape.strokeColor : '#000000';
-      
-      // Save the current state
-      ctx.save();
-      
-      // Draw the black border first using source-over
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.beginPath();
-      ctx.moveTo(shape.start.x, shape.start.y);
-      ctx.lineTo(shape.end.x, shape.end.y);
-      ctx.lineWidth = lineWidth + 2; // 2px wider for the border
-      ctx.strokeStyle = strokeColor;
-      ctx.lineCap = 'butt';
-      ctx.stroke();
-      
-      // Then draw the gray line on top of the border
-      ctx.beginPath();
-      ctx.moveTo(shape.start.x, shape.start.y);
-      ctx.lineTo(shape.end.x, shape.end.y);
-      ctx.lineWidth = lineWidth;
-      ctx.strokeStyle = '#8E9196'; // Gray color for the main line
-      ctx.lineCap = 'butt';
-      ctx.stroke();
-      
       // Calculate the angle of the line
       const angle = Math.atan2(shape.end.y - shape.start.y, shape.end.x - shape.start.x);
       
@@ -293,12 +283,15 @@ export const drawShapes = (
       const dx = Math.cos(perpAngle) * (lineWidth / 2);
       const dy = Math.sin(perpAngle) * (lineWidth / 2);
       
-      // Draw end caps
+      // Draw end caps for lines that aren't connected
+      ctx.save();
       const borderThickness = 1;
       ctx.strokeStyle = strokeColor;
       ctx.lineWidth = borderThickness;
       
       // Draw cap at start point if not connected or intersecting
+      const connectedToStart = findConnectedLines(shapes, shape.start, shape.id);
+      const intersectingWithStart = findIntersectingLines(shapes, shape.start, shape.id);
       if (connectedToStart.length === 0 && intersectingWithStart.length === 0) {
         ctx.beginPath();
         ctx.moveTo(shape.start.x - dx, shape.start.y - dy);
@@ -307,6 +300,8 @@ export const drawShapes = (
       }
       
       // Draw cap at end point if not connected or intersecting
+      const connectedToEnd = findConnectedLines(shapes, shape.end, shape.id);
+      const intersectingWithEnd = findIntersectingLines(shapes, shape.end, shape.id);
       if (connectedToEnd.length === 0 && intersectingWithEnd.length === 0) {
         ctx.beginPath();
         ctx.moveTo(shape.end.x - dx, shape.end.y - dy);
@@ -314,7 +309,6 @@ export const drawShapes = (
         ctx.stroke();
       }
       
-      // Restore to default state
       ctx.restore();
     }
   });
@@ -444,27 +438,25 @@ export const drawPreviewLine = (
   // Save the current state
   ctx.save();
   
-  // Draw the thick gray preview line
+  // Draw the black border first
+  ctx.beginPath();
+  ctx.moveTo(start.x, start.y);
+  ctx.lineTo(end.x, end.y);
+  ctx.lineWidth = 8 + 2; // 2px wider for the border
+  ctx.strokeStyle = '#000000'; // Black border
+  ctx.lineCap = 'butt';
+  ctx.stroke();
+  
+  // Then draw the gray line on top of the border
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
   ctx.lineWidth = 8;
-  ctx.strokeStyle = '#8E9196'; // Gray color
-  ctx.lineCap = 'butt'; // Flat ends for the gray part
-  ctx.stroke();
-  
-  // Draw the thin black border with consistent 2px width
-  ctx.beginPath();
-  ctx.moveTo(start.x, start.y);
-  ctx.lineTo(end.x, end.y);
-  ctx.lineWidth = 8 + 2; // Consistently 2px wider for border
-  ctx.strokeStyle = '#000000'; // Black border
-  ctx.lineCap = 'butt'; // Match the gray line's end style
-  ctx.globalCompositeOperation = 'destination-over';
+  ctx.strokeStyle = '#8E9196'; // Gray color for the main line
+  ctx.lineCap = 'butt'; 
   ctx.stroke();
   
   // Restore to default state
-  ctx.globalCompositeOperation = 'source-over';
   ctx.restore();
 };
 
