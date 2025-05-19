@@ -85,9 +85,9 @@ export const useCanvasEditor = () => {
     // Determine nearest 45 degree increment
     const snapAngle = Math.round(angle / 45) * 45;
     
-    // Check if we're within the threshold (10 degrees) of a 45-degree increment
+    // Check if we're within the threshold (15 degrees) of a 45-degree increment
     const angleDiff = Math.abs((angle % 45) - 45) % 45;
-    const shouldSnap = angleDiff < 10 || angleDiff > 35; // Within 10 degrees of a 45 degree angle
+    const shouldSnap = angleDiff < 15 || angleDiff > 30; // More forgiving threshold - within 15 degrees of a 45 degree angle
     
     if (!shouldSnap) return endPoint;
     
