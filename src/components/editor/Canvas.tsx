@@ -10,6 +10,8 @@ const Canvas: React.FC = () => {
     setActiveTool,
     currentColor,
     setCurrentColor,
+    fillColor,
+    setFillColor,
     startDrawing,
     draw,
     endDrawing,
@@ -28,14 +30,25 @@ const Canvas: React.FC = () => {
         onClear={clearCanvas}
       />
       
-      <div className="p-2 bg-white border-b flex items-center gap-2">
+      <div className="p-2 bg-white border-b flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <label htmlFor="colorPicker" className="text-sm font-medium">Color:</label>
+          <label htmlFor="colorPicker" className="text-sm font-medium">Stroke:</label>
           <input
             id="colorPicker"
             type="color"
             value={currentColor}
             onChange={(e) => setCurrentColor(e.target.value)}
+            className="w-8 h-8 rounded cursor-pointer"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label htmlFor="fillColorPicker" className="text-sm font-medium">Fill:</label>
+          <input
+            id="fillColorPicker"
+            type="color"
+            value={fillColor}
+            onChange={(e) => setFillColor(e.target.value)}
             className="w-8 h-8 rounded cursor-pointer"
           />
         </div>

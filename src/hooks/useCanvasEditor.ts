@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 
 export type Tool = "select" | "line" | "rectangle" | "polygon";
@@ -12,6 +11,7 @@ export type CanvasObject = {
   radius?: number;
   points?: { x: number; y: number }[];
   color: string;
+  fillColor?: string;
   text?: string;
   filled?: boolean;
 };
@@ -23,6 +23,7 @@ export const useCanvasEditor = () => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [activeTool, setActiveTool] = useState<Tool>("select");
   const [currentColor, setCurrentColor] = useState("#000000");
+  const [fillColor, setFillColor] = useState("#9b87f5");
   const [selectedObject, setSelectedObject] = useState<string | null>(null);
   const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
@@ -73,11 +74,14 @@ export const useCanvasEditor = () => {
     objects.forEach(obj => {
       // Set styles based on whether object is selected
       ctx.strokeStyle = obj.id === selectedObject ? "#1e88e5" : obj.color;
-      ctx.fillStyle = obj.color;
+      ctx.fillStyle = obj.fillColor || fillColor;
       
       switch (obj.type) {
         case "rect":
           ctx.strokeRect(obj.x, obj.y, obj.width || 0, obj.height || 0);
+          if (obj.filled) {
+            ctx.fillRect(obj.x, obj.y, obj.width || 0, obj.height || 0);
+          }
           break;
         case "line":
           if (obj.points && obj.points.length >= 2) {
@@ -220,8 +224,9 @@ export const useCanvasEditor = () => {
       // If this is a new polygon
       if (polygonPoints.length === 0) {
         setPolygonPoints([{ x, y }]);
+        setTempStartPoint({ x, y }); // Set temp start point for preview
       } 
-      // If clicking near the start point, complete the polygon
+      // If clicking near the start point and we have at least 3 points, complete the polygon
       else if (
         polygonPoints.length > 2 && 
         Math.abs(x - polygonPoints[0].x) < 10 && 
@@ -234,10 +239,12 @@ export const useCanvasEditor = () => {
           y: polygonPoints[0].y,
           points: [...polygonPoints],
           color: currentColor,
+          fillColor: fillColor,
           filled: true,
         };
         setObjects(prev => [...prev, newObject]);
         setPolygonPoints([]);
+        setTempStartPoint(null);
       } 
       // Add a new point to the polygon
       else {
@@ -291,6 +298,8 @@ export const useCanvasEditor = () => {
       } else {
         setCurrentPoints([{ x, y }]);
       }
+    } else if (activeTool === "polygon") {
+      setTempStartPoint({ x, y });
     }
   };
 
@@ -331,6 +340,10 @@ export const useCanvasEditor = () => {
         ctx.lineTo(x, y);
         ctx.stroke();
       }
+    } else if (activeTool === "polygon" && polygonPoints.length > 0) {
+      // Update the temp point to the current mouse position for preview
+      setTempStartPoint({ x, y });
+      renderObjects();
     }
   };
 
@@ -359,6 +372,8 @@ export const useCanvasEditor = () => {
         width,
         height,
         color: currentColor,
+        fillColor: fillColor,
+        filled: true
       };
       
       setObjects(prev => [...prev, newObject]);
@@ -484,6 +499,8 @@ export const useCanvasEditor = () => {
     setActiveTool,
     currentColor,
     setCurrentColor,
+    fillColor,
+    setFillColor,
     selectedObject,
     startDrawing,
     draw,
