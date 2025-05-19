@@ -1,5 +1,5 @@
 
-import { Point, Shape } from '@/types/canvas';
+import { Point, Shape, PreviewLine } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
 const arePointsConnected = (point1: Point, point2: Point, threshold: number = 1): boolean => {
