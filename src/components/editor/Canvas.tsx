@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
 import { Toolbar } from "./Toolbar";
@@ -26,10 +26,11 @@ const Canvas: React.FC = () => {
     snapToLines,
     toggleSnapToLines,
     snapToExtensions,
-    toggleSnapToExtensions,
-    rectangleDrawMode,
-    toggleRectangleDrawMode
+    toggleSnapToExtensions
   } = useCanvasEditor();
+
+  // Toggle state for the snap control group
+  const [snapEnabled, setSnapEnabled] = useState(true);
 
   // Force canvas redraw when tool or styling changes to ensure correct rendering
   useEffect(() => {
@@ -43,8 +44,20 @@ const Canvas: React.FC = () => {
         setActiveTool(activeTool);
       }
     }
-  }, [activeTool, rectangleDrawMode, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions]);
+  }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions]);
   // Added all snap settings and colors to the dependency array to ensure proper redrawing
+
+  // Toggle all snap settings on/off
+  const toggleAllSnaps = () => {
+    const newState = !snapEnabled;
+    setSnapEnabled(newState);
+    
+    // Only toggle individual snap settings if they don't match the new group state
+    if (snapToAngle !== newState) toggleSnapToAngle();
+    if (snapToEndpoints !== newState) toggleSnapToEndpoints();
+    if (snapToLines !== newState) toggleSnapToLines();
+    if (snapToExtensions !== newState) toggleSnapToExtensions();
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -78,71 +91,17 @@ const Canvas: React.FC = () => {
           />
         </div>
         
-        <div className="border-l pl-4 flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <label className="inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={snapToAngle} 
-                onChange={toggleSnapToAngle}
-                className="sr-only peer"
-              />
-              <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-              <span className="ml-2 text-sm font-medium">Snap to 45°</span>
-            </label>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <label className="inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={snapToEndpoints} 
-                onChange={toggleSnapToEndpoints}
-                className="sr-only peer"
-              />
-              <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-              <span className="ml-2 text-sm font-medium">Snap to endpoints</span>
-            </label>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <label className="inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={snapToLines} 
-                onChange={toggleSnapToLines}
-                className="sr-only peer"
-              />
-              <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-              <span className="ml-2 text-sm font-medium">Snap to lines</span>
-            </label>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label className="inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={snapToExtensions} 
-                onChange={toggleSnapToExtensions}
-                className="sr-only peer"
-              />
-              <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-              <span className="ml-2 text-sm font-medium">Snap to perpendicular</span>
-            </label>
-          </div>
-        </div>
-        
         <div className="border-l pl-4">
           <div className="flex items-center gap-2">
             <label className="inline-flex items-center cursor-pointer">
               <input 
                 type="checkbox" 
-                checked={rectangleDrawMode === 'click'}
-                onChange={toggleRectangleDrawMode}
+                checked={snapEnabled} 
+                onChange={toggleAllSnaps}
                 className="sr-only peer"
               />
               <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-              <span className="ml-2 text-sm font-medium">Rectangle Click Mode</span>
+              <span className="ml-2 text-sm font-medium">Snap</span>
             </label>
           </div>
         </div>

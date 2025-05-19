@@ -24,7 +24,7 @@ export const useCanvasEditor = () => {
   const [mouseMoved, setMouseMoved] = useState(false);
   
   // Rectangle drawing mode: 'click' for click-release-click or 'drag' for click-drag-release
-  const [rectangleDrawMode, setRectangleDrawMode] = useState<'click' | 'drag'>('click');
+  const [rectangleDrawMode, setRectangleDrawMode] = useState<'click' | 'drag'>('drag');
   
   // New state for snapping controls
   const [snapToAngle, setSnapToAngle] = useState<boolean>(true);

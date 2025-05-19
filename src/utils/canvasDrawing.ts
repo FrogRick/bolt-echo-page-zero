@@ -591,7 +591,7 @@ export const drawPreviewLine = (
   ctx.restore();
 };
 
-// UPDATED: Improved extension line drawing with clearer visual indicators
+// UPDATED: Improved extension line drawing with clearer visual indicators and green color
 export const drawExtensionLine = (
   ctx: CanvasRenderingContext2D,
   start: Point,
@@ -604,21 +604,12 @@ export const drawExtensionLine = (
   ctx.setLineDash([5, 5]);
   ctx.lineDashOffset = 0;
   
-  // Draw a bright blue dashed line for better visibility
+  // Draw a green dashed line
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
   ctx.lineWidth = 2; 
-  ctx.strokeStyle = '#1e88e5'; // Brighter blue for better visibility
-  ctx.stroke();
-  
-  // Draw a more prominent circle at the snap point
-  ctx.beginPath();
-  ctx.arc(end.x, end.y, 5, 0, Math.PI * 2);
-  ctx.fillStyle = '#1e88e5';
-  ctx.fill();
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#22c55e'; // Green color for the line
   ctx.stroke();
   
   // Draw a small X at the starting point to show where the extension is from
@@ -628,7 +619,7 @@ export const drawExtensionLine = (
   ctx.lineTo(start.x + crossSize, start.y + crossSize);
   ctx.moveTo(start.x + crossSize, start.y - crossSize);
   ctx.lineTo(start.x - crossSize, start.y + crossSize);
-  ctx.strokeStyle = '#1e88e5';
+  ctx.strokeStyle = '#22c55e'; // Green color for the X
   ctx.lineWidth = 1.5;
   ctx.stroke();
   
