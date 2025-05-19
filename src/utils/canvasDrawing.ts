@@ -1,4 +1,3 @@
-
 import { Point, Shape } from '@/types/canvas';
 
 export const drawShapes = (
@@ -36,36 +35,6 @@ export const drawShapes = (
       ctx.stroke();
       ctx.globalCompositeOperation = 'source-over';
       
-      // Draw endpoint caps with borders
-      const capRadius = lineWidth / 2;
-      
-      // Start point cap
-      // First draw the gray fill
-      ctx.beginPath();
-      ctx.arc(shape.start.x, shape.start.y, capRadius, 0, Math.PI * 2);
-      ctx.fillStyle = '#8E9196';
-      ctx.fill();
-      
-      // Then draw the black border
-      ctx.beginPath();
-      ctx.arc(shape.start.x, shape.start.y, capRadius + 1, 0, Math.PI * 2);
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = strokeColor;
-      ctx.stroke();
-      
-      // End point cap
-      // First draw the gray fill
-      ctx.beginPath();
-      ctx.arc(shape.end.x, shape.end.y, capRadius, 0, Math.PI * 2);
-      ctx.fillStyle = '#8E9196';
-      ctx.fill();
-      
-      // Then draw the black border
-      ctx.beginPath();
-      ctx.arc(shape.end.x, shape.end.y, capRadius + 1, 0, Math.PI * 2);
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = strokeColor;
-      ctx.stroke();
     } else if (shape.type === 'rectangle') {
       ctx.beginPath();
       ctx.rect(
@@ -174,35 +143,4 @@ export const drawPreviewLine = (
   ctx.globalCompositeOperation = 'destination-over';
   ctx.stroke();
   ctx.globalCompositeOperation = 'source-over';
-  
-  // Draw endpoint caps with borders
-  const capRadius = 4; // Size of cap for preview line
-  
-  // Start point cap
-  // First draw the gray fill
-  ctx.beginPath();
-  ctx.arc(start.x, start.y, capRadius, 0, Math.PI * 2);
-  ctx.fillStyle = '#8E9196';
-  ctx.fill();
-  
-  // Then draw the black border
-  ctx.beginPath();
-  ctx.arc(start.x, start.y, capRadius + 1, 0, Math.PI * 2);
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = '#000000';
-  ctx.stroke();
-  
-  // End point cap
-  // First draw the gray fill
-  ctx.beginPath();
-  ctx.arc(end.x, end.y, capRadius, 0, Math.PI * 2);
-  ctx.fillStyle = '#8E9196';
-  ctx.fill();
-  
-  // Then draw the black border
-  ctx.beginPath();
-  ctx.arc(end.x, end.y, capRadius + 1, 0, Math.PI * 2);
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = '#000000';
-  ctx.stroke();
 };
