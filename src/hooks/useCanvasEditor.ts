@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { drawShapes, drawInProgressPolygon, drawPreviewLine, lineSnappingHelpers } from '@/utils/canvasDrawing';
+import { drawShapes, drawInProgressPolygon, drawPreviewLine, drawExtensionLine, lineSnappingHelpers } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
 import { Tool, Point, Shape, PreviewLine } from '@/types/canvas';
 import { generateId } from '@/utils/idGenerator';
@@ -33,6 +33,10 @@ export const useCanvasEditor = () => {
   
   // Add a state for line-to-line snapping
   const [snapToLines, setSnapToLines] = useState<boolean>(true);
+
+  // New state for extension snapping
+  const [snapToExtensions, setSnapToExtensions] = useState<boolean>(true);
+  const [extensionLine, setExtensionLine] = useState<{start: Point, end: Point} | null>(null);
 
   // Import shape detection functions
   const { findShapeAtPoint } = useShapeDetection();
@@ -95,8 +99,24 @@ export const useCanvasEditor = () => {
       // Get the snapped point for preview
       let endPoint = currentPoint;
       
-      // First check if we should snap to an existing line
-      if (snapToLines) {
+      // Check for extension snapping first
+      if (snapToExtensions && !isDragging) {
+        const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(startPoint, currentPoint, shapes);
+        if (extensionSnap) {
+          endPoint = extensionSnap.point;
+          
+          // Set extension line for drawing dotted reference line
+          setExtensionLine({
+            start: currentPoint,
+            end: endPoint
+          });
+        } else {
+          setExtensionLine(null);
+        }
+      }
+      
+      // Then check if we should snap to an existing line
+      if (!extensionLine && snapToLines) {
         const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(currentPoint, shapes);
         if (lineSnap) {
           endPoint = lineSnap.point;
@@ -107,13 +127,20 @@ export const useCanvasEditor = () => {
       const snappedToEndpoint = findNearestEndpoint(endPoint);
       if (snappedToEndpoint) {
         endPoint = snappedToEndpoint;
-      } else if (snapToAngle) {
+        // Clear the extension line if we're snapping to an endpoint
+        setExtensionLine(null);
+      } else if (snapToAngle && !extensionLine) {
         // If not snapped to endpoint, try angle snapping
         endPoint = snapAngleToGrid(startPoint, endPoint);
       }
       
       // Draw only one line - the snapped one
       drawPreviewLine(ctx, startPoint, endPoint, currentColor);
+      
+      // Draw dotted extension line if there is one
+      if (extensionLine) {
+        drawExtensionLine(ctx, extensionLine.start, extensionLine.end);
+      }
     }
     
     // Draw preview line for single click line tool if previewLine exists
@@ -359,14 +386,39 @@ export const useCanvasEditor = () => {
     if (isDragging && selectedShape) {
       handleDragMove(point);
     } else if (activeTool === 'wall' && startPoint) {
+      // For wall tool, check for extension snapping during mouse move
+      if (snapToExtensions) {
+        const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(startPoint, point, shapes);
+        if (extensionSnap) {
+          setCurrentPoint(extensionSnap.point);
+        } else {
+          setExtensionLine(null);
+        }
+      }
       // Update the current point for line preview
       redrawCanvas();
-    } else if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
+    } 
+    else if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
       // For wall-polygon, apply the same snapping as wall tool
       let snappedPoint = point;
       
+      // Check for extension snapping
+      if (snapToExtensions) {
+        const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
+        const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, shapes);
+        if (extensionSnap) {
+          snappedPoint = extensionSnap.point;
+          setExtensionLine({
+            start: point,
+            end: snappedPoint
+          });
+        } else {
+          setExtensionLine(null);
+        }
+      }
+      
       // First check if we can snap to a line
-      if (snapToLines) {
+      if (!extensionLine && snapToLines) {
         const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
         if (lineSnap) {
           snappedPoint = lineSnap.point;
@@ -377,7 +429,8 @@ export const useCanvasEditor = () => {
       const endpointSnap = findNearestEndpoint(snappedPoint);
       if (endpointSnap) {
         snappedPoint = endpointSnap;
-      } else if (snapToAngle && wallPolygonPoints.length > 0) {
+        setExtensionLine(null);
+      } else if (snapToAngle && wallPolygonPoints.length > 0 && !extensionLine) {
         // Apply angle snapping from the last polygon point
         const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
         snappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
@@ -479,10 +532,20 @@ export const useCanvasEditor = () => {
   const completeLine = (endPoint: Point) => {
     if (!startPoint) return;
 
-    // First check if we can snap to a line
+    // First check for extension snapping
     let finalEndpoint = endPoint;
     
-    if (snapToLines) {
+    if (snapToExtensions) {
+      const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(startPoint, endPoint, shapes);
+      if (extensionSnap) {
+        finalEndpoint = extensionSnap.point;
+        // Clear the extension line after using it
+        setExtensionLine(null);
+      }
+    }
+    
+    // If not extension snapped, check line snapping
+    if (finalEndpoint === endPoint && snapToLines) {
       const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(endPoint, shapes);
       if (lineSnap) {
         finalEndpoint = lineSnap.point;
@@ -659,6 +722,11 @@ export const useCanvasEditor = () => {
     setSnapToLines(!snapToLines);
   };
 
+  // Toggle snap to extensions
+  const toggleSnapToExtensions = () => {
+    setSnapToExtensions(!snapToExtensions);
+  };
+
   // Toggle rectangle drawing mode
   const toggleRectangleDrawMode = () => {
     setRectangleDrawMode(rectangleDrawMode === 'click' ? 'drag' : 'click');
@@ -707,7 +775,8 @@ export const useCanvasEditor = () => {
     activeTool,
     startPoint,
     currentPoint,
-    previewLine
+    previewLine,
+    extensionLine
   ]);
   
   return {
@@ -730,6 +799,8 @@ export const useCanvasEditor = () => {
     toggleSnapToEndpoints,
     snapToLines,
     toggleSnapToLines,
+    snapToExtensions,
+    toggleSnapToExtensions,
     rectangleDrawMode,
     toggleRectangleDrawMode
   };

@@ -25,6 +25,8 @@ const Canvas: React.FC = () => {
     toggleSnapToEndpoints,
     snapToLines,
     toggleSnapToLines,
+    snapToExtensions,
+    toggleSnapToExtensions,
     rectangleDrawMode,
     toggleRectangleDrawMode
   } = useCanvasEditor();
@@ -41,7 +43,7 @@ const Canvas: React.FC = () => {
         setActiveTool(activeTool);
       }
     }
-  }, [activeTool, rectangleDrawMode, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines]);
+  }, [activeTool, rectangleDrawMode, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions]);
   // Added all snap settings and colors to the dependency array to ensure proper redrawing
 
   return (
@@ -112,6 +114,19 @@ const Canvas: React.FC = () => {
             />
             <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
             <span className="ml-2 text-sm font-medium">Snap to lines</span>
+          </label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="inline-flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={snapToExtensions} 
+              onChange={toggleSnapToExtensions}
+              className="sr-only peer"
+            />
+            <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+            <span className="ml-2 text-sm font-medium">Snap to extensions</span>
           </label>
         </div>
         

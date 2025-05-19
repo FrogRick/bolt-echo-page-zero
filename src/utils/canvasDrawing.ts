@@ -128,6 +128,98 @@ const findNearestPointOnAnyLine = (
   return closestPoint;
 };
 
+// NEW: Find the extension point of a line
+const findLineExtensionPoint = (
+  startPoint: Point,
+  currentPoint: Point,
+  shapes: Shape[],
+  threshold: number = 30
+): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point} } | null => {
+  // First, create a virtual extended line from startPoint through currentPoint
+  const dx = currentPoint.x - startPoint.x;
+  const dy = currentPoint.y - startPoint.y;
+  
+  // Calculate the distance from start to current point
+  const currentDist = Math.sqrt(dx * dx + dy * dy);
+  
+  if (currentDist === 0) return null;
+  
+  // Normalize direction vector
+  const dirX = dx / currentDist;
+  const dirY = dy / currentDist;
+  
+  // Create a much longer virtual line in the same direction (extend by 1000 units)
+  const extendedEnd = {
+    x: startPoint.x + dirX * 1000,
+    y: startPoint.y + dirY * 1000
+  };
+  
+  // Check each line for intersection with this extended line
+  let closestIntersection = null;
+  let minDistance = Number.MAX_VALUE;
+  
+  for (const shape of shapes) {
+    if (shape.type !== 'line') continue;
+    
+    // Calculate the intersection of our extended line with this line
+    const intersection = findIntersectionPoint(
+      startPoint, 
+      extendedEnd, 
+      shape.start, 
+      shape.end
+    );
+    
+    if (intersection) {
+      // Calculate the distance from currentPoint to intersection
+      const distToIntersection = Math.sqrt(
+        Math.pow(intersection.x - currentPoint.x, 2) + 
+        Math.pow(intersection.y - currentPoint.y, 2)
+      );
+      
+      // If this intersection is closer than our threshold and closer than previously found ones
+      if (distToIntersection < threshold && distToIntersection < minDistance) {
+        minDistance = distToIntersection;
+        closestIntersection = {
+          point: intersection,
+          referenceLineId: shape.id,
+          extendedLine: {
+            start: startPoint,
+            end: intersection
+          }
+        };
+      }
+    }
+  }
+  
+  return closestIntersection;
+};
+
+// Helper function to find intersection point of two infinite lines
+const findIntersectionPoint = (
+  line1Start: Point, 
+  line1End: Point,
+  line2Start: Point, 
+  line2End: Point
+): Point | null => {
+  const x1 = line1Start.x, y1 = line1Start.y;
+  const x2 = line1End.x, y2 = line1End.y;
+  const x3 = line2Start.x, y3 = line2Start.y;
+  const x4 = line2End.x, y4 = line2End.y;
+
+  // Calculate denominators
+  const den = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+  if (Math.abs(den) < 0.001) return null; // Lines are nearly parallel
+
+  const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / den;
+  
+  // For infinite lines, we only need to calculate the intersection point
+  // (not check if it's contained in the line segments)
+  const x = x1 + ua * (x2 - x1);
+  const y = y1 + ua * (y2 - y1);
+  
+  return { x, y };
+};
+
 export const drawShapes = (
   ctx: CanvasRenderingContext2D, 
   shapes: Shape[], 
@@ -448,9 +540,41 @@ export const drawPreviewLine = (
   ctx.restore();
 };
 
+// NEW FUNCTION: Draw a dashed extension line for the extension snap
+export const drawExtensionLine = (
+  ctx: CanvasRenderingContext2D,
+  start: Point,
+  end: Point
+): void => {
+  // Save the current state
+  ctx.save();
+  
+  // Setup for dashed line (5px dash, 5px gap)
+  ctx.setLineDash([5, 5]);
+  ctx.lineDashOffset = 0;
+  
+  // Draw a light blue dashed line
+  ctx.beginPath();
+  ctx.moveTo(start.x, start.y);
+  ctx.lineTo(end.x, end.y);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#3498db'; // Light blue color for extension line
+  ctx.stroke();
+  
+  // Draw a small circle at the snap point
+  ctx.beginPath();
+  ctx.arc(end.x, end.y, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#3498db';
+  ctx.fill();
+  
+  // Restore previous context settings
+  ctx.restore();
+};
+
 // Export the helper functions for line snapping
 export const lineSnappingHelpers = {
   findNearestPointOnAnyLine,
   findClosestPointOnLine,
-  isPointOnLine
+  isPointOnLine,
+  findLineExtensionPoint
 };
