@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect } from 'react';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine, lineSnappingHelpers } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
@@ -34,6 +35,28 @@ export const useCanvasEditor = () => {
 
   // Import shape detection functions
   const { findShapeAtPoint } = useShapeDetection();
+
+  // Function to cancel the current drawing operation
+  const cancelDrawing = () => {
+    if (activeTool === 'line' && startPoint) {
+      // Cancel line drawing - clear the start point
+      setStartPoint(null);
+      setPreviewLine(null);
+      setIsDrawing(false);
+    } else if (activeTool === 'rectangle') {
+      // Cancel rectangle drawing - clear the start point
+      if (rectangleDrawMode === 'click' && startPoint) {
+        setStartPoint(null);
+        setCurrentPoint(null);
+      }
+      setIsDrawing(false);
+    } else if (activeTool === 'polygon' && polygonPoints.length > 0) {
+      // Cancel polygon drawing - clear all polygon points
+      setPolygonPoints([]);
+    }
+    // Force redraw of the canvas to remove any in-progress elements
+    redrawCanvas();
+  };
 
   // Clear the canvas and redraw all shapes
   const redrawCanvas = () => {
@@ -503,10 +526,16 @@ export const useCanvasEditor = () => {
   // Handle keyboard events for polygon escape and enter
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // If escape key is pressed, cancel the current drawing operation
+      if (e.key === 'Escape') {
+        cancelDrawing();
+        return;
+      }
+      
       // If we're in polygon drawing mode with at least 3 points
       if (activeTool === 'polygon' && polygonPoints.length >= 3) {
-        if (e.key === 'Escape' || e.key === 'Enter') {
-          // Close the polygon on Escape or Enter
+        if (e.key === 'Enter') {
+          // Close the polygon on Enter
           completePolygon();
         }
       }
@@ -516,7 +545,7 @@ export const useCanvasEditor = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeTool, polygonPoints]);
+  }, [activeTool, polygonPoints, startPoint, rectangleDrawMode]);
 
   // Redraw the canvas whenever shapes or selected shapes change
   useEffect(() => {
