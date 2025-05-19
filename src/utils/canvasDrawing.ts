@@ -182,99 +182,59 @@ export const drawShapes = (
       ctx.restore();
     }
   });
-
-  // STEP 2: First draw the black borders for all lines (for a seamless connected look)
-  ctx.save();
-  ctx.globalCompositeOperation = 'source-over';
   
-  // Start with a new path for all borders
-  ctx.beginPath();
-  
-  // Add all lines to the path
-  sortedShapes.forEach(shape => {
-    if (shape.type === 'line') {
-      ctx.moveTo(shape.start.x, shape.start.y);
-      ctx.lineTo(shape.end.x, shape.end.y);
-    }
-  });
-  
-  // Stroke all borders at once for seamless connections
-  ctx.lineWidth = 10; // Slightly wider than inner lines
-  ctx.strokeStyle = '#000000';
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.stroke();
-  
-  ctx.restore();
-  
-  // STEP 3: Now draw all the gray inner lines on top of the borders
-  ctx.save();
-  ctx.globalCompositeOperation = 'source-over';
-  
-  // Start with a new path for all inner lines
-  ctx.beginPath();
-  
-  // Add all lines to the path
-  sortedShapes.forEach(shape => {
-    if (shape.type === 'line') {
-      ctx.moveTo(shape.start.x, shape.start.y);
-      ctx.lineTo(shape.end.x, shape.end.y);
-    }
-  });
-  
-  // Stroke all inner lines at once
-  ctx.lineWidth = 8;
-  ctx.strokeStyle = '#8E9196';
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.stroke();
-  
-  ctx.restore();
-  
-  // STEP 4: Draw end caps for lines that aren't connected
-  sortedShapes.forEach(shape => {
-    if (shape.type === 'line') {
-      // Calculate the angle of the line
-      const angle = Math.atan2(shape.end.y - shape.start.y, shape.end.x - shape.start.x);
-      
-      // Calculate perpendicular angle for end caps (90 degrees to the line)
-      const perpAngle = angle + Math.PI / 2;
-      const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
-      const strokeColor = 'strokeColor' in shape ? shape.strokeColor : '#000000';
-      const dx = Math.cos(perpAngle) * (lineWidth / 2);
-      const dy = Math.sin(perpAngle) * (lineWidth / 2);
-      
-      // Draw end caps for lines that aren't connected
-      ctx.save();
-      const borderThickness = 1;
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = borderThickness;
-      
-      // Draw cap at start point if not connected or intersecting
-      const connectedToStart = findConnectedLines(shapes, shape.start, shape.id);
-      const intersectingWithStart = findIntersectingLines(shapes, shape.start, shape.id);
-      if (connectedToStart.length === 0 && intersectingWithStart.length === 0) {
-        ctx.beginPath();
-        ctx.moveTo(shape.start.x - dx, shape.start.y - dy);
-        ctx.lineTo(shape.start.x + dx, shape.start.y + dy);
-        ctx.stroke();
+  // STEP 2: Draw all line borders at once first to ensure seamless connections
+  const lineShapes = sortedShapes.filter(shape => shape.type === 'line');
+  if (lineShapes.length > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    
+    // Start a new path for all borders at once
+    ctx.beginPath();
+    
+    // Add all lines to the path
+    lineShapes.forEach(shape => {
+      if (shape.type === 'line') {
+        ctx.moveTo(shape.start.x, shape.start.y);
+        ctx.lineTo(shape.end.x, shape.end.y);
       }
-      
-      // Draw cap at end point if not connected or intersecting
-      const connectedToEnd = findConnectedLines(shapes, shape.end, shape.id);
-      const intersectingWithEnd = findIntersectingLines(shapes, shape.end, shape.id);
-      if (connectedToEnd.length === 0 && intersectingWithEnd.length === 0) {
-        ctx.beginPath();
-        ctx.moveTo(shape.end.x - dx, shape.end.y - dy);
-        ctx.lineTo(shape.end.x + dx, shape.end.y + dy);
-        ctx.stroke();
+    });
+    
+    // Stroke all borders at once
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = '#000000';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    
+    ctx.restore();
+    
+    // STEP 3: Draw all line fills at once to ensure seamless connections
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    
+    // Start a new path for all fills
+    ctx.beginPath();
+    
+    // Add all lines to the path
+    lineShapes.forEach(shape => {
+      if (shape.type === 'line') {
+        ctx.moveTo(shape.start.x, shape.start.y);
+        ctx.lineTo(shape.end.x, shape.end.y);
       }
-      
-      ctx.restore();
-    }
-  });
+    });
+    
+    // Stroke all inner lines at once
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#8E9196';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    
+    ctx.restore();
+  }
 
-  // STEP 5: Highlight selected shape - always on top
+  // STEP 4: Highlight selected shape - always on top
   if (selectedShapeId) {
     const selectedShape = shapes.find(shape => shape.id === selectedShapeId);
     if (selectedShape) {
