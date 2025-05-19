@@ -20,6 +20,7 @@ export const useCanvasEditor = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
   const [previewLine, setPreviewLine] = useState<PreviewLine | null>(null);
+  const [lineDrawMode, setLineDrawMode] = useState<'click' | 'drag'>('click');
 
   // Import shape detection functions
   const { findShapeAtPoint } = useShapeDetection();
@@ -67,7 +68,11 @@ export const useCanvasEditor = () => {
     if (activeTool === 'select') {
       handleSelectToolMouseDown(point);
     } else if (activeTool === 'line') {
+      // Start drawing a line - could be either click or drag mode
       handleLineToolMouseDown(point);
+      // Also set isDrawing to true for drag mode
+      setIsDrawing(true);
+      setLineDrawMode('drag');
     } else if (activeTool === 'rectangle') {
       handleRectangleToolMouseDown(point);
     } else if (activeTool === 'polygon') {
@@ -138,21 +143,29 @@ export const useCanvasEditor = () => {
         end: point
       });
     } else {
-      // If there's already a start point, complete the line and reset
-      const newLine = {
-        id: generateId(),
-        type: 'line' as const,
-        start: { ...startPoint },
-        end: point,
-        color: currentColor
-      };
-      
-      setShapes([...shapes, newLine]);
-      setStartPoint(null);
-      setPreviewLine(null);
-      
-      // No longer automatically switch back to select tool
+      // This will only happen in click mode, not drag mode
+      if (lineDrawMode === 'click') {
+        completeLine(point);
+      }
     }
+  };
+
+  // Extract line completion logic for reuse
+  const completeLine = (endPoint: Point) => {
+    if (!startPoint) return;
+
+    const newLine = {
+      id: generateId(),
+      type: 'line' as const,
+      start: { ...startPoint },
+      end: endPoint,
+      color: currentColor
+    };
+    
+    setShapes([...shapes, newLine]);
+    setStartPoint(null);
+    setPreviewLine(null);
+    setIsDrawing(false);
   };
 
   // Handle rectangle tool mouse down
@@ -267,6 +280,10 @@ export const useCanvasEditor = () => {
       setShapes([...shapes, newRectangle]);
       setIsDrawing(false);
       setStartPoint(null);
+    } else if (activeTool === 'line' && startPoint && lineDrawMode === 'drag' && isDrawing) {
+      // Complete line on mouse up when in drag mode
+      completeLine(point);
+      setLineDrawMode('click'); // Reset to click mode for next interaction
     }
     
     setIsDragging(false);
