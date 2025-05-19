@@ -1,3 +1,4 @@
+
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -215,65 +216,59 @@ export const drawShapes = (
     }
   });
 
-  // STEP 3: Draw all welding joints AFTER the lines
-  const drawnJoints = new Set<string>();
-
+  // Create a collection to track all welding points to draw
+  const weldingPoints: Point[] = [];
+  
+  // STEP 3: Find all intersection points first
+  sortedShapes.forEach((shape1) => {
+    if (shape1.type === 'line') {
+      // Check for line endpoints that connect with other lines
+      [shape1.start, shape1.end].forEach(endpoint => {
+        const connectedLines = findConnectedLines(shapes, endpoint, shape1.id);
+        if (connectedLines.length > 0) {
+          // Add this endpoint for welding
+          weldingPoints.push(endpoint);
+        }
+      });
+      
+      // Check for intersections with other lines
+      sortedShapes.forEach((shape2) => {
+        if (shape2.type === 'line' && shape2.id !== shape1.id) {
+          const intersection = findLineIntersection(shape1, shape2);
+          if (intersection) {
+            // Add this intersection point for welding
+            weldingPoints.push(intersection);
+          }
+        }
+      });
+    }
+  });
+  
+  // STEP 4: Draw all welding points at once with the same style for consistency
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  
+  weldingPoints.forEach(point => {
+    // Calculate the appropriate size for the welding point
+    const jointSize = 8; // Default line width
+    
+    // Draw the welding circle
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, jointSize / 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#8E9196'; // Gray color matching the line
+    ctx.fill();
+    
+    // Draw a black border around the welding point for seamless look
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#000000';
+    ctx.stroke();
+  });
+  
+  ctx.restore();
+  
+  // STEP 5: Draw end caps for lines that aren't connected
   sortedShapes.forEach(shape => {
     if (shape.type === 'line') {
-      // Get all joint positions first
-      const jointPositions: {point: Point, jointKey: string}[] = [];
-      
-      // Check each end of the line for connections and intersections
-      [shape.start, shape.end].forEach(endpoint => {
-        // Create a unique key for this joint to avoid drawing it multiple times
-        const jointKey = `${Math.round(endpoint.x)},${Math.round(endpoint.y)}`;
-        
-        if (!drawnJoints.has(jointKey)) {
-          const connectedLines = findConnectedLines(shapes, endpoint);
-          const intersectingLines = findIntersectingLines(shapes, endpoint);
-          
-          // If we have multiple lines connected at this point OR any intersecting lines, add a welding circle
-          if (connectedLines.length > 1 || intersectingLines.length > 0) {
-            jointPositions.push({point: endpoint, jointKey});
-            drawnJoints.add(jointKey);
-          }
-        }
-      });
-
-      // Also check for intersections along the line
-      sortedShapes.forEach(otherShape => {
-        if (otherShape.type === 'line' && otherShape.id !== shape.id) {
-          // Check if the lines intersect
-          const intersection = findLineIntersection(shape, otherShape);
-          if (intersection) {
-            const intersectionKey = `${Math.round(intersection.x)},${Math.round(intersection.y)}`;
-            
-            if (!drawnJoints.has(intersectionKey)) {
-              jointPositions.push({point: intersection, jointKey: intersectionKey});
-              drawnJoints.add(intersectionKey);
-            }
-          }
-        }
-      });
-      
-      // Draw the welding joint circles AFTER the lines
-      jointPositions.forEach(({point, jointKey}) => {
-        // Find the line width to use for the joint (defaulting to 8 if not found)
-        const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
-        
-        // Save context
-        ctx.save();
-        ctx.globalCompositeOperation = 'source-over';
-        
-        // Draw the connecting circle at the joint with the color of the line
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, lineWidth / 2, 0, Math.PI * 2);
-        ctx.fillStyle = '#8E9196'; // Gray color matching the line
-        ctx.fill();
-        
-        ctx.restore();
-      });
-
       // Calculate the angle of the line
       const angle = Math.atan2(shape.end.y - shape.start.y, shape.end.x - shape.start.x);
       
@@ -314,7 +309,7 @@ export const drawShapes = (
     }
   });
 
-  // STEP 4: Highlight selected shape - always on top
+  // STEP 6: Highlight selected shape - always on top
   if (selectedShapeId) {
     const selectedShape = shapes.find(shape => shape.id === selectedShapeId);
     if (selectedShape) {
