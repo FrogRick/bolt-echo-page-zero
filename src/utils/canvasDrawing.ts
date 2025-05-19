@@ -1,4 +1,3 @@
-
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -81,7 +80,7 @@ export const drawShapes = (
       ctx.lineTo(shape.end.x, shape.end.y);
       ctx.lineWidth = lineWidth;
       ctx.strokeStyle = '#8E9196'; // Gray color for the main line
-      ctx.lineCap = connectedToStart.length > 0 || connectedToEnd.length > 0 ? 'butt' : 'butt';
+      ctx.lineCap = 'butt'; // Ensure flat ends
       ctx.stroke();
       
       // Draw the thin black border
@@ -90,9 +89,43 @@ export const drawShapes = (
       ctx.lineTo(shape.end.x, shape.end.y);
       ctx.lineWidth = lineWidth + 2; // 2px wider for the border
       ctx.strokeStyle = strokeColor;
-      ctx.lineCap = connectedToStart.length > 0 || connectedToEnd.length > 0 ? 'butt' : 'butt';
+      ctx.lineCap = 'butt'; // Ensure flat ends
       ctx.globalCompositeOperation = 'destination-over';
       ctx.stroke();
+      
+      // Add end caps for non-connected ends (thin lines at the beginning/end)
+      // Only add caps where there's no connection
+      const borderThickness = 2; // Same as the border thickness
+      const capLength = lineWidth / 2; // Half the line width for cap length
+      
+      // Calculate the angle of the line
+      const angle = Math.atan2(shape.end.y - shape.start.y, shape.end.x - shape.start.x);
+      
+      // Calculate perpendicular angle for end caps (90 degrees to the line)
+      const perpAngle = angle + Math.PI / 2;
+      const dx = Math.cos(perpAngle) * (lineWidth / 2);
+      const dy = Math.sin(perpAngle) * (lineWidth / 2);
+      
+      // Reset composite operation
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = borderThickness;
+      
+      // Draw cap at start point if not connected
+      if (connectedToStart.length === 0) {
+        ctx.beginPath();
+        ctx.moveTo(shape.start.x - dx, shape.start.y - dy);
+        ctx.lineTo(shape.start.x + dx, shape.start.y + dy);
+        ctx.stroke();
+      }
+      
+      // Draw cap at end point if not connected
+      if (connectedToEnd.length === 0) {
+        ctx.beginPath();
+        ctx.moveTo(shape.end.x - dx, shape.end.y - dy);
+        ctx.lineTo(shape.end.x + dx, shape.end.y + dy);
+        ctx.stroke();
+      }
       
       // Restore to default state
       ctx.globalCompositeOperation = 'source-over';
@@ -100,7 +133,7 @@ export const drawShapes = (
     }
   });
 
-  // Third pass - draw connection points at joints for seamless appearance
+  // Third pass - draw connection points at joints (now without radius at the ends)
   const drawnJoints = new Set<string>();
   
   shapes.forEach(shape => {
@@ -113,39 +146,10 @@ export const drawShapes = (
         if (!drawnJoints.has(jointKey)) {
           const connectedLines = findConnectedLines(shapes, endpoint);
           
-          // If we have multiple lines connected at this point, draw a joint
+          // If we have multiple lines connected at this point, ensure a seamless join
+          // We no longer draw radius circles at joints - the butt ends will connect directly
           if (connectedLines.length > 1) {
-            // Save context
-            ctx.save();
-            
-            // Find the line width to use for the joint radius (defaulting to 8 if not found)
-            const firstLine = connectedLines[0];
-            const defaultLineWidth = 8;
-            const jointLineWidth = firstLine.type === 'line' && 'lineWidth' in firstLine 
-              ? firstLine.lineWidth 
-              : defaultLineWidth;
-            
-            // Calculate the joint radius - now about half the previous size
-            const jointRadius = (jointLineWidth + 1) / 4; // Reduced to about half the previous size
-            
-            // Draw a filled circle at the connection point
-            ctx.beginPath();
-            ctx.arc(endpoint.x, endpoint.y, jointRadius, 0, Math.PI * 2);
-            ctx.fillStyle = '#8E9196'; // Same color as the line
-            ctx.fill();
-            
-            // Draw the border
-            ctx.beginPath();
-            ctx.arc(endpoint.x, endpoint.y, jointRadius + 1, 0, Math.PI * 2); // Radius includes border
-            ctx.fillStyle = '#000000'; // Border color
-            ctx.globalCompositeOperation = 'destination-over';
-            ctx.fill();
-            
-            // Restore context
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.restore();
-            
-            // Mark this joint as drawn
+            // Mark this joint as processed
             drawnJoints.add(jointKey);
           }
         }
