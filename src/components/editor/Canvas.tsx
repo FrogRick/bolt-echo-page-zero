@@ -127,7 +127,7 @@ const Canvas: React.FC = () => {
                 className="sr-only peer"
               />
               <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-              <span className="ml-2 text-sm font-medium">Snap to extensions</span>
+              <span className="ml-2 text-sm font-medium">Snap to perpendicular</span>
             </label>
           </div>
         </div>

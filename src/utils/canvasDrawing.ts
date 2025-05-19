@@ -127,94 +127,20 @@ const findNearestPointOnAnyLine = (
   return closestPoint;
 };
 
-// UPDATED: Find the extension point of a line - now supports both parallel and perpendicular extensions
+// UPDATED: Modified to only find perpendicular extension points from existing lines
 const findLineExtensionPoint = (
   startPoint: Point,
   currentPoint: Point,
   shapes: Shape[],
   threshold: number = 30
 ): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point} } | null => {
-  // We'll check two types of extensions:
-  // 1. Straight line extensions (original functionality)
-  // 2. Perpendicular extensions from endpoints
-
-  // First, check for straight line extensions
-  const parallelIntersection = findParallelExtension(startPoint, currentPoint, shapes, threshold);
-  if (parallelIntersection) {
-    return parallelIntersection;
-  }
-  
-  // If no straight extension found, check for perpendicular extensions
+  // We're only interested in perpendicular extensions now
   return findPerpendicularExtension(startPoint, currentPoint, shapes, threshold);
 };
 
-// NEW: Helper function to find parallel line extensions
-const findParallelExtension = (
-  startPoint: Point,
-  currentPoint: Point,
-  shapes: Shape[],
-  threshold: number = 30
-): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point} } | null => {
-  // Create a virtual extended line from startPoint through currentPoint
-  const dx = currentPoint.x - startPoint.x;
-  const dy = currentPoint.y - startPoint.y;
-  
-  // Calculate the distance from start to current point
-  const currentDist = Math.sqrt(dx * dx + dy * dy);
-  
-  if (currentDist === 0) return null;
-  
-  // Normalize direction vector
-  const dirX = dx / currentDist;
-  const dirY = dy / currentDist;
-  
-  // Create a much longer virtual line in the same direction (extend by 1000 units)
-  const extendedEnd = {
-    x: startPoint.x + dirX * 1000,
-    y: startPoint.y + dirY * 1000
-  };
-  
-  // Check each line for intersection with this extended line
-  let closestIntersection = null;
-  let minDistance = Number.MAX_VALUE;
-  
-  for (const shape of shapes) {
-    if (shape.type !== 'line') continue;
-    
-    // Calculate the intersection of our extended line with this line
-    const intersection = findIntersectionPoint(
-      startPoint, 
-      extendedEnd, 
-      shape.start, 
-      shape.end
-    );
-    
-    if (intersection) {
-      // Calculate the distance from currentPoint to intersection
-      const distToIntersection = Math.sqrt(
-        Math.pow(intersection.x - currentPoint.x, 2) + 
-        Math.pow(intersection.y - currentPoint.y, 2)
-      );
-      
-      // If this intersection is closer than our threshold and closer than previously found ones
-      if (distToIntersection < threshold && distToIntersection < minDistance) {
-        minDistance = distToIntersection;
-        closestIntersection = {
-          point: intersection,
-          referenceLineId: shape.id,
-          extendedLine: {
-            start: startPoint,
-            end: intersection
-          }
-        };
-      }
-    }
-  }
-  
-  return closestIntersection;
-};
+// REMOVED: parallel extension finding is removed since we only want perpendicular extensions
 
-// NEW: Helper function to find perpendicular line extensions from endpoints
+// UPDATED: Helper function to find perpendicular line extensions from endpoints
 const findPerpendicularExtension = (
   startPoint: Point,
   currentPoint: Point,
@@ -665,7 +591,7 @@ export const drawPreviewLine = (
   ctx.restore();
 };
 
-// NEW FUNCTION: Draw a dashed extension line for the extension snap
+// UPDATED: Improved extension line drawing with clearer visual indicators
 export const drawExtensionLine = (
   ctx: CanvasRenderingContext2D,
   start: Point,
@@ -678,21 +604,32 @@ export const drawExtensionLine = (
   ctx.setLineDash([5, 5]);
   ctx.lineDashOffset = 0;
   
-  // Draw a light blue dashed line
+  // Draw a bright blue dashed line for better visibility
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
-  ctx.lineWidth = 2; // Slightly thicker
-  ctx.strokeStyle = '#3498db'; // Light blue color for extension line
+  ctx.lineWidth = 2; 
+  ctx.strokeStyle = '#1e88e5'; // Brighter blue for better visibility
   ctx.stroke();
   
-  // Draw a small circle at the snap point
+  // Draw a more prominent circle at the snap point
   ctx.beginPath();
   ctx.arc(end.x, end.y, 5, 0, Math.PI * 2);
-  ctx.fillStyle = '#3498db';
+  ctx.fillStyle = '#1e88e5';
   ctx.fill();
   ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  
+  // Draw a small X at the starting point to show where the extension is from
+  const crossSize = 4;
+  ctx.beginPath();
+  ctx.moveTo(start.x - crossSize, start.y - crossSize);
+  ctx.lineTo(start.x + crossSize, start.y + crossSize);
+  ctx.moveTo(start.x + crossSize, start.y - crossSize);
+  ctx.lineTo(start.x - crossSize, start.y + crossSize);
+  ctx.strokeStyle = '#1e88e5';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
   
   // Restore previous context settings
