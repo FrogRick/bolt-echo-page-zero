@@ -1,3 +1,4 @@
+
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -95,8 +96,7 @@ export const drawShapes = (
       
       // Add end caps for non-connected ends (thin lines at the beginning/end)
       // Only add caps where there's no connection
-      const borderThickness = 2; // Same as the border thickness
-      const capLength = lineWidth / 2; // Half the line width for cap length
+      const borderThickness = 1; // Reduced from 2 to 1 for less thick end caps
       
       // Calculate the angle of the line
       const angle = Math.atan2(shape.end.y - shape.start.y, shape.end.x - shape.start.x);
@@ -133,7 +133,7 @@ export const drawShapes = (
     }
   });
 
-  // Third pass - draw connection points at joints (now without radius at the ends)
+  // Third pass - draw connection points at joints to ensure proper welding
   const drawnJoints = new Set<string>();
   
   shapes.forEach(shape => {
@@ -146,9 +146,32 @@ export const drawShapes = (
         if (!drawnJoints.has(jointKey)) {
           const connectedLines = findConnectedLines(shapes, endpoint);
           
-          // If we have multiple lines connected at this point, ensure a seamless join
-          // We no longer draw radius circles at joints - the butt ends will connect directly
+          // If we have multiple lines connected at this point, add a welding circle
           if (connectedLines.length > 1) {
+            // Find the line width to use for the joint (defaulting to 8 if not found)
+            const firstLine = connectedLines[0];
+            const lineWidth = firstLine.type === 'line' && 'lineWidth' in firstLine
+              ? firstLine.lineWidth
+              : 8;
+            
+            // Add a small filled circle at the joint for seamless welding
+            ctx.save();
+            
+            // Draw the gray center circle that matches the line color
+            ctx.beginPath();
+            ctx.arc(endpoint.x, endpoint.y, lineWidth / 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#8E9196'; // Same gray color as the lines
+            ctx.fill();
+            
+            // Draw the black border circle behind it
+            ctx.beginPath();
+            ctx.arc(endpoint.x, endpoint.y, lineWidth / 2 + 1, 0, Math.PI * 2);
+            ctx.fillStyle = '#000000'; // Border color
+            ctx.globalCompositeOperation = 'destination-over';
+            ctx.fill();
+            
+            ctx.restore();
+            
             // Mark this joint as processed
             drawnJoints.add(jointKey);
           }
