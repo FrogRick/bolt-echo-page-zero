@@ -2,7 +2,7 @@
 import React from "react";
 import { Tool } from "@/hooks/useCanvasEditor";
 import { Button } from "@/components/ui/button";
-import { Square, Line, MoveHorizontal } from "lucide-react";
+import { Square, MoveHorizontal, LineChart } from "lucide-react";
 
 interface ToolbarProps {
   activeTool: Tool;
@@ -19,7 +19,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const tools = [
     { id: "select", icon: MoveHorizontal, label: "Select" },
-    { id: "line", icon: Line, label: "Line" },
+    { id: "line", icon: LineChart, label: "Line" },
     { id: "rectangle", icon: Square, label: "Rectangle" },
     { id: "polygon", icon: Square, label: "Polygon" },
   ];
@@ -62,3 +62,4 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     </div>
   );
 };
+
