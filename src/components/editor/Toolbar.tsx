@@ -2,7 +2,7 @@
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Button } from "@/components/ui/button";
-import { MousePointer, Square, Triangle, Wall } from "lucide-react";
+import { MousePointer, Square, Triangle, Line } from "lucide-react";
 
 interface ToolbarProps {
   activeTool: Tool;
@@ -19,10 +19,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const tools = [
     { id: "select", icon: MousePointer, label: "Select" },
-    { id: "wall", icon: Wall, label: "Wall" },
+    { id: "wall", icon: Line, label: "Wall" },
     { id: "yellow-rectangle", icon: Square, label: "Yellow Rectangle" },
     { id: "yellow-polygon", icon: Triangle, label: "Yellow Polygon" },
-    { id: "wall-alt", icon: Wall, label: "Wall Alt" },
+    { id: "wall-alt", icon: Line, label: "Wall Alt" },
     { id: "yellow-rectangle-alt", icon: Square, label: "Yellow Rectangle Alt" },
     { id: "yellow-polygon-alt", icon: Triangle, label: "Yellow Polygon Alt" },
   ];

@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect } from 'react';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine, lineSnappingHelpers } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
