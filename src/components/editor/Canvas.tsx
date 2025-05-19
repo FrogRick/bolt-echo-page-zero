@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useCanvasEditor, Tool } from "@/hooks/useCanvasEditor";
 import { Toolbar } from "./Toolbar";
 
@@ -20,6 +20,14 @@ const Canvas: React.FC = () => {
     canvasSize,
     handleCanvasClick
   } = useCanvasEditor();
+  
+  // Initialize canvas with correct dimensions
+  useEffect(() => {
+    if (canvasRef.current) {
+      canvasRef.current.width = canvasSize.width;
+      canvasRef.current.height = canvasSize.height;
+    }
+  }, [canvasSize]);
 
   return (
     <div className="flex flex-col h-full">
@@ -68,9 +76,7 @@ const Canvas: React.FC = () => {
             className={`bg-white border border-gray-200 ${
               activeTool === "select" 
                 ? "cursor-default" 
-                : activeTool === "line" || activeTool === "polygon"
-                  ? "cursor-crosshair" 
-                  : "cursor-crosshair"
+                : "cursor-crosshair" 
             }`}
           />
         </div>
