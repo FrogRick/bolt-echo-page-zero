@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
 import { Toolbar } from "./Toolbar";
@@ -28,6 +28,22 @@ const Canvas: React.FC = () => {
     rectangleDrawMode,
     toggleRectangleDrawMode
   } = useCanvasEditor();
+
+  // Force canvas redraw when tool changes to ensure correct rendering
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Force a clean redraw by clearing and triggering the redraw in useCanvasEditor
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        setTimeout(() => {
+          // This will trigger the redraw effect in useCanvasEditor
+          setActiveTool(activeTool);
+        }, 0);
+      }
+    }
+  }, [activeTool, rectangleDrawMode]);
 
   return (
     <div className="flex flex-col h-full">

@@ -1,3 +1,4 @@
+
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -141,6 +142,9 @@ export const drawShapes = (
     return 0;
   });
 
+  // Clear the canvas with a new composite operation to ensure clean state
+  ctx.globalCompositeOperation = 'source-over';
+
   // First pass: Draw all shapes except lines
   sortedShapes.forEach(shape => {
     if (shape.type !== 'line') {
@@ -182,6 +186,9 @@ export const drawShapes = (
     }
   });
 
+  // Reset composite operation - this is crucial for lines to draw properly
+  ctx.globalCompositeOperation = 'source-over';
+
   // Second pass: Draw lines with special handling for connected lines and intersections
   sortedShapes.forEach(shape => {
     if (shape.type === 'line') {
@@ -199,6 +206,9 @@ export const drawShapes = (
       // Save the current state
       ctx.save();
       
+      // Make sure we're drawing lines on top - this ensures they appear above rectangles and polygons
+      ctx.globalCompositeOperation = 'source-over';
+      
       // Draw the thick gray line
       ctx.beginPath();
       ctx.moveTo(shape.start.x, shape.start.y);
@@ -215,8 +225,12 @@ export const drawShapes = (
       ctx.lineWidth = lineWidth + 2; // 2px wider for the border
       ctx.strokeStyle = strokeColor;
       ctx.lineCap = 'butt'; // Ensure flat ends
+      // Change to destination-over to ensure the black border is drawn behind the gray line
       ctx.globalCompositeOperation = 'destination-over';
       ctx.stroke();
+      
+      // Reset composite operation for end caps
+      ctx.globalCompositeOperation = 'source-over';
       
       // Add end caps for non-connected ends (thin lines at the beginning/end)
       // Only add caps where there's no connection
@@ -231,7 +245,6 @@ export const drawShapes = (
       const dy = Math.sin(perpAngle) * (lineWidth / 2);
       
       // Reset composite operation
-      ctx.globalCompositeOperation = 'source-over';
       ctx.strokeStyle = strokeColor;
       ctx.lineWidth = borderThickness;
       
@@ -252,10 +265,12 @@ export const drawShapes = (
       }
       
       // Restore to default state
-      ctx.globalCompositeOperation = 'source-over';
       ctx.restore();
     }
   });
+
+  // Ensure we're back to normal composite operation before drawing joints
+  ctx.globalCompositeOperation = 'source-over';
 
   // Third pass - draw connection points at joints AND intersection points to ensure proper welding
   const drawnJoints = new Set<string>();
@@ -319,6 +334,9 @@ export const drawShapes = (
               
               ctx.save();
               
+              // Make sure we're drawing on top
+              ctx.globalCompositeOperation = 'source-over';
+              
               // Draw gray center circle
               ctx.beginPath();
               ctx.arc(intersection.x, intersection.y, lineWidth / 2, 0, Math.PI * 2);
@@ -341,6 +359,9 @@ export const drawShapes = (
       });
     }
   });
+
+  // Reset composite operation for the final pass
+  ctx.globalCompositeOperation = 'source-over';
 
   // Final pass: Highlight selected shape
   if (selectedShapeId) {
