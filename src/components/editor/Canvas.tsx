@@ -43,7 +43,7 @@ const Canvas: React.FC = () => {
         }, 0);
       }
     }
-  }, [activeTool, rectangleDrawMode]);
+  }, [activeTool, rectangleDrawMode, currentColor, fillColor]); // Also redraw when colors change
 
   return (
     <div className="flex flex-col h-full">
