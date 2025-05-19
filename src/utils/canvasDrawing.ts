@@ -1,5 +1,5 @@
 
-import { Shape, Point } from '@/types/canvas';
+import { Shape, Point, LineShape, RectangleShape, PolygonShape } from '@/types/canvas';
 
 // Draw all shapes on the canvas
 export const drawShapes = (

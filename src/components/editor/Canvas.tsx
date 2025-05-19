@@ -1,7 +1,8 @@
 
 import React, { useEffect } from "react";
-import { useCanvasEditor, Tool } from "@/hooks/useCanvasEditor";
+import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Toolbar } from "./Toolbar";
+import { Tool } from "@/types/canvas";
 
 const Canvas: React.FC = () => {
   const {
@@ -32,7 +33,7 @@ const Canvas: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       <Toolbar 
-        activeTool={activeTool}
+        activeTool={activeTool as Tool}
         onToolChange={setActiveTool}
         onDelete={deleteSelected}
         onClear={clearCanvas}

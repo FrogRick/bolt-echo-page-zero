@@ -1,7 +1,7 @@
 
 import React from "react";
-import { Tool } from "@/hooks/useCanvasEditor";
-import { Square, Circle, Line, Move, Trash, ArrowLeft, ArrowRight } from "lucide-react";
+import { Tool } from "@/types/canvas";
+import { Square, Circle, SplitSquareVertical, Move, Trash } from "lucide-react";
 
 interface ToolbarProps {
   activeTool: Tool;
@@ -31,7 +31,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => onToolChange('line')} 
         title="Line"
       >
-        <Line size={18} />
+        <SplitSquareVertical size={18} />
       </ToolButton>
       
       <ToolButton 

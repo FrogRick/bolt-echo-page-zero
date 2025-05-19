@@ -5,6 +5,8 @@ import { Point, Shape, Tool, PreviewLine, CanvasSize } from '@/types/canvas';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine } from '@/utils/canvasDrawing';
 import { useShapeDetection } from '@/hooks/useShapeDetection';
 
+export { type Tool } from '@/types/canvas';
+
 export const useCanvasEditor = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [activeTool, setActiveTool] = useState<Tool>('select');
