@@ -44,7 +44,8 @@ export const drawShapes = (
         ctx.fill();
         // No stroke for rectangles
       } else if (shape.type === 'polygon') {
-        ctx.strokeStyle = shape.color;
+        // Use transparent stroke for completed polygons
+        ctx.strokeStyle = shape.color; // 'transparent' for completed polygons
         ctx.lineWidth = 2;
         ctx.fillStyle = 'fillColor' in shape ? shape.fillColor : defaultFillColor;
         
@@ -58,7 +59,11 @@ export const drawShapes = (
           
           ctx.closePath();
           ctx.fill();
-          ctx.stroke();
+          
+          // Only stroke if the color isn't transparent
+          if (shape.color !== 'transparent') {
+            ctx.stroke();
+          }
         }
       }
     }

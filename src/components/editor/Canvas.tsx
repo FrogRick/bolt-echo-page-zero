@@ -22,7 +22,9 @@ const Canvas: React.FC = () => {
     snapToAngle,
     toggleSnapToAngle,
     snapToEndpoints,
-    toggleSnapToEndpoints
+    toggleSnapToEndpoints,
+    rectangleDrawMode,
+    toggleRectangleDrawMode
   } = useCanvasEditor();
 
   return (
@@ -34,7 +36,7 @@ const Canvas: React.FC = () => {
         onClear={clearCanvas}
       />
       
-      <div className="p-2 bg-white border-b flex items-center gap-4">
+      <div className="p-2 bg-white border-b flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <label htmlFor="colorPicker" className="text-sm font-medium">Stroke:</label>
           <input
@@ -80,6 +82,19 @@ const Canvas: React.FC = () => {
             />
             <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
             <span className="ml-2 text-sm font-medium">Snap to endpoints</span>
+          </label>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <label className="inline-flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={rectangleDrawMode === 'click'}
+              onChange={toggleRectangleDrawMode}
+              className="sr-only peer"
+            />
+            <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+            <span className="ml-2 text-sm font-medium">Rectangle Click Mode</span>
           </label>
         </div>
       </div>

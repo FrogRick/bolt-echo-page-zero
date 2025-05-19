@@ -23,6 +23,9 @@ export const useCanvasEditor = () => {
   const [lineDrawMode, setLineDrawMode] = useState<'click' | 'drag'>('click');
   const [mouseMoved, setMouseMoved] = useState(false);
   
+  // Rectangle drawing mode: 'click' for click-release-click or 'drag' for click-drag-release
+  const [rectangleDrawMode, setRectangleDrawMode] = useState<'click' | 'drag'>('click');
+  
   // New state for snapping controls
   const [snapToAngle, setSnapToAngle] = useState<boolean>(true);
   const [snapToEndpoints, setSnapToEndpoints] = useState<boolean>(true);
@@ -70,6 +73,19 @@ export const useCanvasEditor = () => {
     // Draw preview line for single click line tool if previewLine exists
     else if (previewLine) {
       drawPreviewLine(ctx, previewLine.start, previewLine.end, currentColor);
+    }
+    
+    // Draw preview rectangle if we're in click mode and have a start point
+    if (activeTool === 'rectangle' && rectangleDrawMode === 'click' && startPoint && currentPoint) {
+      ctx.fillStyle = fillColor;
+      ctx.beginPath();
+      ctx.rect(
+        startPoint.x,
+        startPoint.y,
+        currentPoint.x - startPoint.x,
+        currentPoint.y - startPoint.y
+      );
+      ctx.fill();
     }
   };
 
@@ -140,6 +156,26 @@ export const useCanvasEditor = () => {
     return closestPoint;
   };
 
+  // Complete the polygon drawing and save it
+  const completePolygon = () => {
+    if (polygonPoints.length < 3) {
+      // Need at least 3 points to form a polygon
+      setPolygonPoints([]);
+      return;
+    }
+    
+    const newPolygon = {
+      id: generateId(),
+      type: 'polygon' as const,
+      points: [...polygonPoints],
+      color: 'transparent', // Make the border transparent
+      fillColor: fillColor
+    };
+    
+    setShapes([...shapes, newPolygon]);
+    setPolygonPoints([]);
+  };
+
   // Handle mouse down event
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
@@ -163,7 +199,30 @@ export const useCanvasEditor = () => {
       // Set isDrawing to true for potential drag mode
       setIsDrawing(true);
     } else if (activeTool === 'rectangle') {
-      handleRectangleToolMouseDown(point);
+      if (rectangleDrawMode === 'click') {
+        // In click mode, first click sets start point, second click completes
+        if (!startPoint) {
+          setStartPoint(point);
+          setCurrentPoint(point);
+        } else {
+          // Complete the rectangle on second click
+          const newRectangle = {
+            id: generateId(),
+            type: 'rectangle' as const,
+            start: { ...startPoint },
+            end: point,
+            color: 'transparent',
+            fillColor: fillColor
+          };
+          
+          setShapes([...shapes, newRectangle]);
+          setStartPoint(null);
+          setCurrentPoint(null);
+        }
+      } else {
+        // Traditional drag mode
+        handleRectangleToolMouseDown(point);
+      }
     } else if (activeTool === 'polygon') {
       handlePolygonToolMouseDown(point);
     }
@@ -195,7 +254,10 @@ export const useCanvasEditor = () => {
     } else if (activeTool === 'line' && startPoint) {
       // Update the current point for live line preview
       redrawCanvas();
-    } else if (isDrawing && activeTool === 'rectangle') {
+    } else if (isDrawing && activeTool === 'rectangle' && rectangleDrawMode === 'drag') {
+      redrawCanvas();
+    } else if (activeTool === 'rectangle' && rectangleDrawMode === 'click' && startPoint) {
+      // Update preview for click mode rectangle
       redrawCanvas();
     } else if (activeTool === 'polygon' && polygonPoints.length > 0) {
       // Update the current point for polygon preview
@@ -284,16 +346,7 @@ export const useCanvasEditor = () => {
       
       if (polygonPoints.length > 2 && distance < 10) {
         // Close the polygon and save it
-        const newPolygon = {
-          id: generateId(),
-          type: 'polygon' as const,
-          points: [...polygonPoints],
-          color: currentColor,
-          fillColor: fillColor
-        };
-        
-        setShapes([...shapes, newPolygon]);
-        setPolygonPoints([]);
+        completePolygon();
       } else {
         // Add a new point to the polygon
         setPolygonPoints([...polygonPoints, point]);
@@ -364,7 +417,7 @@ export const useCanvasEditor = () => {
     
     const point: Point = { x, y };
     
-    if (activeTool === 'rectangle' && startPoint) {
+    if (activeTool === 'rectangle' && rectangleDrawMode === 'drag' && startPoint) {
       // Complete rectangle on mouse up with no border (using currentColor, but no stroke will be drawn)
       const newRectangle = {
         id: generateId(),
@@ -406,11 +459,6 @@ export const useCanvasEditor = () => {
     setMouseMoved(false);
   };
 
-  // Handle canvas click for single click operations
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    // This is now empty as the clicks are handled directly in startDrawing
-  };
-
   // Delete selected shape
   const deleteSelected = () => {
     if (selectedShape) {
@@ -440,6 +488,29 @@ export const useCanvasEditor = () => {
     setSnapToEndpoints(!snapToEndpoints);
   };
 
+  // Toggle rectangle drawing mode
+  const toggleRectangleDrawMode = () => {
+    setRectangleDrawMode(rectangleDrawMode === 'click' ? 'drag' : 'click');
+  };
+
+  // Handle keyboard events for polygon escape and backspace
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // If we're in polygon drawing mode with at least 3 points
+      if (activeTool === 'polygon' && polygonPoints.length >= 3) {
+        if (e.key === 'Escape' || e.key === 'Backspace') {
+          // Close the polygon on Escape or Backspace
+          completePolygon();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeTool, polygonPoints]);
+
   // Redraw the canvas whenever shapes or selected shapes change
   useEffect(() => {
     redrawCanvas();
@@ -467,10 +538,11 @@ export const useCanvasEditor = () => {
     deleteSelected,
     clearCanvas,
     canvasSize,
-    handleCanvasClick,
     snapToAngle,
     toggleSnapToAngle,
     snapToEndpoints,
-    toggleSnapToEndpoints
+    toggleSnapToEndpoints,
+    rectangleDrawMode,
+    toggleRectangleDrawMode
   };
 };
