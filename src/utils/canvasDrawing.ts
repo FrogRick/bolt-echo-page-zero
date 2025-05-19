@@ -1,5 +1,25 @@
-
 import { Point, Shape } from '@/types/canvas';
+
+// Helper function to check if two points are close enough to be considered connected
+const arePointsConnected = (point1: Point, point2: Point, threshold: number = 1): boolean => {
+  const dx = point1.x - point2.x;
+  const dy = point1.y - point2.y;
+  return Math.sqrt(dx * dx + dy * dy) <= threshold;
+};
+
+// Find all lines connected to a specific point
+const findConnectedLines = (
+  shapes: Shape[], 
+  connectionPoint: Point,
+  currentShapeId?: string
+): Shape[] => {
+  return shapes.filter(shape => 
+    shape.type === 'line' && 
+    (currentShapeId ? shape.id !== currentShapeId : true) &&
+    (arePointsConnected(shape.start, connectionPoint) || 
+     arePointsConnected(shape.end, connectionPoint))
+  );
+};
 
 export const drawShapes = (
   ctx: CanvasRenderingContext2D, 
@@ -7,14 +27,47 @@ export const drawShapes = (
   selectedShapeId: string | null, 
   defaultFillColor: string
 ): void => {
-  // Draw all saved shapes
+  // First pass: Draw all shapes except lines
   shapes.forEach(shape => {
-    ctx.strokeStyle = shape.color;
-    ctx.lineWidth = 2;
-    ctx.fillStyle = 'fillColor' in shape ? shape.fillColor : defaultFillColor;
+    if (shape.type !== 'line') {
+      ctx.strokeStyle = shape.color;
+      ctx.lineWidth = 2;
+      ctx.fillStyle = 'fillColor' in shape ? shape.fillColor : defaultFillColor;
 
+      if (shape.type === 'rectangle') {
+        ctx.beginPath();
+        ctx.rect(
+          shape.start.x,
+          shape.start.y,
+          shape.end.x - shape.start.x,
+          shape.end.y - shape.start.y
+        );
+        ctx.fill();
+        ctx.stroke();
+      } else if (shape.type === 'polygon') {
+        if (shape.points.length > 0) {
+          ctx.beginPath();
+          ctx.moveTo(shape.points[0].x, shape.points[0].y);
+          
+          for (let i = 1; i < shape.points.length; i++) {
+            ctx.lineTo(shape.points[i].x, shape.points[i].y);
+          }
+          
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+    }
+  });
+
+  // Second pass: Draw lines with special handling for connected lines
+  shapes.forEach(shape => {
     if (shape.type === 'line') {
-      // Special drawing for lines with thick gray center and thin black border
+      // Find if any lines are connected to this line's start or end points
+      const connectedToStart = findConnectedLines(shapes, shape.start, shape.id);
+      const connectedToEnd = findConnectedLines(shapes, shape.end, shape.id);
+      
       const lineWidth = 'lineWidth' in shape ? shape.lineWidth : 8;
       const strokeColor = 'strokeColor' in shape ? shape.strokeColor : '#000000';
       
@@ -27,72 +80,94 @@ export const drawShapes = (
       ctx.lineTo(shape.end.x, shape.end.y);
       ctx.lineWidth = lineWidth;
       ctx.strokeStyle = '#8E9196'; // Gray color for the main line
-      ctx.lineCap = 'butt'; // Flat ends for the gray part
+      ctx.lineCap = connectedToStart.length > 0 || connectedToEnd.length > 0 ? 'butt' : 'butt';
       ctx.stroke();
       
-      // Draw the thin black border with consistent 2px width
+      // Draw the thin black border
       ctx.beginPath();
       ctx.moveTo(shape.start.x, shape.start.y);
       ctx.lineTo(shape.end.x, shape.end.y);
-      ctx.lineWidth = lineWidth + 2; // Consistently 2px wider for the border
+      ctx.lineWidth = lineWidth + 2; // 2px wider for the border
       ctx.strokeStyle = strokeColor;
-      ctx.lineCap = 'butt'; // Match the gray line's end style
+      ctx.lineCap = connectedToStart.length > 0 || connectedToEnd.length > 0 ? 'butt' : 'butt';
       ctx.globalCompositeOperation = 'destination-over';
       ctx.stroke();
       
       // Restore to default state
       ctx.globalCompositeOperation = 'source-over';
       ctx.restore();
-      
-    } else if (shape.type === 'rectangle') {
-      ctx.beginPath();
-      ctx.rect(
-        shape.start.x,
-        shape.start.y,
-        shape.end.x - shape.start.x,
-        shape.end.y - shape.start.y
-      );
-      ctx.fill();
-      ctx.stroke();
-    } else if (shape.type === 'polygon') {
-      if (shape.points.length > 0) {
-        ctx.beginPath();
-        ctx.moveTo(shape.points[0].x, shape.points[0].y);
-        
-        for (let i = 1; i < shape.points.length; i++) {
-          ctx.lineTo(shape.points[i].x, shape.points[i].y);
-        }
-        
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      }
     }
+  });
 
-    // Highlight selected shape
-    if (selectedShapeId && shape.id === selectedShapeId) {
+  // Third pass - draw connection points at joints for seamless appearance
+  const drawnJoints = new Set<string>();
+  
+  shapes.forEach(shape => {
+    if (shape.type === 'line') {
+      // Check each end of the line for connections
+      [shape.start, shape.end].forEach(endpoint => {
+        // Create a unique key for this joint to avoid drawing it multiple times
+        const jointKey = `${Math.round(endpoint.x)},${Math.round(endpoint.y)}`;
+        
+        if (!drawnJoints.has(jointKey)) {
+          const connectedLines = findConnectedLines(shapes, endpoint);
+          
+          // If we have multiple lines connected at this point, draw a joint
+          if (connectedLines.length > 1) {
+            // Save context
+            ctx.save();
+            
+            // Draw a filled circle at the connection point
+            ctx.beginPath();
+            ctx.arc(endpoint.x, endpoint.y, (8 + 1) / 2, 0, Math.PI * 2); // Radius matches the line thickness
+            ctx.fillStyle = '#8E9196'; // Same color as the line
+            ctx.fill();
+            
+            // Draw the border
+            ctx.beginPath();
+            ctx.arc(endpoint.x, endpoint.y, (8 + 2 + 1) / 2, 0, Math.PI * 2); // Radius includes border
+            ctx.fillStyle = '#000000'; // Border color
+            ctx.globalCompositeOperation = 'destination-over';
+            ctx.fill();
+            
+            // Restore context
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.restore();
+            
+            // Mark this joint as drawn
+            drawnJoints.add(jointKey);
+          }
+        }
+      });
+    }
+  });
+
+  // Final pass: Highlight selected shape
+  if (selectedShapeId) {
+    const selectedShape = shapes.find(shape => shape.id === selectedShapeId);
+    if (selectedShape) {
       ctx.strokeStyle = '#0000FF';
       ctx.lineWidth = 3;
       
-      if (shape.type === 'line') {
+      if (selectedShape.type === 'line') {
         ctx.beginPath();
-        ctx.moveTo(shape.start.x, shape.start.y);
-        ctx.lineTo(shape.end.x, shape.end.y);
+        ctx.moveTo(selectedShape.start.x, selectedShape.start.y);
+        ctx.lineTo(selectedShape.end.x, selectedShape.end.y);
         ctx.stroke();
-      } else if (shape.type === 'rectangle') {
+      } else if (selectedShape.type === 'rectangle') {
         ctx.strokeRect(
-          shape.start.x,
-          shape.start.y,
-          shape.end.x - shape.start.x,
-          shape.end.y - shape.start.y
+          selectedShape.start.x,
+          selectedShape.start.y,
+          selectedShape.end.x - selectedShape.start.x,
+          selectedShape.end.y - selectedShape.start.y
         );
-      } else if (shape.type === 'polygon') {
-        if (shape.points.length > 0) {
+      } else if (selectedShape.type === 'polygon') {
+        if (selectedShape.points.length > 0) {
           ctx.beginPath();
-          ctx.moveTo(shape.points[0].x, shape.points[0].y);
+          ctx.moveTo(selectedShape.points[0].x, selectedShape.points[0].y);
           
-          for (let i = 1; i < shape.points.length; i++) {
-            ctx.lineTo(shape.points[i].x, shape.points[i].y);
+          for (let i = 1; i < selectedShape.points.length; i++) {
+            ctx.lineTo(selectedShape.points[i].x, selectedShape.points[i].y);
           }
           
           ctx.closePath();
@@ -100,7 +175,7 @@ export const drawShapes = (
         }
       }
     }
-  });
+  }
 };
 
 export const drawInProgressPolygon = (
