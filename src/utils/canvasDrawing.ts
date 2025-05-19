@@ -1,3 +1,4 @@
+
 import { Point, Shape } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -306,7 +307,8 @@ export const drawInProgressPolygon = (
   currentPoint: Point | null,
   strokeColor: string,
   fillColor: string,
-  isWallPolygon: boolean = false
+  isWallPolygon: boolean = false,
+  showStartPoint: boolean = true
 ): void => {
   if (polygonPoints.length === 0) return;
   
@@ -381,15 +383,17 @@ export const drawInProgressPolygon = (
     ctx.stroke();
   }
   
-  // Draw a circle marker at the starting point for both types
-  const startPoint = polygonPoints[0];
-  ctx.beginPath();
-  ctx.arc(startPoint.x, startPoint.y, 5, 0, Math.PI * 2);
-  ctx.fillStyle = '#FF0000'; // Red circle to indicate start point
-  ctx.fill();
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  // Draw a circle marker at the starting point for both types, but only if showStartPoint is true
+  if (showStartPoint) {
+    const startPoint = polygonPoints[0];
+    ctx.beginPath();
+    ctx.arc(startPoint.x, startPoint.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#FF0000'; // Red circle to indicate start point
+    ctx.fill();
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
   
   // Restore context state
   ctx.restore();
