@@ -1,105 +1,64 @@
 
 import React from "react";
-import { Tool } from "@/types/canvas";
-import { Square, Circle, SplitSquareVertical, Move, Trash } from "lucide-react";
+import { Tool } from "@/hooks/useCanvasEditor";
+import { Button } from "@/components/ui/button";
+import { Square, MoveHorizontal, LineChart, Triangle } from "lucide-react";
 
 interface ToolbarProps {
   activeTool: Tool;
   onToolChange: (tool: Tool) => void;
-  onDelete: () => void;
   onClear: () => void;
+  onDelete: () => void;
 }
 
-export const Toolbar: React.FC<ToolbarProps> = ({ 
-  activeTool, 
-  onToolChange, 
-  onDelete, 
-  onClear 
+export const Toolbar: React.FC<ToolbarProps> = ({
+  activeTool,
+  onToolChange,
+  onClear,
+  onDelete,
 }) => {
+  const tools = [
+    { id: "select", icon: MoveHorizontal, label: "Select" },
+    { id: "line", icon: LineChart, label: "Line" },
+    { id: "rectangle", icon: Square, label: "Rectangle" },
+    { id: "polygon", icon: Triangle, label: "Polygon" },
+  ];
+
   return (
-    <div className="bg-white border-b p-2 flex items-center gap-1">
-      <ToolButton 
-        active={activeTool === 'select'} 
-        onClick={() => onToolChange('select')} 
-        title="Select"
-      >
-        <Move size={18} />
-      </ToolButton>
+    <div className="p-2 bg-white border-b flex items-center gap-2">
+      <div className="flex items-center gap-1">
+        {tools.map((tool) => (
+          <Button
+            key={tool.id}
+            variant={activeTool === tool.id as Tool ? "default" : "outline"}
+            size="sm"
+            onClick={() => onToolChange(tool.id as Tool)}
+            className="flex items-center gap-1 px-3"
+          >
+            <tool.icon className="h-4 w-4" />
+            <span className="hidden sm:inline">{tool.label}</span>
+          </Button>
+        ))}
+      </div>
       
-      <ToolButton 
-        active={activeTool === 'line'} 
-        onClick={() => onToolChange('line')} 
-        title="Line"
-      >
-        <SplitSquareVertical size={18} />
-      </ToolButton>
-      
-      <ToolButton 
-        active={activeTool === 'rectangle'} 
-        onClick={() => onToolChange('rectangle')} 
-        title="Rectangle"
-      >
-        <Square size={18} />
-      </ToolButton>
-      
-      <ToolButton 
-        active={activeTool === 'polygon'} 
-        onClick={() => onToolChange('polygon')} 
-        title="Polygon"
-      >
-        <Circle size={18} />
-      </ToolButton>
-
-      <div className="h-6 w-px bg-gray-300 mx-1"></div>
-      
-      <ToolButton 
-        onClick={onDelete} 
-        title="Delete Selected"
-        disabled={false}
-      >
-        <Trash size={18} className="text-red-500" />
-      </ToolButton>
-
-      <div className="h-6 w-px bg-gray-300 mx-1"></div>
-      
-      <button
-        onClick={onClear}
-        className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
-        title="Clear Canvas"
-      >
-        Clear All
-      </button>
+      <div className="ml-auto flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onDelete}
+          className="bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
+        >
+          Delete Selected
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onClear}
+          className="bg-gray-50 hover:bg-gray-100"
+        >
+          Clear Canvas
+        </Button>
+      </div>
     </div>
-  );
-};
-
-interface ToolButtonProps {
-  active?: boolean;
-  onClick: () => void;
-  title: string;
-  disabled?: boolean;
-  children: React.ReactNode;
-}
-
-const ToolButton: React.FC<ToolButtonProps> = ({ 
-  active, 
-  onClick, 
-  title, 
-  disabled = false, 
-  children 
-}) => {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`p-2 rounded ${
-        active 
-          ? 'bg-blue-100 text-blue-700 border border-blue-300' 
-          : 'hover:bg-gray-100'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-      title={title}
-    >
-      {children}
-    </button>
   );
 };

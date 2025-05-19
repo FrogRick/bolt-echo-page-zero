@@ -1,11 +1,7 @@
-
 import { useRef, useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Point, Shape, Tool, PreviewLine, CanvasSize } from '@/types/canvas';
-import { drawShapes, drawInProgressPolygon, drawPreviewLine } from '@/utils/canvasDrawing';
-import { useShapeDetection } from '@/hooks/useShapeDetection';
 
-export { type Tool } from '@/types/canvas';
+export type Tool = 'select' | 'line' | 'rectangle' | 'polygon';
 
 export const useCanvasEditor = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -13,18 +9,15 @@ export const useCanvasEditor = () => {
   const [currentColor, setCurrentColor] = useState<string>('#000000');
   const [fillColor, setFillColor] = useState<string>('#ffffff');
   const [isDrawing, setIsDrawing] = useState(false);
-  const [startPoint, setStartPoint] = useState<Point | null>(null);
-  const [currentPoint, setCurrentPoint] = useState<Point | null>(null);
-  const [polygonPoints, setPolygonPoints] = useState<Point[]>([]);
-  const [shapes, setShapes] = useState<Shape[]>([]);
-  const [selectedShape, setSelectedShape] = useState<Shape | null>(null);
-  const [canvasSize, setCanvasSize] = useState<CanvasSize>({ width: 800, height: 600 });
+  const [startPoint, setStartPoint] = useState<{ x: number, y: number } | null>(null);
+  const [currentPoint, setCurrentPoint] = useState<{ x: number, y: number } | null>(null);
+  const [polygonPoints, setPolygonPoints] = useState<Array<{ x: number, y: number }>>([]);
+  const [shapes, setShapes] = useState<any[]>([]);
+  const [selectedShape, setSelectedShape] = useState<any | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
-  const [previewLine, setPreviewLine] = useState<PreviewLine | null>(null);
-
-  // Import shape detection functions
-  const { findShapeAtPoint } = useShapeDetection();
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [previewLine, setPreviewLine] = useState<{ start: { x: number, y: number }, end: { x: number, y: number } } | null>(null);
 
   // Clear the canvas and redraw all shapes
   const redrawCanvas = () => {
@@ -37,21 +30,114 @@ export const useCanvasEditor = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Draw all saved shapes
-    drawShapes(ctx, shapes, selectedShape?.id || null, fillColor);
+    shapes.forEach(shape => {
+      ctx.strokeStyle = shape.color;
+      ctx.lineWidth = 2;
+      ctx.fillStyle = shape.fillColor || fillColor;
+
+      if (shape.type === 'line') {
+        ctx.beginPath();
+        ctx.moveTo(shape.start.x, shape.start.y);
+        ctx.lineTo(shape.end.x, shape.end.y);
+        ctx.stroke();
+      } else if (shape.type === 'rectangle') {
+        ctx.beginPath();
+        ctx.rect(
+          shape.start.x,
+          shape.start.y,
+          shape.end.x - shape.start.x,
+          shape.end.y - shape.start.y
+        );
+        ctx.fill();
+        ctx.stroke();
+      } else if (shape.type === 'polygon') {
+        if (shape.points.length > 0) {
+          ctx.beginPath();
+          ctx.moveTo(shape.points[0].x, shape.points[0].y);
+          
+          for (let i = 1; i < shape.points.length; i++) {
+            ctx.lineTo(shape.points[i].x, shape.points[i].y);
+          }
+          
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+
+      // Highlight selected shape
+      if (selectedShape && shape.id === selectedShape.id) {
+        ctx.strokeStyle = '#0000FF';
+        ctx.lineWidth = 3;
+        
+        if (shape.type === 'line') {
+          ctx.beginPath();
+          ctx.moveTo(shape.start.x, shape.start.y);
+          ctx.lineTo(shape.end.x, shape.end.y);
+          ctx.stroke();
+        } else if (shape.type === 'rectangle') {
+          ctx.strokeRect(
+            shape.start.x,
+            shape.start.y,
+            shape.end.x - shape.start.x,
+            shape.end.y - shape.start.y
+          );
+        } else if (shape.type === 'polygon') {
+          if (shape.points.length > 0) {
+            ctx.beginPath();
+            ctx.moveTo(shape.points[0].x, shape.points[0].y);
+            
+            for (let i = 1; i < shape.points.length; i++) {
+              ctx.lineTo(shape.points[i].x, shape.points[i].y);
+            }
+            
+            ctx.closePath();
+            ctx.stroke();
+          }
+        }
+      }
+    });
 
     // Draw polygon in progress
     if (activeTool === 'polygon' && polygonPoints.length > 0) {
-      drawInProgressPolygon(ctx, polygonPoints, currentPoint, currentColor, fillColor);
+      ctx.strokeStyle = currentColor;
+      ctx.fillStyle = fillColor;
+      ctx.lineWidth = 2;
+      
+      ctx.beginPath();
+      ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
+      
+      for (let i = 1; i < polygonPoints.length; i++) {
+        ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
+      }
+      
+      if (currentPoint) {
+        ctx.lineTo(currentPoint.x, currentPoint.y);
+      }
+      
+      ctx.stroke();
     }
 
     // Draw preview line when using the line tool
     if (activeTool === 'line' && startPoint && currentPoint) {
-      drawPreviewLine(ctx, startPoint, currentPoint, currentColor);
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = 2;
+      
+      ctx.beginPath();
+      ctx.moveTo(startPoint.x, startPoint.y);
+      ctx.lineTo(currentPoint.x, currentPoint.y);
+      ctx.stroke();
     }
     
     // Draw preview line for single click line tool
     if (previewLine) {
-      drawPreviewLine(ctx, previewLine.start, previewLine.end, currentColor);
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = 2;
+      
+      ctx.beginPath();
+      ctx.moveTo(previewLine.start.x, previewLine.start.y);
+      ctx.lineTo(previewLine.end.x, previewLine.end.y);
+      ctx.stroke();
     }
   };
 
@@ -63,16 +149,94 @@ export const useCanvasEditor = () => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const point: Point = { x, y };
     
     if (activeTool === 'select') {
-      handleSelectToolMouseDown(point);
+      // Check if we clicked on a shape
+      const clickedShape = shapes.find(shape => {
+        if (shape.type === 'line') {
+          // Simple distance-based hit test for lines
+          const dx = shape.end.x - shape.start.x;
+          const dy = shape.end.y - shape.start.y;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          
+          if (length === 0) return false;
+          
+          const t = ((x - shape.start.x) * dx + (y - shape.start.y) * dy) / (length * length);
+          const clampedT = Math.max(0, Math.min(1, t));
+          
+          const closestX = shape.start.x + clampedT * dx;
+          const closestY = shape.start.y + clampedT * dy;
+          
+          const distance = Math.sqrt(Math.pow(x - closestX, 2) + Math.pow(y - closestY, 2));
+          return distance < 5; // 5px hit area
+        } else if (shape.type === 'rectangle') {
+          return (
+            x >= Math.min(shape.start.x, shape.end.x) &&
+            x <= Math.max(shape.start.x, shape.end.x) &&
+            y >= Math.min(shape.start.y, shape.end.y) &&
+            y <= Math.max(shape.start.y, shape.end.y)
+          );
+        } else if (shape.type === 'polygon') {
+          // Check if point is inside polygon
+          let inside = false;
+          for (let i = 0, j = shape.points.length - 1; i < shape.points.length; j = i++) {
+            const xi = shape.points[i].x, yi = shape.points[i].y;
+            const xj = shape.points[j].x, yj = shape.points[j].y;
+            
+            const intersect = ((yi > y) !== (yj > y)) && 
+                (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+          }
+          return inside;
+        }
+        return false;
+      });
+      
+      if (clickedShape) {
+        setSelectedShape(clickedShape);
+        setIsDragging(true);
+        setDragOffset({
+          x: clickedShape.type === 'rectangle' ? x - clickedShape.start.x : x,
+          y: clickedShape.type === 'rectangle' ? y - clickedShape.start.y : y
+        });
+      } else {
+        setSelectedShape(null);
+      }
     } else if (activeTool === 'line') {
-      handleLineToolMouseDown(point);
+      // Set the starting point for the line
+      setStartPoint({ x, y });
+      setCurrentPoint({ x, y });
+      setIsDrawing(true);
+      setPreviewLine(null);
     } else if (activeTool === 'rectangle') {
-      handleRectangleToolMouseDown(point);
+      setStartPoint({ x, y });
+      setIsDrawing(true);
     } else if (activeTool === 'polygon') {
-      handlePolygonToolMouseDown(point);
+      if (polygonPoints.length === 0) {
+        // First point of a new polygon
+        setPolygonPoints([{ x, y }]);
+      } else {
+        // Check if we're closing the polygon (clicking near the first point)
+        const firstPoint = polygonPoints[0];
+        const distance = Math.sqrt(Math.pow(x - firstPoint.x, 2) + Math.pow(y - firstPoint.y, 2));
+        
+        if (polygonPoints.length > 2 && distance < 10) {
+          // Close the polygon and save it
+          const shape = {
+            id: uuidv4(),
+            type: 'polygon',
+            points: [...polygonPoints],
+            color: currentColor,
+            fillColor: fillColor
+          };
+          
+          setShapes([...shapes, shape]);
+          setPolygonPoints([]);
+        } else {
+          // Add a new point to the polygon
+          setPolygonPoints([...polygonPoints, { x, y }]);
+        }
+      }
     }
   };
 
@@ -84,197 +248,142 @@ export const useCanvasEditor = () => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const point: Point = { x, y };
-
-    setCurrentPoint(point);
+    
+    setCurrentPoint({ x, y });
     
     if (isDragging && selectedShape) {
-      handleDragMove(point);
-    } else if (activeTool === 'line' && startPoint) {
-      // Update the preview line as mouse moves
-      setPreviewLine({
-        start: startPoint,
-        end: point
+      // Move the selected shape
+      const updatedShapes = shapes.map(shape => {
+        if (shape.id === selectedShape.id) {
+          if (shape.type === 'line') {
+            const dx = x - dragOffset.x;
+            const dy = y - dragOffset.y;
+            const originalDx = shape.end.x - shape.start.x;
+            const originalDy = shape.end.y - shape.start.y;
+            
+            return {
+              ...shape,
+              start: { x: dx, y: dy },
+              end: { x: dx + originalDx, y: dy + originalDy }
+            };
+          } else if (shape.type === 'rectangle') {
+            return {
+              ...shape,
+              start: { x: x - dragOffset.x, y: y - dragOffset.y },
+              end: {
+                x: x - dragOffset.x + (shape.end.x - shape.start.x),
+                y: y - dragOffset.y + (shape.end.y - shape.start.y)
+              }
+            };
+          } else if (shape.type === 'polygon') {
+            // Move all points of the polygon
+            const dx = x - dragOffset.x;
+            const dy = y - dragOffset.y;
+            dragOffset.x = x;
+            dragOffset.y = y;
+            
+            return {
+              ...shape,
+              points: shape.points.map((point: {x: number, y: number}) => ({
+                x: point.x + dx,
+                y: point.y + dy
+              }))
+            };
+          }
+        }
+        return shape;
       });
-      redrawCanvas();
-    } else if (isDrawing && activeTool === 'rectangle') {
-      redrawCanvas();
+      
+      setShapes(updatedShapes);
+      setSelectedShape(updatedShapes.find(shape => shape.id === selectedShape.id));
+    } else if (isDrawing) {
+      if (activeTool === 'line' || activeTool === 'rectangle') {
+        redrawCanvas();
+      }
     } else if (activeTool === 'polygon' && polygonPoints.length > 0) {
       // Update the current point for polygon preview
       redrawCanvas();
-    }
-  };
-
-  // Handle select tool mouse down
-  const handleSelectToolMouseDown = (point: Point) => {
-    // Check if we clicked on a shape
-    const clickedShape = findShapeAtPoint(point, shapes);
-    
-    if (clickedShape) {
-      setSelectedShape(clickedShape);
-      setIsDragging(true);
-      
-      if (clickedShape.type === 'rectangle') {
-        setDragOffset({
-          x: point.x - clickedShape.start.x,
-          y: point.y - clickedShape.start.y
-        });
-      } else {
-        setDragOffset(point);
-      }
-    } else {
-      setSelectedShape(null);
-    }
-  };
-
-  // Handle line tool mouse down
-  const handleLineToolMouseDown = (point: Point) => {
-    // If there's no start point, set it and show preview immediately
-    if (!startPoint) {
-      setStartPoint(point);
-      setCurrentPoint(point);
+    } else if (activeTool === 'line' && startPoint) {
+      // Show live preview of the line as mouse moves
       setPreviewLine({
-        start: point,
-        end: point
+        start: startPoint,
+        end: { x, y }
       });
-    } else {
-      // If there's already a start point, complete the line and reset
-      const newLine = {
-        id: uuidv4(),
-        type: 'line' as const,
-        start: { ...startPoint },
-        end: point,
-        color: currentColor
-      };
-      
-      setShapes([...shapes, newLine]);
-      setStartPoint(null);
-      setPreviewLine(null);
-      // No longer automatically switch back to select tool
+      redrawCanvas();
     }
-  };
-
-  // Handle rectangle tool mouse down
-  const handleRectangleToolMouseDown = (point: Point) => {
-    setStartPoint(point);
-    setIsDrawing(true);
-  };
-
-  // Handle polygon tool mouse down
-  const handlePolygonToolMouseDown = (point: Point) => {
-    if (polygonPoints.length === 0) {
-      // First point of a new polygon
-      setPolygonPoints([point]);
-    } else {
-      // Check if we're closing the polygon (clicking near the first point)
-      const firstPoint = polygonPoints[0];
-      const distance = Math.sqrt(
-        Math.pow(point.x - firstPoint.x, 2) + Math.pow(point.y - firstPoint.y, 2)
-      );
-      
-      if (polygonPoints.length > 2 && distance < 10) {
-        // Close the polygon and save it
-        const newPolygon = {
-          id: uuidv4(),
-          type: 'polygon' as const,
-          points: [...polygonPoints],
-          color: currentColor,
-          fillColor: fillColor
-        };
-        
-        setShapes([...shapes, newPolygon]);
-        setPolygonPoints([]);
-      } else {
-        // Add a new point to the polygon
-        setPolygonPoints([...polygonPoints, point]);
-      }
-    }
-  };
-
-  // Handle dragging shapes
-  const handleDragMove = (point: Point) => {
-    if (!selectedShape) return;
-    
-    const updatedShapes = shapes.map(shape => {
-      if (shape.id === selectedShape.id) {
-        if (shape.type === 'line') {
-          const dx = point.x - dragOffset.x;
-          const dy = point.y - dragOffset.y;
-          const originalDx = shape.end.x - shape.start.x;
-          const originalDy = shape.end.y - shape.start.y;
-          
-          return {
-            ...shape,
-            start: { x: dx, y: dy },
-            end: { x: dx + originalDx, y: dy + originalDy }
-          };
-        } else if (shape.type === 'rectangle') {
-          return {
-            ...shape,
-            start: {
-              x: point.x - dragOffset.x,
-              y: point.y - dragOffset.y
-            },
-            end: {
-              x: point.x - dragOffset.x + (shape.end.x - shape.start.x),
-              y: point.y - dragOffset.y + (shape.end.y - shape.start.y)
-            }
-          };
-        } else if (shape.type === 'polygon') {
-          // Move all points of the polygon
-          const dx = point.x - dragOffset.x;
-          const dy = point.y - dragOffset.y;
-          dragOffset.x = point.x;
-          dragOffset.y = point.y;
-          
-          return {
-            ...shape,
-            points: shape.points.map(point => ({
-              x: point.x + dx,
-              y: point.y + dy
-            }))
-          };
-        }
-      }
-      return shape;
-    });
-    
-    setShapes(updatedShapes);
-    setSelectedShape(updatedShapes.find(shape => shape.id === selectedShape.id) || null);
   };
 
   // Handle mouse up event
   const endDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !isDrawing) return;
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const point: Point = { x, y };
     
-    if (activeTool === 'rectangle' && startPoint) {
-      // Complete rectangle on mouse up
-      const newRectangle = {
+    if (activeTool === 'line' && startPoint) {
+      // Finish drawing a line
+      const shape = {
         id: uuidv4(),
-        type: 'rectangle' as const,
+        type: 'line',
         start: { ...startPoint },
-        end: point,
+        end: { x, y },
+        color: currentColor
+      };
+      
+      setShapes([...shapes, shape]);
+      setIsDrawing(false);
+      setStartPoint(null);
+      setCurrentPoint(null);
+      // Reset active tool to select after drawing one line
+      setActiveTool('select');
+    } else if (activeTool === 'rectangle' && startPoint) {
+      // Finish drawing a rectangle
+      const shape = {
+        id: uuidv4(),
+        type: 'rectangle',
+        start: { ...startPoint },
+        end: { x, y },
         color: currentColor,
         fillColor: fillColor
       };
       
-      setShapes([...shapes, newRectangle]);
+      setShapes([...shapes, shape]);
       setIsDrawing(false);
       setStartPoint(null);
     }
     
     setIsDragging(false);
+    setPreviewLine(null);
   };
 
   // Handle canvas click for single click operations
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    // This is now empty as the clicks are handled directly in startDrawing
+    if (activeTool === 'line' && startPoint && !isDrawing) {
+      // Complete the line on second click
+      if (!canvasRef.current) return;
+      
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Create the line
+      const shape = {
+        id: uuidv4(),
+        type: 'line',
+        start: { ...startPoint },
+        end: { x, y },
+        color: currentColor
+      };
+      
+      setShapes([...shapes, shape]);
+      setStartPoint(null);
+      setPreviewLine(null);
+      // Reset active tool to select after creating one line
+      setActiveTool('select');
+    }
   };
 
   // Delete selected shape
@@ -299,15 +408,7 @@ export const useCanvasEditor = () => {
   // Redraw the canvas whenever shapes or selected shapes change
   useEffect(() => {
     redrawCanvas();
-  }, [
-    shapes,
-    selectedShape,
-    polygonPoints,
-    activeTool,
-    startPoint,
-    currentPoint,
-    previewLine
-  ]);
+  }, [shapes, selectedShape, polygonPoints, activeTool, startPoint, currentPoint, previewLine]);
   
   return {
     canvasRef,
