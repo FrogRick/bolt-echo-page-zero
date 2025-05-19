@@ -24,10 +24,10 @@ export const drawShapes = (
       ctx.lineTo(shape.end.x, shape.end.y);
       ctx.lineWidth = lineWidth;
       ctx.strokeStyle = '#8E9196'; // Gray color for the main line
+      ctx.lineCap = 'butt'; // Flat ends for the gray part
       ctx.stroke();
       
       // Draw the thin black border for the entire line (including ends)
-      // Using lineCap: 'square' ensures the ends have the border too
       ctx.beginPath();
       ctx.moveTo(shape.start.x, shape.start.y);
       ctx.lineTo(shape.end.x, shape.end.y);
@@ -135,14 +135,14 @@ export const drawPreviewLine = (
   ctx.lineTo(end.x, end.y);
   ctx.lineWidth = 8;
   ctx.strokeStyle = '#8E9196'; // Gray color
-  ctx.lineCap = 'square'; // Square ends to ensure the ends are not rounded
+  ctx.lineCap = 'butt'; // Flat ends for the gray part
   ctx.stroke();
   
   // Draw the thin black border (including the ends)
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
-  ctx.lineWidth = 10; // Slightly wider for border
+  ctx.lineWidth = 8 + 2; // Consistently 2px wider for border
   ctx.strokeStyle = '#000000'; // Black border
   ctx.lineCap = 'square'; // Square ends to ensure border at the tips
   ctx.globalCompositeOperation = 'destination-over';
