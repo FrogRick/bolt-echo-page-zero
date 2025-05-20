@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -5,7 +6,7 @@ import { Toolbar } from "./Toolbar";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { FileImage, Upload, X, ImageIcon, FileIcon, Square } from "lucide-react";
+import { FileImage, Upload, X, ImageIcon, FileIcon } from "lucide-react";
 
 // Define the Image object type for our canvas
 interface CanvasImage {
@@ -45,8 +46,7 @@ const Canvas: React.FC = () => {
     toggleSnapToLines,
     snapToExtensions,
     toggleSnapToExtensions,
-    rectangleDrawMode,
-    isDrawing
+    rectangleDrawMode
   } = useCanvasEditor();
   
   const { toast } = useToast();
@@ -105,73 +105,6 @@ const Canvas: React.FC = () => {
       }
     }
   }, [canvasImages, containerDimensions]);
-
-  // FIXED: Improved mouse event handling to accurately track coordinates
-  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
-    
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = canvasRef.current.width / rect.width;
-    const scaleY = canvasRef.current.height / rect.height;
-    
-    // Calculate the correct coordinates relative to the canvas
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
-    
-    console.log("Canvas MouseDown", { x, y, activeTool });
-    
-    // Pass the correct coordinates to the startDrawing function
-    startDrawing(e, x, y);
-    
-    // Prevent default actions if we're drawing
-    if (activeTool !== 'select') {
-      e.preventDefault();
-    }
-  };
-  
-  // FIXED: Improved mouse move event handling
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
-    
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = canvasRef.current.width / rect.width;
-    const scaleY = canvasRef.current.height / rect.height;
-    
-    // Calculate the correct coordinates relative to the canvas
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
-    
-    // Pass the correct coordinates to the draw function
-    draw(e, x, y);
-    
-    // Prevent default actions if we're drawing
-    if (isDrawing) {
-      e.preventDefault();
-    }
-  };
-  
-  // FIXED: Improved mouse up/leave event handling
-  const handleCanvasMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    endDrawing();
-  };
-  
-  const handleCanvasMouseLeave = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    // End drawing when mouse leaves canvas
-    endDrawing();
-  };
-
-  // Add keyboard event handler for escape key to cancel drawing
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isDrawing) {
-        console.log("Escape pressed, canceling drawing");
-        endDrawing();
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isDrawing, endDrawing]);
 
   // Render PDF using canvas rather than iframe
   const renderPdfToCanvas = async (file: File, image: CanvasImage) => {
@@ -456,6 +389,20 @@ const Canvas: React.FC = () => {
     setSelectedImageId(null);
   };
 
+  // Force canvas redraw when tool or styling changes to ensure correct rendering
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Force a clean redraw by clearing and triggering the redraw in useCanvasEditor
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // This will trigger the redraw effect in useCanvasEditor
+        setActiveTool(activeTool);
+      }
+    }
+  }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions, canvasRef, setActiveTool, canvasImages]);
+
   // Add dynamic import of pdf.js
   useEffect(() => {
     const loadPdfJs = async () => {
@@ -536,14 +483,6 @@ const Canvas: React.FC = () => {
             <span className="text-sm">45°</span>
           </Toggle>
         </div>
-        
-        {/* Add status indicator for drawing state */}
-        {isDrawing && (
-          <div className="ml-2 px-3 py-1 bg-yellow-100 border border-yellow-300 rounded text-sm flex items-center">
-            <Square className="w-3 h-3 mr-1" />
-            Drawing in progress... (ESC to cancel)
-          </div>
-        )}
         
         {/* Add file upload button for PDFs and images */}
         <div className="ml-auto">
@@ -646,10 +585,10 @@ const Canvas: React.FC = () => {
             ref={canvasRef}
             width={canvasSize.width}
             height={canvasSize.height}
-            onMouseDown={handleCanvasMouseDown}
-            onMouseMove={handleCanvasMouseMove}
-            onMouseUp={handleCanvasMouseUp}
-            onMouseLeave={handleCanvasMouseLeave}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={endDrawing}
+            onMouseLeave={endDrawing}
             className={`bg-transparent w-full absolute top-0 left-0 ${
               activeTool === "select" 
                 ? "cursor-default" 

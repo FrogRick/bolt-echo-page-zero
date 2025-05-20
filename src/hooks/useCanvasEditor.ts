@@ -1,480 +1,266 @@
 import { useRef, useState, useEffect } from 'react';
-import { Point, Shape, Tool, PreviewLine, ExtensionLine } from '@/types/canvas';
 import { drawShapes, drawInProgressPolygon, drawPreviewLine, drawExtensionLine, lineSnappingHelpers } from '@/utils/canvasDrawing';
+import { useShapeDetection } from '@/hooks/useShapeDetection';
+import { Tool, Point, Shape, PreviewLine } from '@/types/canvas';
+import { generateId } from '@/utils/idGenerator';
 
 export const useCanvasEditor = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const startPoint = useRef<Point | null>(null);
-  const lastPoint = useRef<Point | null>(null);
-  const currentPoint = useRef<Point | null>(null);
-  const inProgressPolygon = useRef<Point[]>([]);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [activeTool, setActiveTool] = useState<Tool>('select');
-  const [currentColor, setCurrentColor] = useState('#000000');
-  const [fillColor, setFillColor] = useState('#FFFFFF');
+  const [currentColor, setCurrentColor] = useState<string>('#000000');
+  const [fillColor, setFillColor] = useState<string>('#FFFBCC'); // Light yellow
+  const [greenFillColor, setGreenFillColor] = useState<string>('#C9E5D1'); // Green fill color
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [startPoint, setStartPoint] = useState<Point | null>(null);
+  const [currentPoint, setCurrentPoint] = useState<Point | null>(null);
+  const [polygonPoints, setPolygonPoints] = useState<Point[]>([]);
+  const [wallPolygonPoints, setWallPolygonPoints] = useState<Point[]>([]);
   const [shapes, setShapes] = useState<Shape[]>([]);
-  const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
-  const [canvasSize, setCanvasSize] = useState({ width: 1200, height: 800 });
-  const [snapToAngle, setSnapToAngle] = useState(true);
-  const [snapToEndpoints, setSnapToEndpoints] = useState(true);
-  const [snapToLines, setSnapToLines] = useState(true);
-  const [snapToExtensions, setSnapToExtensions] = useState(true);
-  const [rectangleDrawMode, setRectangleDrawMode] = useState<'corner-to-corner' | 'center-out'>('corner-to-corner');
+  const [selectedShape, setSelectedShape] = useState<Shape | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
+  const [previewLine, setPreviewLine] = useState<PreviewLine | null>(null);
+  const [mouseMoved, setMouseMoved] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState<Point | null>(null);
+  const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
+  const [mouseDownTimer, setMouseDownTimer] = useState<number | null>(null);
   
-  // Toggle functions for snap settings
-  const toggleSnapToAngle = () => setSnapToAngle(!snapToAngle);
-  const toggleSnapToEndpoints = () => setSnapToEndpoints(!snapToEndpoints);
-  const toggleSnapToLines = () => setSnapToLines(!snapToLines);
-  const toggleSnapToExtensions = () => setSnapToExtensions(!snapToExtensions);
+  // Rectangle drawing mode: 'click' for click-release-click or 'drag' for click-drag-release
+  const [rectangleDrawMode, setRectangleDrawMode] = useState<'click' | 'drag'>('click');
   
-  // Toggle rectangle draw mode
-  const toggleRectangleDrawMode = () => {
-    setRectangleDrawMode(prev => 
-      prev === 'corner-to-corner' ? 'center-out' : 'corner-to-corner'
-    );
-  };
+  // New state for snapping controls
+  const [snapToAngle, setSnapToAngle] = useState<boolean>(true);
+  const [snapToEndpoints, setSnapToEndpoints] = useState<boolean>(true);
+  const [snapDistance, setSnapDistance] = useState<number>(10); // Pixels
+  
+  // Add a state for line-to-line snapping
+  const [snapToLines, setSnapToLines] = useState<boolean>(true);
 
-  // Modified startDrawing function with improved logging and state management
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>, xPos?: number, yPos?: number) => {
-    console.log("startDrawing called", { xPos, yPos, activeTool, currentIsDrawing: isDrawing });
-    
-    // If already drawing, don't start a new drawing operation
-    if (isDrawing) return;
-    
-    setIsDrawing(true);
+  // New state for extension snapping
+  const [snapToExtensions, setSnapToExtensions] = useState<boolean>(true);
+  const [extensionLine, setExtensionLine] = useState<{start: Point, end: Point} | null>(null);
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  // Import shape detection functions
+  const { findShapeAtPoint } = useShapeDetection();
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Use provided coordinates if available, otherwise calculate them
-    let x, y;
-    if (xPos !== undefined && yPos !== undefined) {
-      x = xPos;
-      y = yPos;
-    } else {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      
-      x = (e.clientX - rect.left) * scaleX;
-      y = (e.clientY - rect.top) * scaleY;
-    }
-    
-    console.log("Setting start point:", { x, y });
-
-    // Store the starting point
-    startPoint.current = { x, y };
-    lastPoint.current = { x, y };
-    currentPoint.current = { x, y };
-
-    // If selecting, start the selection process
-    if (activeTool === 'select') {
-      // Check if we clicked on a shape
-      const clickedShape = findShapeAtPoint({ x, y });
-      if (clickedShape) {
-        setSelectedShapeId(clickedShape.id);
-      } else {
-        setSelectedShapeId(null);
+  // Function to cancel the current drawing operation
+  const cancelDrawing = () => {
+    if (activeTool === 'wall' && startPoint) {
+      // Cancel wall drawing - clear the start point
+      setStartPoint(null);
+      setPreviewLine(null);
+      setIsDrawing(false);
+    } else if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
+      // Cancel wall polygon drawing - clear all wall polygon points
+      setWallPolygonPoints([]);
+      setIsDrawing(false);
+    } else if ((activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle')) {
+      // Cancel rectangle drawing - clear the start point
+      if (rectangleDrawMode === 'click' && startPoint) {
+        setStartPoint(null);
+        setCurrentPoint(null);
       }
-    } 
-    // If drawing wall lines 
-    else if (activeTool === 'wall') {
-      // For wall tool, we'll start drawing a preview line
-      // The actual wall will be created on mouse up
-      console.log("Drawing wall from", { x, y });
+      setIsDrawing(false);
+    } else if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length > 0) {
+      // Cancel polygon drawing - clear all polygon points
+      setPolygonPoints([]);
     }
-    // If drawing polygons (any type)
-    else if (['wall-polygon', 'yellow-polygon', 'green-polygon'].includes(activeTool)) {
-      // If this is the first point, start a new polygon
-      if (inProgressPolygon.current.length === 0) {
-        console.log("Starting new polygon at", { x, y });
-        inProgressPolygon.current = [{ x, y }];
-      } else {
-        // Check if we're closing the polygon (clicking near the first point)
-        const firstPoint = inProgressPolygon.current[0];
-        const distance = Math.sqrt(
-          Math.pow(x - firstPoint.x, 2) + Math.pow(y - firstPoint.y, 2)
-        );
-        
-        if (distance < 20 && inProgressPolygon.current.length > 2) {
-          // Close the polygon
-          console.log("Closing polygon");
-          finishPolygon();
-        } else {
-          // Add a new point to the polygon
-          console.log("Adding point to polygon", { x, y });
-          inProgressPolygon.current = [...inProgressPolygon.current, { x, y }];
-        }
-      }
-      
-      // Redraw the canvas
-      redrawCanvas();
-    }
-  };
-
-  // Updated draw function with improved coordinates handling and logging
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>, xPos?: number, yPos?: number) => {
-    if (!isDrawing) return;
-    
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Use provided coordinates if available, otherwise calculate them
-    let x, y;
-    if (xPos !== undefined && yPos !== undefined) {
-      x = xPos;
-      y = yPos;
-    } else {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      
-      x = (e.clientX - rect.left) * scaleX;
-      y = (e.clientY - rect.top) * scaleY;
-    }
-
-    // Update the current mouse position
-    currentPoint.current = { x, y };
-
-    // Clear the canvas or keep existing drawings based on tool
-    if (activeTool === 'select') {
-      // If we're selecting and have a selected shape, handle dragging
-      if (selectedShapeId && startPoint.current) {
-        const dx = x - startPoint.current.x;
-        const dy = y - startPoint.current.y;
-        
-        // Update the shape's position
-        setShapes(prevShapes => 
-          prevShapes.map(shape => 
-            shape.id === selectedShapeId
-              ? moveShape(shape, dx, dy)
-              : shape
-          )
-        );
-        
-        // Update the start point for the next move
-        startPoint.current = { x, y };
-        
-        // Redraw the canvas
-        redrawCanvas();
-      }
-    } 
-    // Handle wall drawing
-    else if (activeTool === 'wall') {
-      // Redraw the canvas with the preview line
-      redrawCanvas();
-      
-      if (startPoint.current) {
-        let endX = x;
-        let endY = y;
-        
-        // Apply snapping if enabled
-        if (snapToAngle) {
-          const angle = Math.atan2(y - startPoint.current.y, x - startPoint.current.x);
-          const distance = Math.sqrt(
-            Math.pow(x - startPoint.current.x, 2) + 
-            Math.pow(y - startPoint.current.y, 2)
-          );
-          
-          // Snap to 45-degree increments
-          const snappedAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
-          endX = startPoint.current.x + distance * Math.cos(snappedAngle);
-          endY = startPoint.current.y + distance * Math.sin(snappedAngle);
-        }
-        
-        // Check for endpoint snapping
-        if (snapToEndpoints) {
-          const snapPoint = findNearestEndpoint({ x: endX, y: endY });
-          if (snapPoint) {
-            endX = snapPoint.x;
-            endY = snapPoint.y;
-          }
-        }
-        
-        // Check for line snapping
-        if (snapToLines) {
-          const snapPoint = lineSnappingHelpers.findNearestPointOnAnyLine(
-            { x: endX, y: endY },
-            shapes.filter(s => s.type === 'line')
-          );
-          
-          if (snapPoint) {
-            endX = snapPoint.point.x;
-            endY = snapPoint.point.y;
-          }
-        }
-        
-        // Draw the preview line
-        drawPreviewLine(ctx, startPoint.current, { x: endX, y: endY }, currentColor);
-        
-        // Draw extension lines if enabled
-        if (snapToExtensions && startPoint.current) {
-          const extension = lineSnappingHelpers.findLineExtensionPoint(
-            startPoint.current,
-            { x: endX, y: endY },
-            shapes.filter(s => s.type === 'line')
-          );
-          
-          if (extension) {
-            // Draw the extension line
-            drawExtensionLine(ctx, extension.extendedLine.start, extension.extendedLine.end);
-            
-            // Update the end point to the extension point
-            endX = extension.point.x;
-            endY = extension.point.y;
-            
-            // Redraw the preview line with the updated end point
-            drawPreviewLine(ctx, startPoint.current, { x: endX, y: endY }, currentColor);
-          }
-        }
-      }
-    } 
-    // Handle polygon drawing
-    else if (['wall-polygon', 'yellow-polygon', 'green-polygon'].includes(activeTool)) {
-      // Redraw the canvas with the in-progress polygon
-      redrawCanvas();
-      
-      if (inProgressPolygon.current.length > 0) {
-        // Get the appropriate fill color based on the tool
-        let polygonFillColor = fillColor;
-        if (activeTool === 'yellow-polygon') {
-          polygonFillColor = '#FFEB3B';
-        } else if (activeTool === 'green-polygon') {
-          polygonFillColor = '#4CAF50';
-        }
-        
-        // Draw the in-progress polygon
-        drawInProgressPolygon(
-          ctx,
-          inProgressPolygon.current,
-          { x, y },
-          currentColor,
-          polygonFillColor,
-          activeTool === 'wall-polygon'
-        );
-      }
-    }
-  };
-
-  // Updated endDrawing function with improved state management
-  const endDrawing = () => {
-    console.log("endDrawing called", { 
-      currentIsDrawing: isDrawing, 
-      activeTool, 
-      hasStartPoint: !!startPoint.current,
-      hasCurrentPoint: !!currentPoint.current,
-      polygonPoints: inProgressPolygon.current.length
-    });
-    
-    // If we weren't drawing, nothing to end
-    if (!isDrawing) return;
-    
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    // Handle the end of drawing based on the active tool
-    if (activeTool === 'wall' && startPoint.current && currentPoint.current) {
-      // Create a new wall line
-      const newShape: Shape = {
-        id: crypto.randomUUID(),
-        type: 'line',
-        start: { ...startPoint.current },
-        end: { ...currentPoint.current },
-        color: currentColor
-      };
-      
-      console.log("Created new wall", newShape);
-      setShapes([...shapes, newShape]);
-    }
-    
-    // Reset drawing state
-    setIsDrawing(false);
-    
-    // Don't reset startPoint for polygon drawing
-    if (!['wall-polygon', 'yellow-polygon', 'green-polygon'].includes(activeTool)) {
-      startPoint.current = null;
-    }
-    
-    lastPoint.current = null;
-    currentPoint.current = null;
-    
-    // Redraw the canvas
+    // Force redraw of the canvas to remove any in-progress elements
     redrawCanvas();
   };
 
-  // Helper function to finish a polygon
-  const finishPolygon = () => {
-    if (inProgressPolygon.current.length < 3) return;
-    
-    // Create a new polygon shape
-    const newShape: Shape = {
-      id: crypto.randomUUID(),
-      type: activeTool === 'wall-polygon' ? 'wall-polygon' : 'polygon',
-      points: [...inProgressPolygon.current],
-      color: currentColor,
-      fillColor: activeTool === 'yellow-polygon' 
-        ? '#FFEB3B' 
-        : activeTool === 'green-polygon'
-          ? '#4CAF50'
-          : fillColor
-    };
-    
-    // Add the new shape
-    console.log("Creating finished polygon", { 
-      type: newShape.type,
-      points: newShape.points.length,
-      color: newShape.color,
-      fillColor: newShape.fillColor
-    });
-    
-    setShapes([...shapes, newShape]);
-    
-    // Reset the in-progress polygon
-    inProgressPolygon.current = [];
-    
-    // Reset drawing state
-    setIsDrawing(false);
-  };
+  // Clear the canvas and redraw all shapes
+  const redrawCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  // Helper function to find a shape at a specific point
-  const findShapeAtPoint = (point: Point): Shape | null => {
-    // Check shapes in reverse order (top to bottom)
-    for (let i = shapes.length - 1; i >= 0; i--) {
-      const shape = shapes[i];
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Apply canvas transform for panning
+    ctx.save();
+    ctx.translate(canvasOffset.x, canvasOffset.y);
+
+    // Draw all saved shapes
+    drawShapes(ctx, shapes, selectedShape?.id || null, fillColor);
+
+    // Draw wall polygon in progress (using same drawing function as regular polygon)
+    // This is drawn FIRST (before regular polygons) so it appears below other elements
+    if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
+      // For wall polygon, we draw lines without fill - use black border and gray fill like walls
+      // Pass true for isWallPolygon and false for showStartPoint to hide the red circle
+      drawInProgressPolygon(ctx, wallPolygonPoints, currentPoint, '#000000', 'transparent', true, false);
       
-      if (shape.type === 'line') {
-        // Check if point is on the line
-        if (isPointOnLine(point, shape.start, shape.end)) {
-          return shape;
+      // Draw dotted extension line if there is one - same as for wall tool
+      if (extensionLine && snapToExtensions) {
+        drawExtensionLine(ctx, extensionLine.start, extensionLine.end);
+      }
+    }
+
+    // Draw polygon in progress
+    if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length > 0) {
+      const polygonFillColor = activeTool === 'green-polygon' ? greenFillColor : fillColor;
+      // Make sure to show the start point with the red dot on non-wall polygons
+      drawInProgressPolygon(ctx, polygonPoints, currentPoint, currentColor, polygonFillColor, false, true);
+    }
+
+    // Draw preview line when using the wall tool - only if we have a start and current point
+    if (activeTool === 'wall' && startPoint && currentPoint) {
+      // Start with the current point as our end point
+      let endPoint = currentPoint;
+      let extensionFound = false;
+      
+      // Check for extension snapping first - it now works alongside angle snapping
+      if (snapToExtensions && !isDragging) {
+        const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(startPoint, currentPoint, shapes);
+        if (extensionSnap) {
+          endPoint = extensionSnap.point;
+          
+          // Set extension line for drawing dotted reference line
+          setExtensionLine({
+            start: extensionSnap.extendedLine.start,
+            end: extensionSnap.point
+          });
+          extensionFound = true;
+        } else {
+          setExtensionLine(null);
         }
-      } else if (shape.type === 'rectangle') {
-        // Check if point is inside the rectangle
-        if (
-          point.x >= Math.min(shape.start.x, shape.end.x) &&
-          point.x <= Math.max(shape.start.x, shape.end.x) &&
-          point.y >= Math.min(shape.start.y, shape.end.y) &&
-          point.y <= Math.max(shape.start.y, shape.end.y)
-        ) {
-          return shape;
+      } else {
+        setExtensionLine(null);
+      }
+      
+      // Then check if we should snap to an existing line (if no extension found)
+      if (!extensionFound && snapToLines) {
+        const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(currentPoint, shapes);
+        if (lineSnap) {
+          endPoint = lineSnap.point;
         }
-      } else if (shape.type === 'polygon' || shape.type === 'wall-polygon') {
-        // Check if point is inside the polygon
-        if (isPointInPolygon(point, shape.points)) {
-          return shape;
+      }
+      
+      // Then check endpoint snapping (takes priority over line snapping)
+      const snappedToEndpoint = findNearestEndpoint(endPoint);
+      if (snappedToEndpoint) {
+        endPoint = snappedToEndpoint;
+      }
+      
+      // Apply angle snapping AFTER all other snapping
+      // This ensures both extension snap AND angle snap can work together
+      if (snapToAngle && !isDragging) {
+        const snappedAnglePoint = snapAngleToGrid(startPoint, endPoint);
+        
+        // Only use the angle-snapped point if it's close enough to our current point
+        const distToSnapped = Math.sqrt(
+          Math.pow(snappedAnglePoint.x - endPoint.x, 2) + 
+          Math.pow(snappedAnglePoint.y - endPoint.y, 2)
+        );
+        
+        if (distToSnapped < 20) { // Only apply angle snapping if close to current angle
+          endPoint = snappedAnglePoint;
         }
+      }
+      
+      // Draw only one line - the snapped one
+      drawPreviewLine(ctx, startPoint, endPoint, currentColor);
+      
+      // Draw dotted extension line if there is one
+      if (extensionLine && snapToExtensions) {
+        drawExtensionLine(ctx, extensionLine.start, extensionLine.end); // Never blocked in this case
       }
     }
     
-    return null;
-  };
-
-  // Helper function to check if a point is on a line
-  const isPointOnLine = (point: Point, lineStart: Point, lineEnd: Point): boolean => {
-    const lineLength = Math.sqrt(
-      Math.pow(lineEnd.x - lineStart.x, 2) + Math.pow(lineEnd.y - lineStart.y, 2)
-    );
-    
-    if (lineLength === 0) return false;
-    
-    // Calculate distance from point to line
-    const distance = Math.abs(
-      (lineEnd.y - lineStart.y) * point.x -
-      (lineEnd.x - lineStart.x) * point.y +
-      lineEnd.x * lineStart.y -
-      lineEnd.y * lineStart.x
-    ) / lineLength;
-    
-    // Check if point is close enough to the line
-    if (distance > 5) return false;
-    
-    // Check if point is within the line segment
-    const dotProduct = 
-      ((point.x - lineStart.x) * (lineEnd.x - lineStart.x) +
-       (point.y - lineStart.y) * (lineEnd.y - lineStart.y)) / 
-      (lineLength * lineLength);
-    
-    return dotProduct >= 0 && dotProduct <= 1;
-  };
-
-  // Helper function to check if a point is inside a polygon
-  const isPointInPolygon = (point: Point, polygon: Point[]): boolean => {
-    let inside = false;
-    
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i].x, yi = polygon[i].y;
-      const xj = polygon[j].x, yj = polygon[j].y;
-      
-      const intersect = 
-        ((yi > point.y) !== (yj > point.y)) &&
-        (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
-      
-      if (intersect) inside = !inside;
+    // Draw preview line for single click line tool if previewLine exists
+    else if (previewLine) {
+      drawPreviewLine(ctx, previewLine.start, previewLine.end, currentColor);
     }
     
-    return inside;
-  };
-
-  // Helper function to move a shape
-  const moveShape = (shape: Shape, dx: number, dy: number): Shape => {
-    if (shape.type === 'line') {
-      return {
-        ...shape,
-        start: {
-          x: shape.start.x + dx,
-          y: shape.start.y + dy
-        },
-        end: {
-          x: shape.end.x + dx,
-          y: shape.end.y + dy
-        }
-      };
-    } else if (shape.type === 'rectangle') {
-      return {
-        ...shape,
-        start: {
-          x: shape.start.x + dx,
-          y: shape.start.y + dy
-        },
-        end: {
-          x: shape.end.x + dx,
-          y: shape.end.y + dy
-        }
-      };
-    } else if (shape.type === 'polygon' || shape.type === 'wall-polygon') {
-      return {
-        ...shape,
-        points: shape.points.map(point => ({
-          x: point.x + dx,
-          y: point.y + dy
-        }))
-      };
+    // Draw preview rectangle if we're in click mode and have a start point
+    if ((activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'click' && startPoint && currentPoint) {
+      const rectFillColor = activeTool === 'green-rectangle' ? greenFillColor : fillColor;
+      
+      // Create semi-transparent fill color for in-progress rectangles (50% opacity)
+      let semiTransparentColor = rectFillColor;
+      
+      // Handle both hex and rgb formats
+      if (rectFillColor.startsWith('#')) {
+        // Convert hex to rgba
+        const r = parseInt(rectFillColor.slice(1, 3), 16);
+        const g = parseInt(rectFillColor.slice(3, 5), 16);
+        const b = parseInt(rectFillColor.slice(5, 7), 16);
+        semiTransparentColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+      } else if (rectFillColor.startsWith('rgb(')) {
+        // Convert rgb to rgba
+        semiTransparentColor = rectFillColor.replace(/rgb\((.+)\)/, 'rgba($1, 0.5)');
+      }
+      
+      ctx.fillStyle = semiTransparentColor;
+      ctx.beginPath();
+      ctx.rect(
+        startPoint.x,
+        startPoint.y,
+        currentPoint.x - startPoint.x,
+        currentPoint.y - startPoint.y
+      );
+      ctx.fill();
+      
+      // Add a subtle border
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
-    
-    return shape;
+
+    ctx.restore();
   };
 
-  // Helper function to find the nearest endpoint for snapping
+  // Function to snap angle to nearest 45 degrees if within threshold
+  const snapAngleToGrid = (startPoint: Point, endPoint: Point): Point => {
+    if (!snapToAngle) return endPoint;
+
+    const dx = endPoint.x - startPoint.x;
+    const dy = endPoint.y - startPoint.y;
+    
+    // Calculate angle in radians and convert to degrees
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    
+    // Determine nearest 45 degree increment
+    const snapAngle = Math.round(angle / 45) * 45;
+    
+    // Check if we're within the threshold (5 degrees) of a 45-degree increment - stricter threshold
+    const angleDiff = Math.abs((angle % 45) - 45) % 45;
+    const shouldSnap = angleDiff < 5 || angleDiff > 40; // Much stricter threshold - within 5 degrees of a 45 degree angle
+    
+    if (!shouldSnap) return endPoint;
+    
+    // Convert back to radians
+    const snapRadians = snapAngle * (Math.PI / 180);
+    
+    // Calculate distance
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Calculate new endpoint
+    return {
+      x: startPoint.x + distance * Math.cos(snapRadians),
+      y: startPoint.y + distance * Math.sin(snapRadians)
+    };
+  };
+
+  // Function to find nearest endpoint to snap to
   const findNearestEndpoint = (point: Point): Point | null => {
-    const snapDistance = 10;
-    let closestPoint = null;
+    if (!snapToEndpoints) return null;
+    
+    let closestPoint: Point | null = null;
     let minDistance = snapDistance;
     
-    for (const shape of shapes) {
+    shapes.forEach(shape => {
       if (shape.type === 'line') {
         // Check distance to start point
         const distToStart = Math.sqrt(
-          Math.pow(shape.start.x - point.x, 2) + Math.pow(shape.start.y - point.y, 2)
+          Math.pow(shape.start.x - point.x, 2) + 
+          Math.pow(shape.start.y - point.y, 2)
         );
-        
         if (distToStart < minDistance) {
           minDistance = distToStart;
           closestPoint = { ...shape.start };
@@ -482,126 +268,747 @@ export const useCanvasEditor = () => {
         
         // Check distance to end point
         const distToEnd = Math.sqrt(
-          Math.pow(shape.end.x - point.x, 2) + Math.pow(shape.end.y - point.y, 2)
+          Math.pow(shape.end.x - point.x, 2) + 
+          Math.pow(shape.end.y - point.y, 2)
         );
-        
         if (distToEnd < minDistance) {
           minDistance = distToEnd;
           closestPoint = { ...shape.end };
         }
-      } else if (shape.type === 'polygon' || shape.type === 'wall-polygon') {
-        // Check distance to each vertex
-        for (const vertex of shape.points) {
-          const dist = Math.sqrt(
-            Math.pow(vertex.x - point.x, 2) + Math.pow(vertex.y - point.y, 2)
-          );
-          
-          if (dist < minDistance) {
-            minDistance = dist;
-            closestPoint = { ...vertex };
-          }
-        }
       }
-    }
+      // Add support for rectangle and polygon endpoints if needed
+    });
     
     return closestPoint;
   };
 
-  // Function to delete the selected shape
-  const deleteSelected = () => {
-    if (selectedShapeId) {
-      setShapes(shapes.filter(shape => shape.id !== selectedShapeId));
-      setSelectedShapeId(null);
+  // Complete the polygon drawing and save it
+  const completePolygon = () => {
+    if (polygonPoints.length < 3) {
+      // Need at least 3 points to form a polygon
+      setPolygonPoints([]);
+      return;
     }
+    
+    // Determine fill color based on active tool
+    const polygonFillColor = activeTool === 'green-polygon' ? greenFillColor : fillColor;
+    
+    const newPolygon = {
+      id: generateId(),
+      type: 'polygon' as const,
+      points: [...polygonPoints],
+      color: 'transparent', // Make the border transparent
+      fillColor: polygonFillColor
+    };
+    
+    setShapes([...shapes, newPolygon]);
+    setPolygonPoints([]);
+  };
+  
+  // Complete the wall polygon drawing and save it as series of lines
+  const completeWallPolygon = () => {
+    if (wallPolygonPoints.length < 2) {
+      // Need at least 2 points to form lines
+      setWallPolygonPoints([]);
+      return;
+    }
+    
+    // Create a new array to hold all the new lines
+    const newLines: Shape[] = [];
+    
+    // Create lines between consecutive points
+    for (let i = 0; i < wallPolygonPoints.length - 1; i++) {
+      const newLine = {
+        id: generateId(),
+        type: 'line' as const,
+        start: { ...wallPolygonPoints[i] },
+        end: { ...wallPolygonPoints[i + 1] },
+        color: currentColor,
+        lineWidth: 8, // Make the line thicker
+        strokeColor: '#000000' // Black border color
+      };
+      newLines.push(newLine);
+    }
+    
+    // Add all new lines to shapes
+    setShapes([...shapes, ...newLines]);
+    setWallPolygonPoints([]);
   };
 
-  // Function to clear the canvas
-  const clearCanvas = () => {
-    setShapes([]);
-    setSelectedShapeId(null);
-    inProgressPolygon.current = [];
-    redrawCanvas();
-  };
-
-  // Function to redraw the canvas
-  const redrawCanvas = () => {
+  // Handle mouse down event
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - canvasOffset.x;
+    const y = e.clientY - rect.top - canvasOffset.y;
     
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const point: Point = { x, y };
+    setMouseMoved(false);
     
-    // Clear the canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Set up potential panning on any tool with click-hold
+    setPanStart({ x: e.clientX, y: e.clientY });
     
-    // Draw all shapes
-    drawShapes(ctx, shapes, selectedShapeId, fillColor);
+    // Start a timer to detect if this is a click-hold (for panning)
+    const timerId = window.setTimeout(() => {
+      // Only activate panning if mouse hasn't moved significantly and button is still down
+      if (!mouseMoved && e.buttons === 1) {
+        setIsPanning(true);
+      }
+    }, 150); // Short delay to detect hold vs click
     
-    // Draw the in-progress polygon if applicable
-    if (inProgressPolygon.current.length > 0 && currentPoint.current) {
-      // Get the appropriate fill color based on the tool
-      let polygonFillColor = fillColor;
-      if (activeTool === 'yellow-polygon') {
-        polygonFillColor = '#FFEB3B';
-      } else if (activeTool === 'green-polygon') {
-        polygonFillColor = '#4CAF50';
+    setMouseDownTimer(timerId);
+    
+    if (activeTool === 'select') {
+      handleSelectToolMouseDown(point);
+    } else if (activeTool === 'wall') {
+      // Apply both endpoint and line snapping before starting to draw
+      let snappedPoint = point;
+      
+      // First check if we can snap to a line
+      if (snapToLines) {
+        const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
+        if (lineSnap) {
+          snappedPoint = lineSnap.point;
+        }
       }
       
-      drawInProgressPolygon(
-        ctx,
-        inProgressPolygon.current,
-        currentPoint.current,
-        currentColor,
-        polygonFillColor,
-        activeTool === 'wall-polygon'
-      );
+      // Then check endpoint snapping (this takes priority)
+      const endpointSnap = findNearestEndpoint(snappedPoint);
+      if (endpointSnap) {
+        snappedPoint = endpointSnap;
+      }
+      
+      // Use click-point-click mode exclusively for lines
+      handleLineToolClick(snappedPoint);
+    } else if (activeTool === 'wall-polygon') {
+      handleWallPolygonToolMouseDown(point);
+    } else if (activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') {
+      handleRectangleToolClick(point);
+    } else if (activeTool === 'yellow-polygon' || activeTool === 'green-polygon') {
+      handlePolygonToolMouseDown(point);
     }
   };
 
-  // Effect to redraw the canvas when shapes or selected shape changes
-  useEffect(() => {
-    redrawCanvas();
-  }, [shapes, selectedShapeId, fillColor]);
-
-  // Effect to handle canvas resize
-  useEffect(() => {
-    const handleResize = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+  // Handle mouse move event
+  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Check if we're panning the canvas
+    if (isPanning && panStart) {
+      // Calculate pan amount
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
       
-      // Update canvas size based on parent container
-      const parent = canvas.parentElement;
-      if (parent) {
-        setCanvasSize({
-          width: parent.clientWidth,
-          height: parent.clientHeight
+      // Update canvas offset
+      setCanvasOffset({
+        x: canvasOffset.x + dx,
+        y: canvasOffset.y + dy
+      });
+      
+      // Update pan start point
+      setPanStart({ x: e.clientX, y: e.clientY });
+      
+      // Redraw the canvas with updated offset
+      redrawCanvas();
+      return;
+    }
+    
+    // Set mouseMoved to true if we've moved more than a tiny amount
+    if (panStart) {
+      const moveDistance = Math.sqrt(
+        Math.pow(e.clientX - panStart.x, 2) + 
+        Math.pow(e.clientY - panStart.y, 2)
+      );
+      
+      if (moveDistance > 3) {
+        setMouseMoved(true);
+        
+        // Clear the mouse down timer if it exists to prevent panning
+        if (mouseDownTimer !== null) {
+          window.clearTimeout(mouseDownTimer);
+          setMouseDownTimer(null);
+        }
+      }
+    }
+    
+    const x = e.clientX - rect.left - canvasOffset.x;
+    const y = e.clientY - rect.top - canvasOffset.y;
+    
+    const point: Point = { x, y };
+    
+    setCurrentPoint(point);
+    
+    if (isDragging && selectedShape) {
+      handleDragMove(point);
+    } else if (activeTool === 'wall' && startPoint) {
+      // For wall tool, check for perpendicular extension snapping during mouse move
+      let modifiedPoint = point; // Store the potentially modified point
+      let extensionFound = false;
+      
+      // Only check for extension if the feature is enabled
+      if (snapToExtensions) {
+        const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(startPoint, point, shapes);
+        if (extensionSnap) {
+          // Set current point to the extension point
+          modifiedPoint = extensionSnap.point;
+          setCurrentPoint(extensionSnap.point);
+          
+          // Set the extension line with the correct start point (endpoint of the reference line)
+          setExtensionLine({
+            start: extensionSnap.extendedLine.start,
+            end: extensionSnap.point
+          });
+          extensionFound = true;
+        } else {
+          setExtensionLine(null);
+        }
+      } else {
+        // Ensure extension line is removed when the feature is disabled
+        setExtensionLine(null);
+      }
+      
+      // Apply angle snapping regardless of extension snapping
+      if (snapToAngle && !isDragging) {
+        const snappedAnglePoint = snapAngleToGrid(startPoint, modifiedPoint);
+        
+        // Only use the angle-snapped point if it's close enough to our modified point
+        const distToSnapped = Math.sqrt(
+          Math.pow(snappedAnglePoint.x - modifiedPoint.x, 2) + 
+          Math.pow(snappedAnglePoint.y - modifiedPoint.y, 2)
+        );
+        
+        if (distToSnapped < 20) { // Apply angle snapping if close to current angle
+          // Only set if we didn't find an extension, or if the angle-snapped point
+          // is very close to the extension point (meaning they're compatible)
+          if (!extensionFound || distToSnapped < 5) {
+            setCurrentPoint(snappedAnglePoint);
+          }
+        }
+      }
+      
+      // Update for line preview
+      redrawCanvas();
+    } 
+    else if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
+      // For wall-polygon, apply the same snapping as wall tool during mouse movement
+      let snappedPoint = point;
+      let extensionFound = false;
+      
+      // Create a temporary array that includes both shapes and the current in-progress wall polygon
+      const temporaryLines: Shape[] = [...shapes];
+      
+      // Add the current wall polygon segments as temporary lines for snapping
+      if (wallPolygonPoints.length > 1) {
+        for (let i = 0; i < wallPolygonPoints.length - 1; i++) {
+          temporaryLines.push({
+            id: `temp-wall-polygon-${i}`,
+            type: 'line',
+            start: { ...wallPolygonPoints[i] },
+            end: { ...wallPolygonPoints[i + 1] },
+            color: currentColor,
+            lineWidth: 8
+          });
+        }
+      }
+      
+      // Get the last point from the wall polygon points array
+      const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
+      
+      // Only check for extensions if the feature is enabled
+      if (snapToExtensions) {
+        // Use the extended shapes array that includes our in-progress wall polygon
+        const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, temporaryLines);
+        if (extensionSnap) {
+          snappedPoint = extensionSnap.point;
+          setCurrentPoint(extensionSnap.point);
+          extensionFound = true;
+          
+          // Set extension line to show the visual indicator
+          setExtensionLine({
+            start: extensionSnap.extendedLine.start,
+            end: extensionSnap.point
+          });
+        } else {
+          setExtensionLine(null);
+        }
+      } else {
+        // Ensure extension line is removed when feature is disabled
+        setExtensionLine(null);
+      }
+      
+      // Then check if we can snap to a line if no extension was found
+      if (!extensionFound && snapToLines) {
+        const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
+        if (lineSnap) {
+          snappedPoint = lineSnap.point;
+          setCurrentPoint(lineSnap.point);
+        }
+      }
+      
+      // Then check endpoint snapping (this takes priority)
+      const endpointSnap = findNearestEndpoint(snappedPoint);
+      if (endpointSnap) {
+        snappedPoint = endpointSnap;
+        setCurrentPoint(endpointSnap);
+      }
+      
+      // Apply angle snapping after all other snaps
+      if (snapToAngle) {
+        const angleSnappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
+        
+        // Only use the angle-snapped point if it's close enough to our current point
+        const distToSnapped = Math.sqrt(
+          Math.pow(angleSnappedPoint.x - snappedPoint.x, 2) + 
+          Math.pow(angleSnappedPoint.y - snappedPoint.y, 2)
+        );
+        
+        // Only apply the angle snap if it's reasonably close to where we are
+        // or very close to the extension point (meaning they're compatible)
+        if (distToSnapped < 20 || (extensionFound && distToSnapped < 5)) {
+          setCurrentPoint(angleSnappedPoint);
+        }
+      }
+      
+      redrawCanvas();
+    } else if (isDrawing && (activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'drag') {
+      redrawCanvas();
+    } else if ((activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'click' && startPoint) {
+      // Update preview for click mode rectangle
+      redrawCanvas();
+    } else if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length > 0) {
+      // Update the current point for polygon preview
+      redrawCanvas();
+    }
+  };
+
+  // Handle select tool mouse down
+  const handleSelectToolMouseDown = (point: Point) => {
+    // Check if we clicked on a shape
+    const clickedShape = findShapeAtPoint(point, shapes);
+    
+    if (clickedShape) {
+      setSelectedShape(clickedShape);
+      setIsDragging(true);
+      
+      if (clickedShape.type === 'rectangle') {
+        setDragOffset({
+          x: point.x - clickedShape.start.x,
+          y: point.y - clickedShape.start.y
+        });
+      } else {
+        setDragOffset(point);
+      }
+    } else {
+      setSelectedShape(null);
+    }
+  };
+
+  // Handle line tool mouse down - exclusively click-point-click mode
+  const handleLineToolClick = (point: Point) => {
+    // If there's no start point, set it
+    if (!startPoint) {
+      setStartPoint(point);
+      setCurrentPoint(point);
+    } else {
+      // Complete the line on second click
+      completeLine(point);
+    }
+  };
+  
+  // Handle wall polygon tool mouse down - multiple connected lines
+  const handleWallPolygonToolMouseDown = (point: Point) => {
+    // Apply snapping to the point
+    let snappedPoint = point;
+    let extensionFound = false;
+    
+    // Create a temporary array that includes both shapes and the current in-progress wall polygon
+    const temporaryLines: Shape[] = [...shapes];
+    
+    // Add the current wall polygon segments as temporary lines for snapping
+    if (wallPolygonPoints.length > 1) {
+      for (let i = 0; i < wallPolygonPoints.length - 1; i++) {
+        temporaryLines.push({
+          id: `temp-wall-polygon-${i}`,
+          type: 'line',
+          start: { ...wallPolygonPoints[i] },
+          end: { ...wallPolygonPoints[i + 1] },
+          color: currentColor,
+          lineWidth: 8
         });
       }
-    };
+    }
     
-    // Initial resize
-    handleResize();
+    // Check for extension snapping - only if the feature is enabled
+    if (snapToExtensions && wallPolygonPoints.length > 0) {
+      const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
+      const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, temporaryLines);
+      if (extensionSnap) {
+        snappedPoint = extensionSnap.point;
+        extensionFound = true;
+      }
+    }
     
-    // Add resize event listener
-    window.addEventListener('resize', handleResize);
+    // First check if we can snap to a line and extension wasn't found
+    if (!extensionFound && snapToLines) {
+      const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
+      if (lineSnap) {
+        snappedPoint = lineSnap.point;
+      }
+    }
     
-    // Cleanup
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
+    // Then check endpoint snapping (this takes priority)
+    const endpointSnap = findNearestEndpoint(snappedPoint);
+    if (endpointSnap) {
+      snappedPoint = endpointSnap;
+    } 
+    
+    // Apply angle snapping - removed condition to allow both to work together
+    if (snapToAngle && wallPolygonPoints.length > 0) {
+      // Apply angle snapping from the last polygon point
+      const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
+      const angleSnappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
+      
+      // Only use the angle-snapped point if it's close enough to our snapped point
+      const distToSnapped = Math.sqrt(
+        Math.pow(angleSnappedPoint.x - snappedPoint.x, 2) + 
+        Math.pow(angleSnappedPoint.y - snappedPoint.y, 2)
+      );
+      
+      // Only apply if reasonably close to current point or very close to extension point
+      if (distToSnapped < 20 || (extensionFound && distToSnapped < 5)) {
+        snappedPoint = angleSnappedPoint;
+      }
+    }
+    
+    // If we don't have any points yet, add this as the first point
+    if (wallPolygonPoints.length === 0) {
+      setWallPolygonPoints([snappedPoint]);
+      setIsDrawing(true);
+    } else {
+      // If we already have points, check if this is a double-click (close to last point)
+      const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
+      const distance = Math.sqrt(
+        Math.pow(snappedPoint.x - lastPoint.x, 2) + 
+        Math.pow(snappedPoint.y - lastPoint.y, 2)
+      );
+      
+      if (distance < 10) {
+        // Double-click detected, complete the wall polygon
+        completeWallPolygon();
+      } else {
+        // Add this as a new point
+        setWallPolygonPoints([...wallPolygonPoints, snappedPoint]);
+        // Clear extension line after adding a point
+        setExtensionLine(null);
+      }
+    }
+  };
 
-  // Effect to update canvas size
-  useEffect(() => {
+  // Extract line completion logic for reuse
+  const completeLine = (endPoint: Point) => {
+    if (!startPoint) return;
+
+    // First check for extension snapping - only if the feature is enabled
+    let finalEndpoint = endPoint;
+    let extensionFound = false;
+    
+    if (snapToExtensions) {
+      const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(startPoint, endPoint, shapes);
+      if (extensionSnap) {
+        finalEndpoint = extensionSnap.point;
+        // Clear the extension line after using it
+        setExtensionLine(null);
+        extensionFound = true;
+      }
+    }
+    
+    // If not extension snapped, check line snapping
+    if (!extensionFound && snapToLines) {
+      const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(endPoint, shapes);
+      if (lineSnap) {
+        finalEndpoint = lineSnap.point;
+      }
+    }
+    
+    // Apply endpoint snapping for the final point if needed (takes priority)
+    const snappedEndpoint = findNearestEndpoint(finalEndpoint);
+    if (snappedEndpoint) {
+      finalEndpoint = snappedEndpoint;
+    } 
+    
+    // Apply angle snapping - removed condition to allow both to work together
+    if (snapToAngle) {
+      const snappedAnglePoint = snapAngleToGrid(startPoint, finalEndpoint);
+      
+      // Only use the angle-snapped point if it's close enough to our current endpoint
+      const distToSnapped = Math.sqrt(
+        Math.pow(snappedAnglePoint.x - finalEndpoint.x, 2) + 
+        Math.pow(snappedAnglePoint.y - finalEndpoint.y, 2)
+      );
+      
+      // Only apply if reasonably close to current point or very close to extension point
+      if (distToSnapped < 20 || (extensionFound && distToSnapped < 5)) {
+        finalEndpoint = snappedAnglePoint;
+      }
+    }
+
+    const newLine = {
+      id: generateId(),
+      type: 'line' as const,
+      start: { ...startPoint },
+      end: finalEndpoint,
+      color: currentColor,
+      lineWidth: 8, // Make the line thicker
+      strokeColor: '#000000' // Black border color
+    };
+    
+    setShapes([...shapes, newLine]);
+    setStartPoint(null);
+    setPreviewLine(null);
+    setIsDrawing(false);
+  };
+
+  // Handle rectangle tool with click mode
+  const handleRectangleToolClick = (point: Point) => {
+    if (!startPoint) {
+      // First click - set start point
+      setStartPoint(point);
+      setCurrentPoint(point); // Initialize current point to same as start
+      setIsDrawing(true);
+    } else {
+      // Second click - complete the rectangle
+      const newRectangle = {
+        id: generateId(),
+        type: 'rectangle' as const,
+        start: { ...startPoint },
+        end: point,
+        color: 'transparent', // Make the border transparent
+        fillColor: activeTool === 'green-rectangle' ? greenFillColor : fillColor
+      };
+      
+      setShapes([...shapes, newRectangle]);
+      setStartPoint(null);  // Reset start point
+      setCurrentPoint(null); // Reset current point
+      setIsDrawing(false);  // End drawing mode
+    }
+  };
+  
+  // Handle polygon tool mouse down
+  const handlePolygonToolMouseDown = (point: Point) => {
+    if (polygonPoints.length === 0) {
+      // First point of a new polygon
+      setPolygonPoints([point]);
+    } else {
+      // Check if we're closing the polygon (clicking near the first point)
+      const firstPoint = polygonPoints[0];
+      const distance = Math.sqrt(Math.pow(point.x - firstPoint.x, 2) + Math.pow(point.y - firstPoint.y, 2));
+      
+      if (polygonPoints.length > 2 && distance < 10) {
+        // Close the polygon and save it
+        completePolygon();
+      } else {
+        // Add a new point to the polygon
+        setPolygonPoints([...polygonPoints, point]);
+      }
+    }
+  };
+
+  // Handle dragging shapes
+  const handleDragMove = (point: Point) => {
+    if (!selectedShape) return;
+
+    const updatedShapes = shapes.map(shape => {
+      if (shape.id === selectedShape.id) {
+        if (shape.type === 'line') {
+          const dx = point.x - dragOffset.x;
+          const dy = point.y - dragOffset.y;
+          const originalDx = shape.end.x - shape.start.x;
+          const originalDy = shape.end.y - shape.start.y;
+          
+          return {
+            ...shape,
+            start: { x: dx, y: dy },
+            end: { x: dx + originalDx, y: dy + originalDy }
+          };
+        } else if (shape.type === 'rectangle') {
+          return {
+            ...shape,
+            start: { 
+              x: point.x - dragOffset.x, 
+              y: point.y - dragOffset.y 
+            },
+            end: {
+              x: point.x - dragOffset.x + (shape.end.x - shape.start.x),
+              y: point.y - dragOffset.y + (shape.end.y - shape.start.y)
+            }
+          };
+        } else if (shape.type === 'polygon') {
+          // Move all points of the polygon
+          const dx = point.x - dragOffset.x;
+          const dy = point.y - dragOffset.y;
+          dragOffset.x = point.x;
+          dragOffset.y = point.y;
+          
+          return {
+            ...shape,
+            points: shape.points.map(point => ({
+              x: point.x + dx,
+              y: point.y + dy
+            }))
+          };
+        }
+      }
+      return shape;
+    });
+    
+    setShapes(updatedShapes);
+    setSelectedShape(updatedShapes.find(shape => shape.id === selectedShape.id) || null);
+  };
+
+  // Handle mouse up event
+  const endDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    
+    // Clear the mouse down timer if it exists
+    if (mouseDownTimer !== null) {
+      window.clearTimeout(mouseDownTimer);
+      setMouseDownTimer(null);
+    }
+    
+    // End panning if we were panning
+    if (isPanning) {
+      setIsPanning(false);
+      setPanStart(null);
+      return;
+    }
+    
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - canvasOffset.x;
+    const y = e.clientY - rect.top - canvasOffset.y;
     
-    canvas.width = canvasSize.width;
-    canvas.height = canvasSize.height;
+    const point: Point = { x, y };
     
-    redrawCanvas();
-  }, [canvasSize]);
+    if ((activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'drag' && startPoint) {
+      // Complete rectangle on mouse up with no border
+      const newRectangle = {
+        id: generateId(),
+        type: 'rectangle' as const,
+        start: { ...startPoint },
+        end: point,
+        color: 'transparent', // Make the border transparent
+        fillColor: activeTool === 'green-rectangle' ? greenFillColor : fillColor
+      };
+      
+      setShapes([...shapes, newRectangle]);
+      setIsDrawing(false);
+      setStartPoint(null);
+    }
+    
+    setIsDragging(false);
+    setMouseMoved(false);
+    setPanStart(null);
+  };
 
+  // Delete selected shape
+  const deleteSelected = () => {
+    if (selectedShape) {
+      setShapes(shapes.filter(shape => shape.id !== selectedShape.id));
+      setSelectedShape(null);
+    }
+  };
+
+  // Clear the canvas
+  const clearCanvas = () => {
+    setShapes([]);
+    setSelectedShape(null);
+    setPolygonPoints([]);
+    setWallPolygonPoints([]);
+    setStartPoint(null);
+    setCurrentPoint(null);
+    setIsDrawing(false);
+    setPreviewLine(null);
+    setCanvasOffset({ x: 0, y: 0 }); // Reset canvas panning
+  };
+
+  // Toggle snap to angle
+  const toggleSnapToAngle = () => {
+    setSnapToAngle(!snapToAngle);
+  };
+
+  // Toggle snap to endpoints
+  const toggleSnapToEndpoints = () => {
+    setSnapToEndpoints(!snapToEndpoints);
+  };
+  
+  // Toggle snap to lines
+  const toggleSnapToLines = () => {
+    setSnapToLines(!snapToLines);
+  };
+
+  // Toggle snap to extensions
+  const toggleSnapToExtensions = () => {
+    setSnapToExtensions(!snapToExtensions);
+  };
+
+  // Toggle rectangle drawing mode
+  const toggleRectangleDrawMode = () => {
+    setRectangleDrawMode(rectangleDrawMode === 'click' ? 'drag' : 'click');
+  };
+
+  // Handle keyboard events for polygon escape and enter
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // If escape key is pressed, cancel the current drawing operation
+      if (e.key === 'Escape') {
+        cancelDrawing();
+        return;
+      }
+      
+      // If we're in polygon drawing mode with at least 3 points
+      if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length >= 3) {
+        if (e.key === 'Enter') {
+          // Close the polygon on Enter
+          completePolygon();
+        }
+      }
+      
+      // If we're in wall polygon drawing mode with at least 2 points
+      if (activeTool === 'wall-polygon' && wallPolygonPoints.length >= 2) {
+        if (e.key === 'Enter') {
+          // Complete the wall polygon on Enter
+          completeWallPolygon();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeTool, polygonPoints, wallPolygonPoints, startPoint, rectangleDrawMode]);
+
+  // Redraw the canvas whenever shapes or selected shapes change
+  useEffect(() => {
+    redrawCanvas();
+  }, [
+    shapes,
+    selectedShape,
+    polygonPoints,
+    wallPolygonPoints,
+    activeTool,
+    startPoint,
+    currentPoint,
+    previewLine,
+    extensionLine,
+    canvasOffset
+  ]);
+  
   return {
     canvasRef,
     activeTool,
@@ -610,16 +1017,13 @@ export const useCanvasEditor = () => {
     setCurrentColor,
     fillColor,
     setFillColor,
-    shapes,
-    setShapes,
-    selectedShapeId,
-    setSelectedShapeId,
     startDrawing,
     draw,
     endDrawing,
     deleteSelected,
     clearCanvas,
     canvasSize,
+    cancelDrawing,
     snapToAngle,
     toggleSnapToAngle,
     snapToEndpoints,
@@ -628,8 +1032,6 @@ export const useCanvasEditor = () => {
     toggleSnapToLines,
     snapToExtensions,
     toggleSnapToExtensions,
-    rectangleDrawMode,
-    toggleRectangleDrawMode,
-    isDrawing  // Expose the isDrawing state to the component
+    rectangleDrawMode
   };
 };
