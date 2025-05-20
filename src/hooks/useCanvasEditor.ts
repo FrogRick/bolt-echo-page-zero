@@ -1,7 +1,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Tool } from "@/types/canvas";
-import { drawPreviewWall, drawPreviewRectangle, drawPreviewPolygon, drawSelectedElements, drawPreviewCircle } from "@/utils/canvasDrawing";
+import { Tool, Point } from "@/types/canvas";
+import { drawPreviewWall, drawPreviewRectangle, drawPreviewPolygon, drawSelectedElements, drawPreviewCircle, drawPreviewLine } from "@/utils/canvasDrawing";
 import { v4 as uuidv4 } from "uuid";
 
 interface CanvasSize {
@@ -134,26 +134,28 @@ export const useCanvasEditor = () => {
     elements.forEach(element => {
       if (element.type === "image") {
         // Draw image elements
+        const imgEl = element as ImageElement;
         const img = new Image();
-        img.src = element.src;
+        img.src = imgEl.src;
         
-        if (element.selected) {
+        if (imgEl.selected) {
           // Draw selection border
           ctx.strokeStyle = "#3b82f6";
           ctx.lineWidth = 2;
-          ctx.strokeRect(element.x - 5, element.y - 5, element.width + 10, element.height + 10);
+          ctx.strokeRect(imgEl.x - 5, imgEl.y - 5, imgEl.width + 10, imgEl.height + 10);
         }
         
-        ctx.drawImage(img, element.x, element.y, element.width, element.height);
+        ctx.drawImage(img, imgEl.x, imgEl.y, imgEl.width, imgEl.height);
       } else {
         // Draw vector elements
-        switch (element.type) {
+        const vecEl = element as CanvasElement;
+        switch (vecEl.type) {
           case "wall":
             ctx.beginPath();
-            ctx.strokeStyle = element.color;
+            ctx.strokeStyle = vecEl.color;
             ctx.lineWidth = 3;
             
-            element.points.forEach((point, index) => {
+            vecEl.points.forEach((point, index) => {
               if (index === 0) {
                 ctx.moveTo(point.x, point.y);
               } else {
@@ -163,18 +165,18 @@ export const useCanvasEditor = () => {
             
             ctx.stroke();
             break;
-          case "yellow-rect":
-          case "green-rect":
-            if (element.points.length === 2) {
+          case "yellow-rectangle":
+          case "green-rectangle":
+            if (vecEl.points.length === 2) {
               ctx.beginPath();
-              ctx.strokeStyle = element.color;
-              ctx.fillStyle = element.fillColor || "transparent";
+              ctx.strokeStyle = vecEl.color;
+              ctx.fillStyle = vecEl.fillColor || "transparent";
               ctx.lineWidth = 2;
               
-              const x = Math.min(element.points[0].x, element.points[1].x);
-              const y = Math.min(element.points[0].y, element.points[1].y);
-              const width = Math.abs(element.points[1].x - element.points[0].x);
-              const height = Math.abs(element.points[1].y - element.points[0].y);
+              const x = Math.min(vecEl.points[0].x, vecEl.points[1].x);
+              const y = Math.min(vecEl.points[0].y, vecEl.points[1].y);
+              const width = Math.abs(vecEl.points[1].x - vecEl.points[0].x);
+              const height = Math.abs(vecEl.points[1].y - vecEl.points[0].y);
               
               ctx.rect(x, y, width, height);
               ctx.fill();
@@ -184,16 +186,16 @@ export const useCanvasEditor = () => {
           case "wall-polygon":
           case "yellow-polygon":
           case "green-polygon":
-            if (element.points.length > 1) {
+            if (vecEl.points.length > 1) {
               ctx.beginPath();
-              ctx.strokeStyle = element.color;
-              ctx.fillStyle = element.fillColor || "transparent";
+              ctx.strokeStyle = vecEl.color;
+              ctx.fillStyle = vecEl.fillColor || "transparent";
               ctx.lineWidth = 2;
               
-              ctx.moveTo(element.points[0].x, element.points[0].y);
+              ctx.moveTo(vecEl.points[0].x, vecEl.points[0].y);
               
-              for (let i = 1; i < element.points.length; i++) {
-                ctx.lineTo(element.points[i].x, element.points[i].y);
+              for (let i = 1; i < vecEl.points.length; i++) {
+                ctx.lineTo(vecEl.points[i].x, vecEl.points[i].y);
               }
               
               ctx.closePath();
@@ -201,10 +203,10 @@ export const useCanvasEditor = () => {
               ctx.stroke();
               
               // Add red dot to the start point for polygon if it's not a wall
-              if (element.type !== "wall-polygon") {
+              if (vecEl.type !== "wall-polygon") {
                 ctx.beginPath();
                 ctx.fillStyle = "red";
-                ctx.arc(element.points[0].x, element.points[0].y, 5, 0, Math.PI * 2);
+                ctx.arc(vecEl.points[0].x, vecEl.points[0].y, 5, 0, Math.PI * 2);
                 ctx.fill();
               }
             }
@@ -212,8 +214,8 @@ export const useCanvasEditor = () => {
         }
         
         // Draw selection if element is selected
-        if (element.selected) {
-          drawSelectedElements(ctx, [element]);
+        if (vecEl.selected) {
+          drawSelectedElements(ctx, [vecEl]);
         }
       }
     });
@@ -221,9 +223,9 @@ export const useCanvasEditor = () => {
     // Draw preview elements
     if (activeTool === "wall" && drawingPoints.length > 0) {
       drawPreviewWall(ctx, drawingPoints, mousePosition, currentColor);
-    } else if ((activeTool === "yellow-rect" || activeTool === "green-rect") && isFirstPointSet && firstPoint && mousePosition) {
-      const color = activeTool === "yellow-rect" ? "#FFD700" : "#00FF00";
-      const fillColorValue = activeTool === "yellow-rect" ? "rgba(255, 215, 0, 0.5)" : "rgba(0, 255, 0, 0.5)";
+    } else if ((activeTool === "yellow-rectangle" || activeTool === "green-rectangle") && isFirstPointSet && firstPoint && mousePosition) {
+      const color = activeTool === "yellow-rectangle" ? "#FFD700" : "#00FF00";
+      const fillColorValue = activeTool === "yellow-rectangle" ? "rgba(255, 215, 0, 0.5)" : "rgba(0, 255, 0, 0.5)";
       drawPreviewRectangle(ctx, firstPoint, mousePosition, color, fillColorValue);
     } else if (["wall-polygon", "yellow-polygon", "green-polygon"].includes(activeTool) && drawingPoints.length > 0) {
       const color = 
@@ -294,21 +296,22 @@ export const useCanvasEditor = () => {
     // If we're in selection mode, check if we clicked on an element
     if (activeTool === "select") {
       // First check for image elements as they're rectangular
-      let selectedImage = elements.find(el => 
+      let selectedImage: ImageElement | undefined = elements.find(el => 
         el.type === "image" && 
-        x >= el.x && x <= el.x + el.width && 
-        y >= el.y && y <= el.y + el.height
+        x >= (el as ImageElement).x && x <= (el as ImageElement).x + (el as ImageElement).width && 
+        y >= (el as ImageElement).y && y <= (el as ImageElement).y + (el as ImageElement).height
       ) as ImageElement | undefined;
       
       // Then check other elements
       let selectedElement = !selectedImage ? elements.find(el => {
         if (el.type === "image") return false; // Skip images as we already checked them
         
-        if (el.type.includes("rect") && el.points.length === 2) {
-          const minX = Math.min(el.points[0].x, el.points[1].x);
-          const maxX = Math.max(el.points[0].x, el.points[1].x);
-          const minY = Math.min(el.points[0].y, el.points[1].y);
-          const maxY = Math.max(el.points[0].y, el.points[1].y);
+        const vecEl = el as CanvasElement;
+        if (vecEl.type.includes("rectangle") && vecEl.points.length === 2) {
+          const minX = Math.min(vecEl.points[0].x, vecEl.points[1].x);
+          const maxX = Math.max(vecEl.points[0].x, vecEl.points[1].x);
+          const minY = Math.min(vecEl.points[0].y, vecEl.points[1].y);
+          const maxY = Math.max(vecEl.points[0].y, vecEl.points[1].y);
           
           return x >= minX && x <= maxX && y >= minY && y <= maxY;
         }
@@ -336,8 +339,8 @@ export const useCanvasEditor = () => {
         }
         break;
         
-      case "yellow-rect":
-      case "green-rect":
+      case "yellow-rectangle":
+      case "green-rectangle":
         if (!isFirstPointSet) {
           setFirstPoint({ x, y });
           setIsFirstPointSet(true);
@@ -347,8 +350,8 @@ export const useCanvasEditor = () => {
             id: uuidv4(),
             type: activeTool,
             points: [firstPoint!, { x, y }],
-            color: activeTool === "yellow-rect" ? "#FFD700" : "#00FF00",
-            fillColor: activeTool === "yellow-rect" ? "#FFFF00" : "#00FF00",
+            color: activeTool === "yellow-rectangle" ? "#FFD700" : "#00FF00",
+            fillColor: activeTool === "yellow-rectangle" ? "#FFFF00" : "#00FF00",
           };
           
           setElements(prev => [...prev, newElement]);

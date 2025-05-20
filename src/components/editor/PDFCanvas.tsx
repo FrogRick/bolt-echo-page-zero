@@ -10,6 +10,7 @@ import { usePDFInteractions } from "@/hooks/usePDFInteractions";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { EditorSymbol } from "@/types/editor";
 
 const MIN_SCALE = 1.0;
 const MAX_SCALE = 3.0;
@@ -143,7 +144,9 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
         };
         
         // Add the new image to symbols
-        setSymbols((prevSymbols: any[]) => [...prevSymbols, newSymbol]);
+        if (setSymbols) {
+          setSymbols([...symbols, newSymbol]);
+        }
         
         toast({
           title: "Image added",
@@ -353,7 +356,7 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
         showDetectionHint={false}
         pdfError={pdfError}
         setPdfError={setPdfError}
-        setSymbols={setSymbols}  // Pass this through to inner components
+        setSymbols={setSymbols}
       />
     </div>
   );
