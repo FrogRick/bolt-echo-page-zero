@@ -1,12 +1,9 @@
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
 import { Toolbar } from "./Toolbar";
 import { Toggle } from "@/components/ui/toggle";
-import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 
 const Canvas: React.FC = () => {
   const {
@@ -31,55 +28,8 @@ const Canvas: React.FC = () => {
     toggleSnapToLines,
     snapToExtensions,
     toggleSnapToExtensions,
-    addImage,
     rectangleDrawMode
   } = useCanvasEditor();
-
-  const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Handle file upload
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    const validImageTypes = ['image/jpeg', 'image/png', 'application/pdf'];
-    
-    if (!validImageTypes.includes(file.type)) {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload a JPG, PNG, or PDF file.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const reader = new FileReader();
-    
-    reader.onload = async (event) => {
-      try {
-        const src = event.target?.result as string;
-        await addImage(src, file.type);
-        toast({
-          title: "Image added",
-          description: "The image has been added to the canvas."
-        });
-      } catch (error) {
-        toast({
-          title: "Failed to add image",
-          description: error instanceof Error ? error.message : "Unknown error",
-          variant: "destructive"
-        });
-      }
-    };
-    
-    reader.readAsDataURL(file);
-    
-    // Reset the input so the same file can be uploaded again if needed
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
 
   // Force canvas redraw when tool or styling changes to ensure correct rendering
   useEffect(() => {
@@ -154,25 +104,6 @@ const Canvas: React.FC = () => {
           >
             <span className="text-sm">45°</span>
           </Toggle>
-        </div>
-        
-        <div className="border-l pl-4">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept=".jpg,.jpeg,.png,.pdf"
-            className="hidden"
-          />
-          <Button 
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1"
-          >
-            <Upload size={16} />
-            <span>Add Image</span>
-          </Button>
         </div>
       </div>
       
