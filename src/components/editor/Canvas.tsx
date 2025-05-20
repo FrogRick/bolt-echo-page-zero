@@ -17,7 +17,10 @@ interface CanvasImage {
   y: number;
   width: number;
   height: number;
+  aspectRatio: number;
   selected: boolean;
+  originalWidth: number;
+  originalHeight: number;
 }
 
 const Canvas: React.FC = () => {
@@ -54,6 +57,53 @@ const Canvas: React.FC = () => {
   const [canvasImages, setCanvasImages] = useState<CanvasImage[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+
+  // Calculate canvas container dimensions
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+  
+  // Update container dimensions on mount and resize
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (canvasContainerRef.current) {
+        const { width, height } = canvasContainerRef.current.getBoundingClientRect();
+        setContainerDimensions({ width, height });
+      }
+    };
+    
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
+    };
+  }, []);
+
+  // Adjust canvas size when images are added or removed
+  useEffect(() => {
+    if (canvasImages.length > 0 && containerDimensions.width > 0) {
+      // Find the tallest image after it's been scaled to fit container width
+      let maxHeight = 0;
+      
+      canvasImages.forEach(img => {
+        // Calculate height when width is scaled to fit container
+        const scaleFactor = (containerDimensions.width * 0.9) / img.originalWidth;
+        const scaledHeight = img.originalHeight * scaleFactor;
+        
+        if (scaledHeight > maxHeight) {
+          maxHeight = scaledHeight;
+        }
+      });
+      
+      // Ensure we have at least a minimum height
+      const newHeight = Math.max(maxHeight + 100, 600);
+      
+      if (canvasRef.current) {
+        // Adjust canvas height based on content
+        canvasRef.current.height = newHeight;
+      }
+    }
+  }, [canvasImages, containerDimensions]);
 
   // Handle file upload for underlays
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,36 +126,70 @@ const Canvas: React.FC = () => {
         // Create a URL for the file
         const fileUrl = URL.createObjectURL(file);
         console.log("📄 Canvas - Created file URL:", fileUrl);
+        
+        // For images, we need to get the natural dimensions
+        const processFile = (width: number, height: number) => {
+          // Calculate aspect ratio
+          const aspectRatio = width / height;
+          
+          // Calculate dimensions to fit the container width
+          const containerWidth = containerDimensions.width * 0.9; // 90% of container width
+          const fitWidth = containerWidth;
+          const fitHeight = fitWidth / aspectRatio;
+          
+          // Create a new image with calculated dimensions
+          const newImage: CanvasImage = {
+            id: crypto.randomUUID(),
+            file: file,
+            url: fileUrl,
+            x: 20, // Small margin from left
+            y: 20, // Small margin from top
+            width: fitWidth,
+            height: fitHeight,
+            aspectRatio: aspectRatio,
+            selected: true,
+            originalWidth: width,
+            originalHeight: height
+          };
 
-        // Create a new image with default positioning
-        const newImage: CanvasImage = {
-          id: crypto.randomUUID(),
-          file: file,
-          url: fileUrl,
-          x: 50,
-          y: 50,
-          width: file.type === "application/pdf" ? 400 : 300,
-          height: file.type === "application/pdf" ? 500 : 300,
-          selected: true
+          // Add the image to our state
+          setCanvasImages(prev => {
+            // Deselect any previously selected images
+            const updatedPrev = prev.map(img => ({...img, selected: false}));
+            return [...updatedPrev, newImage];
+          });
+          setSelectedImageId(newImage.id);
+          
+          // Show success feedback
+          toast({
+            title: "File uploaded",
+            description: `${file.name} has been added to canvas`,
+            variant: "success",
+          });
+          
+          setUploadFeedback(`Upload complete: ${file.name}`);
+          setTimeout(() => setUploadFeedback(null), 3000);
         };
-
-        // Add the image to our state
-        setCanvasImages(prev => {
-          // Deselect any previously selected images
-          const updatedPrev = prev.map(img => ({...img, selected: false}));
-          return [...updatedPrev, newImage];
-        });
-        setSelectedImageId(newImage.id);
         
-        // Show success feedback
-        toast({
-          title: "File uploaded",
-          description: `${file.name} has been added to canvas`,
-          variant: "success",
-        });
-        
-        setUploadFeedback(`Upload complete: ${file.name}`);
-        setTimeout(() => setUploadFeedback(null), 3000);
+        if (file.type.startsWith("image/")) {
+          // For images, load to get natural dimensions
+          const img = new Image();
+          img.onload = () => {
+            processFile(img.naturalWidth, img.naturalHeight);
+            setIsUploading(false);
+          };
+          img.onerror = (error) => {
+            console.error("❌ Canvas - Error loading image:", error);
+            setIsUploading(false);
+            throw new Error("Failed to load image");
+          };
+          img.src = fileUrl;
+        } else {
+          // For PDFs, use default dimensions as a starting point
+          // We can't easily get PDF dimensions without loading the document
+          processFile(800, 1100); // Standard PDF size ratio
+          setIsUploading(false);
+        }
       } catch (error) {
         console.error("❌ Canvas - Error in handleFileUpload:", error);
         toast({
@@ -114,7 +198,6 @@ const Canvas: React.FC = () => {
           variant: "destructive"
         });
         setUploadFeedback(`Upload failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-      } finally {
         setIsUploading(false);
       }
     } else {
@@ -245,7 +328,7 @@ const Canvas: React.FC = () => {
         setActiveTool(activeTool);
       }
     }
-  }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions, canvasRef, setActiveTool]);
+  }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions, canvasRef, setActiveTool, canvasImages]);
 
   return (
     <div className="flex flex-col h-full">
@@ -330,7 +413,7 @@ const Canvas: React.FC = () => {
           <input 
             ref={fileInputRef}
             type="file" 
-            accept="application/pdf,image/jpeg,image/png" 
+            accept="application/pdf,image/jpeg,image/png,image/gif" 
             className="hidden"
             onChange={handleFileUpload}
           />
@@ -339,13 +422,17 @@ const Canvas: React.FC = () => {
       
       <div 
         ref={canvasWrapperRef}
-        className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto p-4 relative"
+        className="flex-grow flex items-start justify-center bg-gray-50 overflow-auto p-4 relative"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={handleCanvasClick}
       >
-        <div className={`relative shadow-xl ${isDragging ? 'outline-dashed outline-2 outline-blue-400' : ''}`}>
+        <div 
+          ref={canvasContainerRef} 
+          className={`relative shadow-xl ${isDragging ? 'outline-dashed outline-2 outline-blue-400' : ''}`}
+          style={{ width: '100%', maxWidth: '1200px' }}
+        >
           <canvas
             ref={canvasRef}
             width={canvasSize.width}
@@ -354,7 +441,7 @@ const Canvas: React.FC = () => {
             onMouseMove={draw}
             onMouseUp={endDrawing}
             onMouseLeave={endDrawing}
-            className={`bg-white border border-gray-200 ${
+            className={`bg-white border border-gray-200 w-full ${
               activeTool === "select" 
                 ? "cursor-default" 
                 : (activeTool === "wall" || activeTool === "wall-polygon" || activeTool === "yellow-polygon" || activeTool === "green-polygon")
@@ -387,11 +474,15 @@ const Canvas: React.FC = () => {
                   className="w-full h-full object-contain"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                <div className="w-full h-full flex items-center justify-center">
                   <iframe 
                     src={image.url} 
                     title={`PDF ${image.file.name}`}
                     className="w-full h-full border-0"
+                    style={{ 
+                      pointerEvents: image.selected ? 'auto' : 'none',
+                      background: '#fff' 
+                    }}
                   />
                 </div>
               )}
