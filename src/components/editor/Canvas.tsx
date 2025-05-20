@@ -58,6 +58,7 @@ const Canvas: React.FC = () => {
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Calculate canvas container dimensions
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
@@ -104,6 +105,73 @@ const Canvas: React.FC = () => {
       }
     }
   }, [canvasImages, containerDimensions]);
+
+  // Render PDF using canvas rather than iframe
+  const renderPdfToCanvas = async (file: File, image: CanvasImage) => {
+    try {
+      // We'll use pdf.js to render PDFs onto a canvas
+      // This is a placeholder for the actual implementation
+      // In a real implementation, you would use the pdf.js library
+      const pdfjsLib = await import('pdfjs-dist');
+      
+      // Set worker source
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      
+      // Load the PDF
+      const loadingTask = pdfjsLib.getDocument(image.url);
+      const pdf = await loadingTask.promise;
+      
+      // Get the first page
+      const page = await pdf.getPage(1);
+      
+      // Calculate scale to fit container width
+      const viewport = page.getViewport({ scale: 1 });
+      const scaleFactor = (containerDimensions.width * 0.9) / viewport.width;
+      const scaledViewport = page.getViewport({ scale: scaleFactor });
+      
+      // Update image dimensions
+      const updatedImage = {
+        ...image,
+        width: scaledViewport.width,
+        height: scaledViewport.height,
+        originalWidth: viewport.width,
+        originalHeight: viewport.height,
+        aspectRatio: viewport.width / viewport.height
+      };
+      
+      // Update the image in state
+      setCanvasImages(prev => 
+        prev.map(img => img.id === image.id ? updatedImage : img)
+      );
+      
+      // Render PDF to canvas for preview
+      if (pdfCanvasRef.current) {
+        const context = pdfCanvasRef.current.getContext('2d');
+        if (context) {
+          // Adjust canvas size
+          pdfCanvasRef.current.width = scaledViewport.width;
+          pdfCanvasRef.current.height = scaledViewport.height;
+          
+          // Render the PDF page
+          const renderContext = {
+            canvasContext: context,
+            viewport: scaledViewport
+          };
+          
+          await page.render(renderContext).promise;
+          console.log("PDF rendered to canvas successfully");
+        }
+      }
+      
+    } catch (error) {
+      console.error("Error rendering PDF:", error);
+      toast({
+        title: "PDF rendering failed",
+        description: "There was a problem displaying the PDF. Try a different file.",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Handle file upload for underlays
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,6 +237,11 @@ const Canvas: React.FC = () => {
           
           setUploadFeedback(`Upload complete: ${file.name}`);
           setTimeout(() => setUploadFeedback(null), 3000);
+
+          // If this is a PDF, render it properly
+          if (file.type === "application/pdf") {
+            renderPdfToCanvas(file, newImage);
+          }
         };
         
         if (file.type.startsWith("image/")) {
@@ -186,7 +259,7 @@ const Canvas: React.FC = () => {
           img.src = fileUrl;
         } else {
           // For PDFs, use default dimensions as a starting point
-          // We can't easily get PDF dimensions without loading the document
+          // We'll update these later when we render the PDF
           processFile(800, 1100); // Standard PDF size ratio
           setIsUploading(false);
         }
@@ -330,6 +403,26 @@ const Canvas: React.FC = () => {
     }
   }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions, canvasRef, setActiveTool, canvasImages]);
 
+  // Add dynamic import of pdf.js
+  useEffect(() => {
+    const loadPdfJs = async () => {
+      try {
+        // Dynamic import of pdf.js
+        const pdfjsLib = await import('pdfjs-dist');
+        // Set worker source
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        console.log("PDF.js library loaded successfully");
+      } catch (error) {
+        console.error("Error loading PDF.js:", error);
+      }
+    };
+    
+    // Only load if we need it (if we have PDFs)
+    if (canvasImages.some(img => img.file.type === "application/pdf")) {
+      loadPdfJs();
+    }
+  }, [canvasImages]);
+
   return (
     <div className="flex flex-col h-full">
       <Toolbar 
@@ -433,36 +526,18 @@ const Canvas: React.FC = () => {
           className={`relative shadow-xl ${isDragging ? 'outline-dashed outline-2 outline-blue-400' : ''}`}
           style={{ width: '100%', maxWidth: '1200px' }}
         >
-          <canvas
-            ref={canvasRef}
-            width={canvasSize.width}
-            height={canvasSize.height}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={endDrawing}
-            onMouseLeave={endDrawing}
-            className={`bg-white border border-gray-200 w-full ${
-              activeTool === "select" 
-                ? "cursor-default" 
-                : (activeTool === "wall" || activeTool === "wall-polygon" || activeTool === "yellow-polygon" || activeTool === "green-polygon")
-                  ? "cursor-crosshair" 
-                  : "cursor-crosshair"
-            }`}
-          />
-          
-          {/* Render uploaded images/PDFs on top of the canvas */}
+          {/* Background images/PDFs */}
           {canvasImages.map(image => (
             <div
               key={image.id}
-              className={`absolute border-2 ${image.selected ? 'border-blue-500' : 'border-transparent'}`}
+              className={`absolute ${image.selected ? 'border-2 border-blue-500' : ''}`}
               style={{
                 left: `${image.x}px`,
                 top: `${image.y}px`,
                 width: `${image.width}px`,
                 height: `${image.height}px`,
-                zIndex: 50,
+                zIndex: 1,
                 cursor: 'move',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
               }}
               onClick={(e) => handleImageClick(image.id, e)}
               onMouseDown={(e) => handleImageMouseDown(image.id, e)}
@@ -474,17 +549,12 @@ const Canvas: React.FC = () => {
                   className="w-full h-full object-contain"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <iframe 
-                    src={image.url} 
-                    title={`PDF ${image.file.name}`}
-                    className="w-full h-full border-0"
-                    style={{ 
-                      pointerEvents: image.selected ? 'auto' : 'none',
-                      background: '#fff' 
-                    }}
-                  />
-                </div>
+                <canvas
+                  ref={image.id === selectedImageId ? pdfCanvasRef : null}
+                  width={image.width}
+                  height={image.height}
+                  className="w-full h-full"
+                />
               )}
               
               {/* Show file type indicator and remove button when selected */}
@@ -509,6 +579,25 @@ const Canvas: React.FC = () => {
               )}
             </div>
           ))}
+          
+          {/* Drawing canvas on top of everything */}
+          <canvas
+            ref={canvasRef}
+            width={canvasSize.width}
+            height={canvasSize.height}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={endDrawing}
+            onMouseLeave={endDrawing}
+            className={`bg-transparent w-full absolute top-0 left-0 ${
+              activeTool === "select" 
+                ? "cursor-default" 
+                : (activeTool === "wall" || activeTool === "wall-polygon" || activeTool === "yellow-polygon" || activeTool === "green-polygon")
+                  ? "cursor-crosshair" 
+                  : "cursor-crosshair"
+            }`}
+            style={{ zIndex: 10 }}
+          />
           
           {/* Drag overlay with instructions */}
           {isDragging && (
