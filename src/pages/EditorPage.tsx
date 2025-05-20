@@ -15,8 +15,19 @@ const EditorPage = () => {
     if (!projectId) {
       const newId = crypto.randomUUID();
       navigate(`/editor/${newId}`, { replace: true });
+    } else {
+      // Let the user know they're on the Canvas editor
+      console.log("🖌️ Editor initialized with ID:", projectId);
+      
+      // Show welcome toast
+      setTimeout(() => {
+        toast({
+          title: "Canvas Editor Ready",
+          description: "Start drawing or upload an image to begin.",
+        });
+      }, 500);
     }
-  }, [projectId, navigate]);
+  }, [projectId, navigate, toast]);
 
   if (!projectId) {
     return (
@@ -34,6 +45,7 @@ const EditorPage = () => {
           <span className="text-sm text-gray-500">Canvas ID: {projectId.substring(0, 8)}...</span>
           <button
             onClick={() => {
+              console.log("💾 Saving canvas state");
               toast({
                 title: "Canvas Saved",
                 description: "Your canvas has been saved.",

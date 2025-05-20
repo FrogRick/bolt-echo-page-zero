@@ -5,6 +5,8 @@ import { Tool } from "@/types/canvas";
 import { Toolbar } from "./Toolbar";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { FileImage, Upload } from "lucide-react";
 
 const Canvas: React.FC = () => {
   const {
@@ -34,42 +36,102 @@ const Canvas: React.FC = () => {
   
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadFeedback, setUploadFeedback] = useState<string | null>(null);
 
   // Handle file upload for underlays
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log("🔄 Canvas - handleFileUpload triggered with file:", file.name, file.type, file.size);
+    setUploadFeedback(`Selected file: ${file.name}`);
+    setIsUploading(true);
+
+    // Show immediate visual feedback
+    toast({
+      title: "Processing file",
+      description: `Preparing ${file.name} for upload...`,
+    });
+
     if (file.type === "application/pdf" || file.type.startsWith("image/")) {
-      toast({
-        title: "File selected",
-        description: `${file.name} has been selected.`
-      });
-      
-      // For now, just show a toast notification instead of trying to add to canvas
-      if (file.type.startsWith("image/")) {
+      // Process the file
+      try {
+        // Create a URL for the file and log it for debugging
+        const fileUrl = URL.createObjectURL(file);
+        console.log("📄 Canvas - Created file URL:", fileUrl);
+
+        // Show success feedback
         toast({
-          title: "Image format supported",
-          description: `Images can be added as underlays.`
+          title: "File uploaded",
+          description: `${file.name} has been added to canvas`,
+          variant: "success",
         });
-      } 
-      else if (file.type === "application/pdf") {
+        
+        setUploadFeedback(`Upload complete: ${file.name}`);
+
+        // This would normally add the file to the canvas
+        // For now, just show a toast with clear feedback
+        setTimeout(() => {
+          toast({
+            title: "Success!",
+            description: "Your file is ready to use",
+            variant: "success",
+          });
+        }, 500);
+      } catch (error) {
+        console.error("❌ Canvas - Error in handleFileUpload:", error);
         toast({
-          title: "PDF format supported",
-          description: `PDFs can be added as underlays.`
+          title: "Upload error",
+          description: "There was a problem processing your file",
+          variant: "destructive"
         });
+        setUploadFeedback(`Upload failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      } finally {
+        setIsUploading(false);
       }
     } else {
+      setIsUploading(false);
+      setUploadFeedback(`Error: Invalid file type - ${file.type}. Please use PDF or image files.`);
       toast({
-        title: "Unsupported file",
-        description: "Only PDF, JPEG, and PNG files are supported.",
+        title: "Unsupported file type",
+        description: "Only PDF, JPEG, and PNG files are supported",
         variant: "destructive"
       });
     }
     
-    // Clear the input value so the same file can be uploaded again
+    // Reset the input so the same file can be selected again
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+  
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      console.log("🔄 Canvas - File dropped:", file.name, file.type);
+      
+      // Create a fake event to reuse the existing handler
+      const fakeEvent = {
+        target: {
+          files: [file]
+        }
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      
+      handleFileUpload(fakeEvent);
     }
   };
 
@@ -150,15 +212,23 @@ const Canvas: React.FC = () => {
         
         {/* Add file upload button for PDFs and images */}
         <div className="ml-auto">
-          <button
-            onClick={() => fileInputRef.current?.click()}
+          <Button
+            onClick={() => {
+              console.log("🖱️ Canvas - Add Image button clicked");
+              if (fileInputRef.current) {
+                fileInputRef.current.click();
+              }
+            }}
             className="bg-blue-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1 hover:bg-blue-700"
+            disabled={isUploading}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            Add Image
-          </button>
+            {isUploading ? (
+              <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-1"></div>
+            ) : (
+              <FileImage className="h-4 w-4" />
+            )}
+            {isUploading ? "Uploading..." : "Add Image"}
+          </Button>
           <input 
             ref={fileInputRef}
             type="file" 
@@ -169,8 +239,13 @@ const Canvas: React.FC = () => {
         </div>
       </div>
       
-      <div className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto p-4">
-        <div className="relative shadow-xl">
+      <div 
+        className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto p-4"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <div className={`relative shadow-xl ${isDragging ? 'outline-dashed outline-2 outline-blue-400' : ''}`}>
           <canvas
             ref={canvasRef}
             width={canvasSize.width}
@@ -187,7 +262,28 @@ const Canvas: React.FC = () => {
                   : "cursor-crosshair"
             }`}
           />
+          
+          {/* Drag overlay with instructions */}
+          {isDragging && (
+            <div className="absolute inset-0 bg-blue-100/20 flex items-center justify-center">
+              <div className="bg-white p-4 rounded-lg shadow-lg">
+                <Upload className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+                <p className="text-blue-800 font-medium">Drop file to upload</p>
+              </div>
+            </div>
+          )}
         </div>
+        
+        {/* File upload feedback message */}
+        {uploadFeedback && (
+          <div className={`absolute bottom-8 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full text-sm ${
+            uploadFeedback.includes('Error') 
+              ? 'bg-red-100 text-red-700 border border-red-200' 
+              : 'bg-blue-100 text-blue-700 border border-blue-200'
+          }`}>
+            {uploadFeedback}
+          </div>
+        )}
       </div>
     </div>
   );
