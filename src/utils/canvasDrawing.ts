@@ -191,17 +191,18 @@ const doLinesIntersect = (
   );
 };
 
-// COMPLETELY REWRITTEN: Check if a line from start to end is obstructed by any walls
-// Using a more direct and robust approach
+// Simple function to check if a line from start to end is obstructed by any walls
+// Returns true if obstructed, false otherwise
 const isLineObstructed = (
   startPoint: Point,
   endPoint: Point,
   walls: Shape[]
 ): boolean => {
+  // Filter to include only wall shapes
+  const wallShapes = walls.filter(shape => shape.type === 'line');
+  
   // For each wall, check if it intersects with our line
-  for (const wall of walls) {
-    if (wall.type !== 'line') continue;
-    
+  for (const wall of wallShapes) {
     // Skip checking very close points (within a small threshold)
     // to prevent false positives with connected walls
     const startToWallStart = Math.sqrt(
@@ -228,44 +229,36 @@ const isLineObstructed = (
   return false; // No obstructions found
 };
 
-// REWRITTEN: More reliable perpendicular extension finder with better obstruction detection
+// Completely rewritten perpendicular extension finder that properly handles obstructions
 const findPerpendicularExtension = (
   startPoint: Point,
   currentPoint: Point,
   shapes: Shape[],
   threshold: number = 30
-): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point}, blocked: boolean } | null => {
-  // First filter to only get walls (line shapes)
+): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point} } | null => {
+  // Filter to only get walls (line shapes)
   const walls = shapes.filter(shape => shape.type === 'line');
   
   // Return early if there are no walls
   if (walls.length === 0) return null;
   
-  let bestExtension = null;
-  let minDistance = Number.MAX_VALUE;
+  // Create an array to store all potential extension points
+  const potentialExtensions: Array<{
+    point: Point, 
+    referenceLineId: string, 
+    extendedLine: {start: Point, end: Point},
+    distance: number
+  }> = [];
 
+  // Calculate the direction vector from start to current point
   const directVector = {
     x: currentPoint.x - startPoint.x,
     y: currentPoint.y - startPoint.y
   };
+  
   const directLength = Math.sqrt(directVector.x * directVector.x + directVector.y * directVector.y);
   if (directLength === 0) return null;
   
-  // Normalize the direct vector
-  const normalizedDirectVector = {
-    x: directVector.x / directLength,
-    y: directVector.y / directLength
-  };
-
-  // Collect all potential extensions
-  const potentialExtensions: {
-    point: Point, 
-    referenceLineId: string, 
-    extendedLine: {start: Point, end: Point},
-    distance: number,
-    blocked: boolean
-  }[] = [];
-
   // For each wall, check for potential perpendicular extensions
   for (const wall of walls) {
     // For walls, we want to extend perpendicular from both endpoints
@@ -306,7 +299,7 @@ const findPerpendicularExtension = (
         // Find intersection between our drawing line and this perpendicular line
         const intersection = findIntersectionPoint(
           startPoint, 
-          { x: startPoint.x + normalizedDirectVector.x * 1000, y: startPoint.y + normalizedDirectVector.y * 1000 },
+          { x: startPoint.x + directVector.x * 1000, y: startPoint.y + directVector.y * 1000 },
           endpoint, 
           extendedPoint
         );
@@ -320,53 +313,37 @@ const findPerpendicularExtension = (
           
           // Only consider if within threshold
           if (distToIntersection < threshold) {
-            // Now check for obstructions between startPoint and intersection
-            // This is the key new part - we check for ALL intersections, not just the first
-            let blocked = false;
-            for (const obstruction of walls) {
-              // Skip the wall itself
-              if (obstruction.id === wall.id) continue;
-              
-              // Check if any other wall obstructs the path
-              if (doLinesIntersect(startPoint, intersection, obstruction.start, obstruction.end)) {
-                blocked = true;
-                break;
-              }
+            // Check if the path from startPoint to intersection is obstructed
+            // THIS IS THE KEY CHANGE: Only add if NOT obstructed
+            if (!isLineObstructed(startPoint, intersection, walls)) {
+              potentialExtensions.push({
+                point: intersection,
+                referenceLineId: wall.id,
+                extendedLine: { start: endpoint, end: intersection },
+                distance: distToIntersection
+              });
             }
-            
-            // Add to potential extensions list
-            potentialExtensions.push({
-              point: intersection,
-              referenceLineId: wall.id,
-              extendedLine: { start: endpoint, end: intersection },
-              distance: distToIntersection,
-              blocked
-            });
           }
         }
       }
     }
   }
   
-  // Sort by distance
-  potentialExtensions.sort((a, b) => a.distance - b.distance);
-  
-  // First try to find an unblocked extension
-  for (const extension of potentialExtensions) {
-    if (!extension.blocked && extension.distance < minDistance) {
-      bestExtension = {
-        point: extension.point,
-        referenceLineId: extension.referenceLineId,
-        extendedLine: extension.extendedLine,
-        blocked: false
-      };
-      break; // Take the first unblocked one
-    }
+  // If we have any valid extensions, return the closest one
+  if (potentialExtensions.length > 0) {
+    // Sort by distance
+    potentialExtensions.sort((a, b) => a.distance - b.distance);
+    
+    // Return the closest unobstructed extension
+    return {
+      point: potentialExtensions[0].point,
+      referenceLineId: potentialExtensions[0].referenceLineId,
+      extendedLine: potentialExtensions[0].extendedLine
+    };
   }
   
-  // If no unblocked extension was found, return null
-  // (We're now ignoring blocked extensions entirely)
-  return bestExtension;
+  // No valid extensions found
+  return null;
 };
 
 // Wrap the key function we need to export
@@ -375,7 +352,7 @@ const findLineExtensionPoint = (
   currentPoint: Point,
   shapes: Shape[],
   threshold: number = 30
-): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point}, blocked?: boolean } | null => {
+): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point} } | null => {
   return findPerpendicularExtension(startPoint, currentPoint, shapes, threshold);
 };
 
@@ -699,12 +676,11 @@ export const drawPreviewLine = (
   ctx.restore();
 };
 
-// UPDATED: Extension line drawing with different colors based on blocked status
+// Updated extension line drawing - removed "blocked" status since we won't suggest blocked lines at all
 export const drawExtensionLine = (
   ctx: CanvasRenderingContext2D,
   start: Point,
-  end: Point,
-  blocked: boolean = false
+  end: Point
 ): void => {
   // Save the current state
   ctx.save();
@@ -713,8 +689,8 @@ export const drawExtensionLine = (
   ctx.setLineDash([5, 5]);
   ctx.lineDashOffset = 0;
   
-  // Use different color based on blocked status
-  const lineColor = blocked ? '#ef4444' : '#22c55e'; // Red if blocked, green if not
+  // Green color for valid extensions (we won't draw blocked ones anymore)
+  const lineColor = '#22c55e'; 
   
   // Draw a dashed line
   ctx.beginPath();
