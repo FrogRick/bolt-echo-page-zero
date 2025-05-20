@@ -9,6 +9,7 @@ import { useWallDrawing } from "@/hooks/useWallDrawing";
 import { usePDFInteractions } from "@/hooks/usePDFInteractions";
 import { usePDFCanvasCore } from "./PDFCanvasCore";
 import { UnderlaySymbol, EditorSymbol } from "@/types/editor";
+import { useToast } from "@/hooks/use-toast";
 
 const MIN_SCALE = 1.0;
 const MAX_SCALE = 3.0;
@@ -48,6 +49,7 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
 }, ref) => {
   const isMobile = useIsMobile();
   const pdfContainerRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
   
   // Use PDF state hook
   const {
@@ -73,6 +75,37 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     wallThickness,
     snapToAngle,
     snapToWalls
+  });
+
+  // Use our PDF canvas core hook first
+  const {
+    cursorStyle,
+    handleCanvasClickCustom,
+    handleSelectionMove,
+    handleSelectionEnd,
+    isSelecting,
+    clearDetectedWalls,
+    redoWallDetection,
+    findSimilarWalls,
+    handleFileUpload
+  } = usePDFCanvasCore({
+    pdfFile,
+    scale,
+    panPosition,
+    isPanning,
+    setIsPanning,
+    similarityDetectionMode,
+    drawingWallMode,
+    activeSymbolType,
+    onWallPointSet,
+    onSymbolPlace,
+    onSimilarWallsDetected,
+    symbols,
+    onExitDetectionMode: () => onSimilarityModeToggle && onSimilarityModeToggle(false),
+    onMouseDown: handleMouseDown,
+    onMouseMove: handleMouseMove,
+    onMouseUp: handleMouseUp,
+    onFileUploaded: handleFileUploadForUnderlay
   });
 
   // Use our PDF canvas event handlers
@@ -114,6 +147,8 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
   const handleFileUploadForUnderlay = (file: File) => {
     if (!file) return;
 
+    console.log("Handling file upload for underlay:", file.type, file.name);
+    
     // Create a URL for the file
     const fileUrl = URL.createObjectURL(file);
     
@@ -137,43 +172,18 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
       resizable: true
     };
     
+    console.log("Created new underlay:", newUnderlay);
+    
     // Add the underlay to symbols
-    if (setSymbols) {
-      setSymbols(prevSymbols => [...prevSymbols, newUnderlay]);
-    }
+    setSymbols(prevSymbols => [...prevSymbols, newUnderlay]);
+    
+    // Show success toast
+    toast({
+      title: "Underlay added",
+      description: `${file.name} has been added to the canvas`,
+      variant: "success"
+    });
   };
-
-  // Use our PDF canvas core hook
-  const {
-    cursorStyle,
-    handleCanvasClickCustom,
-    handleSelectionMove,
-    handleSelectionEnd,
-    isSelecting,
-    clearDetectedWalls,
-    redoWallDetection,
-    findSimilarWalls,
-    handleFileUpload
-  } = usePDFCanvasCore({
-    pdfFile,
-    scale,
-    panPosition,
-    isPanning,
-    setIsPanning,
-    similarityDetectionMode,
-    drawingWallMode,
-    activeSymbolType,
-    onWallPointSet,
-    onSymbolPlace,
-    onSimilarWallsDetected,
-    symbols,
-    onExitDetectionMode: () => onSimilarityModeToggle && onSimilarityModeToggle(false),
-    onCanvasClick: handleCanvasClick,
-    onMouseDown: handleMouseDown,
-    onMouseMove: handleMouseMove,
-    onMouseUp: handleMouseUp,
-    onFileUploaded: handleFileUploadForUnderlay
-  });
 
   // Use PDF interactions hook for more advanced interactions
   const interactions = usePDFInteractions({
@@ -350,7 +360,9 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
           accept="application/pdf,image/jpeg,image/png"
           onChange={(e) => {
             if (e.target.files?.[0]) {
-              handleFileUpload(e.target.files[0]);
+              const file = e.target.files[0];
+              console.log("File selected:", file.name, file.type);
+              handleFileUploadForUnderlay(file);
             }
           }}
         />
@@ -360,4 +372,3 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
 });
 
 PDFCanvas.displayName = 'PDFCanvas';
-

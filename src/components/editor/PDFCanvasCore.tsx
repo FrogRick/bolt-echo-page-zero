@@ -20,7 +20,6 @@ interface PDFCanvasCoreProps {
   onSimilarWallsDetected?: (walls: WallSymbol[]) => void;
   symbols: EditorSymbol[];
   onExitDetectionMode?: () => void;
-  onCanvasClick: (e: React.MouseEvent) => void;
   onMouseDown: (e: React.MouseEvent) => void;
   onMouseMove: (e: React.MouseEvent) => void;
   onMouseUp: (e: React.MouseEvent) => void;
@@ -54,7 +53,6 @@ export const usePDFCanvasCore = ({
   onSimilarWallsDetected,
   symbols,
   onExitDetectionMode,
-  onCanvasClick,
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -118,15 +116,23 @@ export const usePDFCanvasCore = ({
   const handleFileUpload = (file: File) => {
     if (!file) return;
 
+    console.log("PDFCanvasCore handleFileUpload called with:", file.name, file.type);
+
     // Check if it's a PDF or image
     if (file.type === "application/pdf" || file.type.startsWith("image/")) {
+      // Show toast notification
+      toast({
+        title: "File upload successful",
+        description: `${file.name} format supported.`,
+        variant: "success",
+      });
+      
       // Call the parent callback if provided
       if (onFileUploaded) {
+        console.log("Calling onFileUploaded callback");
         onFileUploaded(file);
-        toast({
-          title: "File uploaded",
-          description: `${file.name} has been added as an underlay.`,
-        });
+      } else {
+        console.warn("onFileUploaded callback is not provided");
       }
     } else {
       toast({
