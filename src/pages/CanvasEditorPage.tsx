@@ -1,6 +1,6 @@
 
 import React, { useEffect } from "react";
-import Canvas from "@/components/editor/Canvas";
+import Canvas from "@/features/canvas/components/Canvas";
 import { useParams, useNavigate } from "react-router-dom";
 
 const CanvasEditorPage: React.FC = () => {

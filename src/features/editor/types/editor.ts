@@ -1,4 +1,3 @@
-
 export type WallSymbol = {
   id: string;
   type: 'wall';

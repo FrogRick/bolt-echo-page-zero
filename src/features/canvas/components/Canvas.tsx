@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from "react";
-import { useCanvasEditor } from "@/hooks/useCanvasEditor";
-import { Tool } from "@/types/canvas";
+import { useCanvasEditor } from "../hooks/useCanvasEditor";
+import { Tool } from "../types/canvas";
 import { Toolbar } from "./Toolbar";
 
 const Canvas: React.FC = () => {
