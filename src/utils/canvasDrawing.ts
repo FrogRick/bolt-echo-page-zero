@@ -1,4 +1,3 @@
-
 import { Point, Shape, PreviewLine, ExtensionLine } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -585,7 +584,7 @@ export const drawInProgressPolygon = (
   strokeColor: string,
   fillColor: string,
   isWallPolygon: boolean = false,
-  showStartPoint: boolean = false
+  showStartPoint: boolean = true  // Changed default to true to fix the red dot issue
 ): void => {
   if (polygonPoints.length === 0) return;
   
@@ -772,4 +771,3 @@ export const lineSnappingHelpers = {
   findLineExtensionPoint,
   isLineObstructed
 };
-

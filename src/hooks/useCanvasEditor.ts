@@ -84,7 +84,7 @@ export const useCanvasEditor = () => {
     // This is drawn FIRST (before regular polygons) so it appears below other elements
     if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
       // For wall polygon, we draw lines without fill - use black border and gray fill like walls
-      // Pass false for showStartPoint to hide the red circle
+      // Pass true for isWallPolygon and false for showStartPoint to hide the red circle
       drawInProgressPolygon(ctx, wallPolygonPoints, currentPoint, '#000000', 'transparent', true, false);
       
       // Draw dotted extension line if there is one - same as for wall tool
@@ -96,7 +96,8 @@ export const useCanvasEditor = () => {
     // Draw polygon in progress
     if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length > 0) {
       const polygonFillColor = activeTool === 'green-polygon' ? greenFillColor : fillColor;
-      drawInProgressPolygon(ctx, polygonPoints, currentPoint, currentColor, polygonFillColor);
+      // Make sure to show the start point with the red dot on non-wall polygons
+      drawInProgressPolygon(ctx, polygonPoints, currentPoint, currentColor, polygonFillColor, false, true);
     }
 
     // Draw preview line when using the wall tool - only if we have a start and current point
@@ -361,30 +362,9 @@ export const useCanvasEditor = () => {
     } else if (activeTool === 'wall-polygon') {
       handleWallPolygonToolMouseDown(point);
     } else if (activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') {
-      if (rectangleDrawMode === 'click') {
-        // In click mode, first click sets start point, second click completes
-        if (!startPoint) {
-          setStartPoint(point);
-          setCurrentPoint(point);
-        } else {
-          // Complete the rectangle on second click
-          const newRectangle = {
-            id: generateId(),
-            type: 'rectangle' as const,
-            start: { ...startPoint },
-            end: point,
-            color: 'transparent',
-            fillColor: activeTool === 'green-rectangle' ? greenFillColor : fillColor
-          };
-          
-          setShapes([...shapes, newRectangle]);
-          setStartPoint(null);
-          setCurrentPoint(null);
-        }
-      } else {
-        // Traditional drag mode
-        handleRectangleToolMouseDown(point);
-      }
+      // Fix rectangle drawing mode
+      // In drag mode, first click starts drawing, mouse release completes it
+      handleRectangleToolMouseDown(point);
     } else if (activeTool === 'yellow-polygon' || activeTool === 'green-polygon') {
       handlePolygonToolMouseDown(point);
     }
@@ -733,7 +713,7 @@ export const useCanvasEditor = () => {
     setIsDrawing(false);
   };
 
-  // Handle rectangle tool mouse down
+  // Handle rectangle tool mouse down - fixed to work properly
   const handleRectangleToolMouseDown = (point: Point) => {
     setStartPoint(point);
     setIsDrawing(true);
@@ -948,6 +928,7 @@ export const useCanvasEditor = () => {
     deleteSelected,
     clearCanvas,
     canvasSize,
+    cancelDrawing,
     snapToAngle,
     toggleSnapToAngle,
     snapToEndpoints,
