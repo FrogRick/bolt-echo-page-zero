@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -70,36 +71,37 @@ const PDFUploader = ({
     setIsUploading(true);
     setUploadFeedback(`Uploading: ${file.name}...`);
 
-    // Create a copy of the file to ensure proper handling
-    const fileBlob = new Blob([file], { type: file.type });
-    const newFile = new File([fileBlob], file.name, { type: file.type });
-    console.log("🔍 PDFUploader - File validated, creating new file object:", newFile.name, newFile.type);
-
-    // Simulate a slight delay to show uploading state
-    setTimeout(() => {
-      try {
-        console.log("⬆️ PDFUploader - Calling onUpload with file:", newFile.name);
-        onUpload(newFile);
-        setIsUploading(false);
-        setUploadFeedback(`Upload complete: ${newFile.name}`);
-        console.log("✅ PDFUploader - Upload complete");
-        
-        toast({
-          title: "File uploaded successfully",
-          description: `${file.name} has been uploaded.`,
-          variant: "success"
-        });
-      } catch (error) {
-        console.error("🚫 PDFUploader - Upload error:", error);
-        setIsUploading(false);
-        setUploadFeedback(`Upload failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-        toast({
-          title: "Upload failed",
-          description: "There was a problem with your upload.",
-          variant: "destructive"
-        });
-      }
-    }, 500);
+    try {
+      console.log("⬆️ PDFUploader - About to call onUpload with file:", file.name, file.type);
+      
+      // Create a copy of the file to ensure proper handling
+      const fileBlob = new Blob([file], { type: file.type });
+      const newFile = new File([fileBlob], file.name, { type: file.type });
+      
+      // Call the parent component's onUpload function with the file
+      console.log("⬆️ PDFUploader - Calling onUpload with file object:", 
+        { name: newFile.name, type: newFile.type, size: newFile.size });
+      onUpload(newFile);
+      
+      setIsUploading(false);
+      setUploadFeedback(`Upload complete: ${newFile.name}`);
+      console.log("✅ PDFUploader - Upload complete");
+      
+      toast({
+        title: "File uploaded successfully",
+        description: `${file.name} has been uploaded.`,
+        variant: "success"
+      });
+    } catch (error) {
+      console.error("🚫 PDFUploader - Upload error:", error);
+      setIsUploading(false);
+      setUploadFeedback(`Upload failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast({
+        title: "Upload failed",
+        description: "There was a problem with your upload.",
+        variant: "destructive"
+      });
+    }
   }, [onUpload, toast]);
   
   const handleDragOver = (e: React.DragEvent) => {
@@ -168,7 +170,12 @@ const PDFUploader = ({
         <Button 
           onClick={() => {
             console.log("🔍 PDFUploader - Add Image button clicked");
-            fileInputRef.current?.click();
+            if (fileInputRef.current) {
+              console.log("🔍 PDFUploader - File input exists, clicking it");
+              fileInputRef.current.click();
+            } else {
+              console.error("🚫 PDFUploader - File input ref is null");
+            }
           }} 
           className="mb-4 px-8 py-6 text-lg w-full relative overflow-hidden" 
           size="lg" 

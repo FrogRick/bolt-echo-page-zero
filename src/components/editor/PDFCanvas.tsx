@@ -83,53 +83,66 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
       return;
     }
 
-    console.log("PDFCanvas - handleFileUploadForUnderlay called with:", file.name, file.type, file.size);
+    console.log("🔄 PDFCanvas - handleFileUploadForUnderlay called with:", file.name, file.type, file.size);
+    console.trace("🔍 PDFCanvas - Upload trace:");
     
-    // Create a URL for the file
-    const fileUrl = URL.createObjectURL(file);
-    console.log("PDFCanvas - Created file URL:", fileUrl);
-    
-    // Default dimensions - make them larger for better visibility
-    const defaultWidth = 500;
-    const defaultHeight = 600;
-    
-    // Create a new underlay symbol
-    const newUnderlay: UnderlaySymbol = {
-      id: crypto.randomUUID(),
-      type: 'underlay',
-      x: 100,  // Position more centrally
-      y: 100,  // Position more centrally
-      rotation: 0,
-      size: 1,  // Scale factor
-      width: defaultWidth,
-      height: defaultHeight,
-      src: fileUrl,
-      contentType: file.type,
-      draggable: true,
-      resizable: true
-    };
-    
-    console.log("PDFCanvas - Created new underlay:", newUnderlay);
-    
-    // Add the underlay to symbols
-    setSymbols(prevSymbols => {
-      const updatedSymbols = [...prevSymbols, newUnderlay];
-      console.log("PDFCanvas - Updated symbols array:", updatedSymbols.length, "items including underlays:", updatedSymbols.filter(s => s.type === 'underlay').length);
-      return updatedSymbols;
-    });
-    
-    // Also log after a delay to check if state is updated
-    setTimeout(() => {
-      console.log("PDFCanvas - After setSymbols delay - Symbols count:", symbols.length, 
-        "Underlays:", symbols.filter(s => s.type === 'underlay').length);
-    }, 500);
-    
-    // Show success toast
-    toast({
-      title: "Underlay added",
-      description: `${file.name} has been added to the canvas`,
-      variant: "success"
-    });
+    try {
+      // Create a URL for the file
+      const fileUrl = URL.createObjectURL(file);
+      console.log("PDFCanvas - Created file URL:", fileUrl);
+      
+      // Default dimensions - make them larger for better visibility
+      const defaultWidth = 500;
+      const defaultHeight = 600;
+      
+      // Create a new underlay symbol
+      const newUnderlay = {
+        id: crypto.randomUUID(),
+        type: 'underlay',
+        x: 100,  // Position more centrally
+        y: 100,  // Position more centrally
+        rotation: 0,
+        size: 1,  // Scale factor
+        width: defaultWidth,
+        height: defaultHeight,
+        src: fileUrl,
+        contentType: file.type,
+        draggable: true,
+        resizable: true
+      };
+      
+      console.log("✨ PDFCanvas - Created new underlay:", newUnderlay);
+      
+      // Add the underlay to symbols
+      setSymbols(prevSymbols => {
+        const updatedSymbols = [...prevSymbols, newUnderlay];
+        console.log("📊 PDFCanvas - Updated symbols array:", updatedSymbols.length, "items including underlays:", updatedSymbols.filter(s => s.type === 'underlay').length);
+        return updatedSymbols;
+      });
+      
+      // Verify in the console immediately after state update
+      console.log("🔍 PDFCanvas - Current symbols state after update attempt:", symbols);
+      
+      // Also log after a delay to check if state is updated
+      setTimeout(() => {
+        console.log("⏱️ PDFCanvas - After setSymbols delay - Symbols count:", symbols.length, 
+          "Underlays:", symbols.filter(s => s.type === 'underlay').length);
+      }, 500);
+      
+      // Show success toast
+      toast({
+        title: "Underlay added",
+        description: `${file.name} has been added to the canvas`,
+        variant: "success"
+      });
+    } catch (error) {
+      console.error("❌ PDFCanvas - Error in handleFileUploadForUnderlay:", error);
+      toast({
+        title: "Upload failed",
+        description: "There was an error adding your file to the canvas",
+        variant: "destructive"
+      });
+    }
   };
 
   // Use our PDF canvas event handlers
@@ -372,6 +385,7 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
         <label 
           htmlFor="underlay-upload" 
           className="bg-blue-600 text-white px-4 py-2 rounded cursor-pointer hover:bg-blue-700 text-sm font-medium flex items-center gap-2"
+          onClick={() => console.log("🖱️ PDFCanvas - Add Image button clicked")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -384,10 +398,16 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
           className="hidden" 
           accept="application/pdf,image/jpeg,image/png"
           onChange={(e) => {
+            console.log("🖱️ PDFCanvas - File input change event triggered");
             if (e.target.files?.[0]) {
               const file = e.target.files[0];
-              console.log("PDFCanvas - File input change:", file.name, file.type, file.size);
+              console.log("📄 PDFCanvas - File selected from input:", file.name, file.type, file.size);
               handleFileUploadForUnderlay(file);
+              
+              // Reset the input so it can be used again for the same file
+              e.target.value = '';
+            } else {
+              console.log("⚠️ PDFCanvas - No file selected from file input");
             }
           }}
         />
@@ -397,3 +417,5 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
 });
 
 PDFCanvas.displayName = 'PDFCanvas';
+
+export { PDFCanvas };

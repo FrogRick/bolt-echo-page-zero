@@ -7,6 +7,7 @@ import { PDFOverlays } from "./PDFOverlays";
 import { PDFTouchHandlers } from "./PDFTouchHandlers";
 import { PDFZoomHandler } from "./PDFZoomHandler";
 import { EditorSymbol } from "@/types/editor";
+import { useToast } from "@/hooks/use-toast";
 
 interface PDFCanvasContentProps extends PDFCanvasProps {
   pdfContainerRef: React.RefObject<HTMLDivElement>;
@@ -61,6 +62,7 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
   onFileUploaded,
   setSymbols
 }) => {
+  const { toast } = useToast();
   
   const handleDocumentLoadError = (error: Error) => {
     console.error("❌ PDF load error:", error);
@@ -73,25 +75,49 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
   }, [symbols]);
 
   const handleFileUpload = (file: File) => {
-    console.log("🔍 PDFCanvasContent - handleFileUpload called with:", file.name, file.type, file.size);
+    console.log("🚀 PDFCanvasContent - handleFileUpload called with:", file.name, file.type, file.size);
     
-    // Handle as main PDF
-    onPDFUpload(file);
+    // Track if this is triggered through the console
+    console.trace("🔍 PDFCanvasContent - Upload file trace:");
     
-    // Also handle as underlay if needed
-    if (onFileUploaded && (file.type === "application/pdf" || file.type.startsWith("image/"))) {
-      console.log("↪️ PDFCanvasContent - Forwarding to onFileUploaded for underlay creation");
-      onFileUploaded(file);
+    try {
+      // Handle as main PDF
+      console.log("📄 PDFCanvasContent - Calling onPDFUpload with file:", file.name);
+      onPDFUpload(file);
       
-      // Add more verbose logging to track the process
-      console.log("📈 PDFCanvasContent - After initiating onFileUploaded - Current symbols count:", 
-        symbols.length, "File details:", file.name, file.type, file.size);
+      // Also handle as underlay if needed
+      if (onFileUploaded && (file.type === "application/pdf" || file.type.startsWith("image/"))) {
+        console.log("🖼️ PDFCanvasContent - Forwarding to onFileUploaded for underlay creation");
+        onFileUploaded(file);
+        
+        toast({
+          title: "File uploaded",
+          description: `${file.name} has been added to the canvas`,
+        });
+        
+        // Add more verbose logging to track the process
+        console.log("📈 PDFCanvasContent - After initiating onFileUploaded - Current symbols count:", 
+          symbols.length, "File details:", file.name, file.type, file.size);
+        
+        // Check if the symbols array gets updated after a delay
+        setTimeout(() => {
+          console.log("⏱️ PDFCanvasContent - After onFileUploaded delay - Symbols count:", symbols.length, 
+            "Underlays:", symbols.filter(s => s.type === 'underlay').length);
+          
+          if (symbols.filter(s => s.type === 'underlay').length === 0) {
+            console.warn("⚠️ PDFCanvasContent - No underlays found after upload");
+          }
+        }, 1000);
+      }
+    } catch (error) {
+      console.error("❌ PDFCanvasContent - Error in handleFileUpload:", error);
+      setPdfError(`Failed to upload file: ${error instanceof Error ? error.message : "Unknown error"}`);
       
-      // Check if the symbols array gets updated after a delay
-      setTimeout(() => {
-        console.log("⏱️ PDFCanvasContent - After onFileUploaded delay - Symbols count:", symbols.length, 
-          "Underlays:", symbols.filter(s => s.type === 'underlay').length);
-      }, 1000);
+      toast({
+        title: "Upload error",
+        description: "There was a problem processing your file",
+        variant: "destructive"
+      });
     }
   };
 
