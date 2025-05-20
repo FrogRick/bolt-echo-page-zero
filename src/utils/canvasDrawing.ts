@@ -1,3 +1,4 @@
+
 import { Point, Shape, PreviewLine, ExtensionLine } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -153,7 +154,7 @@ const findIntersectionPoint = (
   return { x, y };
 };
 
-// Check if a line segment intersects with another line segment
+// COMPLETELY REWRITTEN: Check if a line segment intersects with another line segment
 // Returns true if they intersect, false otherwise
 const doLinesIntersect = (
   line1Start: Point,
@@ -161,67 +162,101 @@ const doLinesIntersect = (
   line2Start: Point,
   line2End: Point
 ): boolean => {
-  // Line 1 represented as a1x + b1y = c1
-  const a1 = line1End.y - line1Start.y;
-  const b1 = line1Start.x - line1End.x;
-  const c1 = a1 * line1Start.x + b1 * line1Start.y;
+  // Calculate line vectors
+  const v1x = line1End.x - line1Start.x;
+  const v1y = line1End.y - line1Start.y;
+  const v2x = line2End.x - line2Start.x;
+  const v2y = line2End.y - line2Start.y;
   
-  // Line 2 represented as a2x + b2y = c2
-  const a2 = line2End.y - line2Start.y;
-  const b2 = line2Start.x - line2End.x;
-  const c2 = a2 * line2Start.x + b2 * line2Start.y;
+  // Calculate the cross products
+  const cross1 = (line2Start.x - line1Start.x) * v1y - (line2Start.y - line1Start.y) * v1x;
+  const cross2 = (line2End.x - line1Start.x) * v1y - (line2End.y - line1Start.y) * v1x;
   
-  const determinant = a1 * b2 - a2 * b1;
+  // If the signs of the cross products are the same, there's no intersection
+  if (cross1 * cross2 > 0) return false;
   
-  // If determinant is zero, lines are parallel
-  if (Math.abs(determinant) < 0.001) {
-    return false;
+  const cross3 = (line1Start.x - line2Start.x) * v2y - (line1Start.y - line2Start.y) * v2x;
+  const cross4 = (line1End.x - line2Start.x) * v2y - (line1End.y - line2Start.y) * v2x;
+  
+  // Same check for the other line
+  if (cross3 * cross4 > 0) return false;
+  
+  // Edge case: collinear lines
+  if (cross1 === 0 && cross2 === 0 && cross3 === 0 && cross4 === 0) {
+    // Check if one segment contains at least one endpoint of the other
+    const t0 = ((line2Start.x - line1Start.x) * v1x + (line2Start.y - line1Start.y) * v1y) / 
+               (v1x * v1x + v1y * v1y);
+    const t1 = ((line2End.x - line1Start.x) * v1x + (line2End.y - line1Start.y) * v1y) / 
+               (v1x * v1x + v1y * v1y);
+    
+    return (t0 >= 0 && t0 <= 1) || (t1 >= 0 && t1 <= 1);
   }
   
-  // Calculate intersection point
-  const x = (b2 * c1 - b1 * c2) / determinant;
-  const y = (a1 * c2 - a2 * c1) / determinant;
-  
-  // Check if intersection point is within both line segments
-  return (
-    x >= Math.min(line1Start.x, line1End.x) && x <= Math.max(line1Start.x, line1End.x) &&
-    x >= Math.min(line2Start.x, line2End.x) && x <= Math.max(line2Start.x, line2End.x) &&
-    y >= Math.min(line1Start.y, line1End.y) && y <= Math.max(line1Start.y, line1End.y) &&
-    y >= Math.min(line2Start.y, line2End.y) && y <= Math.max(line2Start.y, line2End.y)
-  );
+  // If we made it here, the segments intersect
+  return true;
 };
 
-// Simple function to check if a line from start to end is obstructed by any walls
+// COMPLETELY REWRITTEN: Check if a line from start to end is obstructed by any walls
 // Returns true if obstructed, false otherwise
 const isLineObstructed = (
   startPoint: Point,
   endPoint: Point,
-  walls: Shape[]
+  walls: Shape[],
+  tolerance: number = 0.1
 ): boolean => {
   // Filter to include only wall shapes
   const wallShapes = walls.filter(shape => shape.type === 'line');
   
-  // For each wall, check if it intersects with our line
-  for (const wall of wallShapes) {
-    // Skip checking very close points (within a small threshold)
-    // to prevent false positives with connected walls
-    const startToWallStart = Math.sqrt(
-      Math.pow(wall.start.x - startPoint.x, 2) + 
-      Math.pow(wall.start.y - startPoint.y, 2)
-    );
-    
-    const startToWallEnd = Math.sqrt(
-      Math.pow(wall.end.x - startPoint.x, 2) + 
-      Math.pow(wall.end.y - startPoint.y, 2)
-    );
-    
-    // Skip if this wall connects to our start point
-    if (startToWallStart < 5 || startToWallEnd < 5) {
-      continue;
+  // Check if either point is very close to a wall endpoint - if so, don't count as obstructed
+  // This allows for connecting to existing walls
+  const isCloseToWallEndpoint = (point: Point): boolean => {
+    for (const wall of wallShapes) {
+      const distToStart = Math.sqrt(
+        Math.pow(point.x - wall.start.x, 2) + Math.pow(point.y - wall.start.y, 2)
+      );
+      const distToEnd = Math.sqrt(
+        Math.pow(point.x - wall.end.x, 2) + Math.pow(point.y - wall.end.y, 2)
+      );
+      
+      if (distToStart < 5 || distToEnd < 5) {
+        return true;
+      }
     }
-    
-    // Check if this wall intersects our line
-    if (doLinesIntersect(startPoint, endPoint, wall.start, wall.end)) {
+    return false;
+  };
+  
+  // If either endpoint is close to a wall endpoint, we'll allow the connection
+  if (isCloseToWallEndpoint(startPoint) || isCloseToWallEndpoint(endPoint)) {
+    return false;
+  }
+  
+  // Create a slightly shorter version of our line to prevent false positives at endpoints
+  const dx = endPoint.x - startPoint.x;
+  const dy = endPoint.y - startPoint.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  
+  if (length < 1) return false; // Very short line, can't be obstructed
+  
+  // Get the unit vector
+  const unitX = dx / length;
+  const unitY = dy / length;
+  
+  // Shorten the line slightly from both ends to avoid false positives
+  const shrinkFactor = Math.min(tolerance, length / 3); // Don't shrink more than a third of the line
+  
+  const adjustedStart = {
+    x: startPoint.x + unitX * shrinkFactor,
+    y: startPoint.y + unitY * shrinkFactor
+  };
+  
+  const adjustedEnd = {
+    x: endPoint.x - unitX * shrinkFactor,
+    y: endPoint.y - unitY * shrinkFactor
+  };
+  
+  // For each wall, check if it intersects with our adjusted line
+  for (const wall of wallShapes) {
+    if (doLinesIntersect(adjustedStart, adjustedEnd, wall.start, wall.end)) {
       return true; // Line is obstructed
     }
   }
@@ -229,7 +264,7 @@ const isLineObstructed = (
   return false; // No obstructions found
 };
 
-// Completely rewritten perpendicular extension finder that properly handles obstructions
+// COMPLETELY REWRITTEN: Find perpendicular extension without obstructions
 const findPerpendicularExtension = (
   startPoint: Point,
   currentPoint: Point,
@@ -291,15 +326,27 @@ const findPerpendicularExtension = (
       
       for (const direction of directions) {
         // Calculate the direction to extend (perpendicular to wall)
+        const extensionVector = {
+          x: normalizedPerpVector.x * direction,
+          y: normalizedPerpVector.y * direction
+        };
+        
+        // Create a point far enough in the perpendicular direction to find intersection
         const extendedPoint = {
-          x: endpoint.x + normalizedPerpVector.x * direction * 1000, // Long enough to intersect
-          y: endpoint.y + normalizedPerpVector.y * direction * 1000
+          x: endpoint.x + extensionVector.x * 1000, // Long enough to intersect
+          y: endpoint.y + extensionVector.y * 1000
+        };
+        
+        // Create an infinite line from our drawing point in the current direction
+        const drawingEndPoint = { 
+          x: startPoint.x + directVector.x * 1000, 
+          y: startPoint.y + directVector.y * 1000 
         };
         
         // Find intersection between our drawing line and this perpendicular line
         const intersection = findIntersectionPoint(
           startPoint, 
-          { x: startPoint.x + directVector.x * 1000, y: startPoint.y + directVector.y * 1000 },
+          drawingEndPoint,
           endpoint, 
           extendedPoint
         );
@@ -313,9 +360,11 @@ const findPerpendicularExtension = (
           
           // Only consider if within threshold
           if (distToIntersection < threshold) {
-            // Check if the path from startPoint to intersection is obstructed
-            // THIS IS THE KEY CHANGE: Only add if NOT obstructed
-            if (!isLineObstructed(startPoint, intersection, walls)) {
+            // Now check if the path is clear - no walls blocking the extension
+            const isPathClear = !isLineObstructed(startPoint, intersection, walls);
+            
+            // Only add clear paths
+            if (isPathClear) {
               potentialExtensions.push({
                 point: intersection,
                 referenceLineId: wall.id,
@@ -723,3 +772,4 @@ export const lineSnappingHelpers = {
   findLineExtensionPoint,
   isLineObstructed
 };
+
