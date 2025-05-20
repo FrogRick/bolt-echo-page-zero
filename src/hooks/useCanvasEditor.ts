@@ -447,6 +447,9 @@ export const useCanvasEditor = () => {
         }
       }
       
+      // Get the last point from the wall polygon points array
+      const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
+      
       // Use the extended shapes array that includes our in-progress wall polygon
       const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, temporaryLines);
       if (extensionSnap) {
@@ -480,7 +483,6 @@ export const useCanvasEditor = () => {
       
       // Apply angle snapping after all other snaps
       if (snapToAngle && !extensionLine) {
-        const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
         const angleSnappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
         
         // Only use the angle-snapped point if it's close enough to our current point
