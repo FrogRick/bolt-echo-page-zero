@@ -88,6 +88,9 @@ export const PDFViewer = ({
 
   // Filter symbols based on layer visibility
   const visibleSymbols = symbols.filter(symbol => {
+    // Always show underlays regardless of layer
+    if (symbol.type === 'underlay') return true;
+    
     if (symbol.type === 'wall' || symbol.type === 'door' || symbol.type === 'stairs' || symbol.type === 'window') {
       return isLayerVisible('building');
     } else {
@@ -109,6 +112,13 @@ export const PDFViewer = ({
   const underlaySymbols = visibleSymbols.filter(s => 
     s.type === 'underlay'
   ) as UnderlaySymbol[];
+
+  // Debug underlays
+  useEffect(() => {
+    if (underlaySymbols.length > 0) {
+      console.log("Rendering underlays:", underlaySymbols);
+    }
+  }, [underlaySymbols]);
 
   // Update dimensions on window resize
   useEffect(() => {
@@ -138,11 +148,11 @@ export const PDFViewer = ({
       className="pdf-viewer"
     >
       {/* Render underlays/background images first with lowest z-index */}
-      <div className="absolute top-0 left-0 right-0 bottom-0" style={{ zIndex: 1 }}>
+      <div className="absolute top-0 left-0 right-0 bottom-0 z-[1]">
         {underlaySymbols.map(underlay => (
           <div
             key={underlay.id}
-            className="absolute"
+            className="absolute border border-dashed border-gray-400"
             style={{
               left: `${underlay.x}px`,
               top: `${underlay.y}px`,
@@ -151,9 +161,14 @@ export const PDFViewer = ({
               transform: `rotate(${underlay.rotation}deg)`,
               cursor: underlay.draggable ? 'move' : 'default',
               zIndex: 1,
+              overflow: 'hidden',
             }}
-            onMouseDown={(e) => onSymbolMouseDown(e, underlay)}
+            onMouseDown={(e) => {
+              console.log("Underlay mouse down:", underlay.id);
+              onSymbolMouseDown(e, underlay);
+            }}
             onClick={(e) => {
+              console.log("Underlay clicked:", underlay.id);
               e.stopPropagation();
               onSymbolSelect(underlay);
             }}
@@ -162,14 +177,16 @@ export const PDFViewer = ({
             {underlay.contentType === 'application/pdf' ? (
               <iframe
                 src={underlay.src}
-                className="w-full h-full pointer-events-none"
+                className="w-full h-full"
                 title={`PDF underlay ${underlay.id}`}
+                style={{ border: 'none', pointerEvents: 'none' }}
               />
             ) : (
               <img
                 src={underlay.src}
                 alt={`Underlay ${underlay.id}`}
-                className="w-full h-full object-contain pointer-events-none"
+                className="w-full h-full object-contain"
+                style={{ pointerEvents: 'none' }}
               />
             )}
 

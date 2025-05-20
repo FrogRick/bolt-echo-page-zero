@@ -67,19 +67,28 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
     setPdfError("Failed to load PDF. Please try a different file.");
   };
 
+  // Debug symbol count
+  React.useEffect(() => {
+    console.log(`Total symbols: ${symbols.length}, Underlays: ${symbols.filter(s => s.type === 'underlay').length}`);
+  }, [symbols]);
+
+  const handleFileUpload = (file: File) => {
+    console.log("PDFCanvasContent file upload called with:", file.name, file.type);
+    
+    // Handle as main PDF
+    onPDFUpload(file);
+    
+    // Also handle as underlay if needed
+    if (onFileUploaded && (file.type === "application/pdf" || file.type.startsWith("image/"))) {
+      console.log("Forwarding to onFileUploaded");
+      onFileUploaded(file);
+    }
+  };
+
   if (!pdfFile) {
     return (
       <div className="flex items-center justify-center h-full border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
-        <PDFUploader onUpload={(file) => {
-          console.log("PDFUploader onUpload called with:", file.name, file.type);
-          onPDFUpload(file);
-          
-          // Also handle file as an underlay if needed
-          if (onFileUploaded && (file.type === "application/pdf" || file.type.startsWith("image/"))) {
-            console.log("Calling onFileUploaded from PDFUploader");
-            onFileUploaded(file);
-          }
-        }} />
+        <PDFUploader onUpload={handleFileUpload} />
       </div>
     );
   }

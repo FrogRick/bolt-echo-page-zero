@@ -1,4 +1,3 @@
-
 import { useRef, useState, forwardRef, useImperativeHandle, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePDFState } from "@/hooks/usePDFState";
@@ -77,7 +76,7 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     snapToWalls
   });
 
-  // Handle file upload for underlays (PDF, images) - Define this function before using it
+  // Handle file upload for underlays (PDF, images)
   const handleFileUploadForUnderlay = (file: File) => {
     if (!file) return;
 
@@ -86,16 +85,16 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     // Create a URL for the file
     const fileUrl = URL.createObjectURL(file);
     
-    // Default dimensions
-    const defaultWidth = 300;
-    const defaultHeight = 400;
+    // Default dimensions - make them larger for better visibility
+    const defaultWidth = 500;
+    const defaultHeight = 600;
     
     // Create a new underlay symbol
     const newUnderlay: UnderlaySymbol = {
       id: crypto.randomUUID(),
       type: 'underlay',
-      x: 50,
-      y: 50,
+      x: 100,  // Position more centrally
+      y: 100,  // Position more centrally
       rotation: 0,
       size: 1,  // Scale factor
       width: defaultWidth,
@@ -119,7 +118,7 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     });
   };
 
-  // Use our PDF canvas event handlers - Define handlers before using them
+  // Use our PDF canvas event handlers
   const {
     handleCanvasClick,
     handleTouchStart,
@@ -154,7 +153,7 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     onWallPointSet
   });
 
-  // Use our PDF canvas core hook after defining the handlers it needs
+  // Use our PDF canvas core hook
   const {
     cursorStyle,
     handleCanvasClickCustom,
@@ -214,7 +213,7 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     wallDrawing.toggleWallDrawingMode(drawingWallMode);
   }, [drawingWallMode, wallDrawing]);
 
-  // Handle direct canvas click for wall drawing
+  // Handle direct canvas click for wall drawing or symbol placement
   const handleDirectCanvasClick = (e: React.MouseEvent) => {
     if (!pdfContainerRef.current) return;
     
@@ -260,6 +259,14 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
       document.removeEventListener('touchmove', preventZoom);
     };
   }, []);
+
+  // Debug logging for symbols to check if underlays are present
+  useEffect(() => {
+    const underlays = symbols.filter(s => s.type === 'underlay');
+    if (underlays.length > 0) {
+      console.log("Current underlays:", underlays);
+    }
+  }, [symbols]);
 
   return (
     <div 
