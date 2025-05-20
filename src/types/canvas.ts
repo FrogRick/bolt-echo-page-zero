@@ -19,11 +19,13 @@ export type Tool =
 export type Shape = {
   id: string;
   type: 'line' | 'rectangle' | 'polygon';
-  start: Point;
-  end: Point;
+  start?: Point;  // Optional for polygon type
+  end?: Point;    // Optional for polygon type
   points?: Point[];
   fillColor?: string;
   strokeColor?: string;
+  color?: string; // Added for backward compatibility
+  lineWidth?: number;
 };
 
 // Preview line for drawing guidance
