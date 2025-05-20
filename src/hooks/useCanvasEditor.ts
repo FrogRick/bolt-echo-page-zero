@@ -430,22 +430,36 @@ export const useCanvasEditor = () => {
       // For wall-polygon, apply the same snapping as wall tool during mouse movement
       let snappedPoint = point;
       
-      // Check for perpendicular extension snapping - Added this to match Wall tool behavior
-      if (snapToExtensions) {
-        const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
-        const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, shapes);
-        if (extensionSnap) {
-          snappedPoint = extensionSnap.point;
-          setCurrentPoint(extensionSnap.point);
-          
-          // Set extension line to show the visual indicator
-          setExtensionLine({
-            start: extensionSnap.extendedLine.start,
-            end: extensionSnap.point
+      // Create a temporary array that includes both shapes and the current in-progress wall polygon
+      const temporaryLines: Shape[] = [...shapes];
+      
+      // Add the current wall polygon segments as temporary lines for snapping
+      if (wallPolygonPoints.length > 1) {
+        for (let i = 0; i < wallPolygonPoints.length - 1; i++) {
+          temporaryLines.push({
+            id: `temp-wall-polygon-${i}`,
+            type: 'line',
+            start: { ...wallPolygonPoints[i] },
+            end: { ...wallPolygonPoints[i + 1] },
+            color: currentColor,
+            lineWidth: 8
           });
-        } else {
-          setExtensionLine(null);
         }
+      }
+      
+      // Use the extended shapes array that includes our in-progress wall polygon
+      const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, temporaryLines);
+      if (extensionSnap) {
+        snappedPoint = extensionSnap.point;
+        setCurrentPoint(extensionSnap.point);
+        
+        // Set extension line to show the visual indicator
+        setExtensionLine({
+          start: extensionSnap.extendedLine.start,
+          end: extensionSnap.point
+        });
+      } else {
+        setExtensionLine(null);
       }
       
       // Then check if we can snap to a line if no extension was found
@@ -532,10 +546,27 @@ export const useCanvasEditor = () => {
     let snappedPoint = point;
     let extensionFound = false;
     
-    // Check for extension snapping
+    // Create a temporary array that includes both shapes and the current in-progress wall polygon
+    const temporaryLines: Shape[] = [...shapes];
+    
+    // Add the current wall polygon segments as temporary lines for snapping
+    if (wallPolygonPoints.length > 1) {
+      for (let i = 0; i < wallPolygonPoints.length - 1; i++) {
+        temporaryLines.push({
+          id: `temp-wall-polygon-${i}`,
+          type: 'line',
+          start: { ...wallPolygonPoints[i] },
+          end: { ...wallPolygonPoints[i + 1] },
+          color: currentColor,
+          lineWidth: 8
+        });
+      }
+    }
+    
+    // Check for extension snapping - use the temporary lines array
     if (snapToExtensions && wallPolygonPoints.length > 0) {
       const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
-      const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, shapes);
+      const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, temporaryLines);
       if (extensionSnap) {
         snappedPoint = extensionSnap.point;
         extensionFound = true;
