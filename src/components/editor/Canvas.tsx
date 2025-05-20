@@ -27,7 +27,8 @@ const Canvas: React.FC = () => {
     snapToLines,
     toggleSnapToLines,
     snapToExtensions,
-    toggleSnapToExtensions
+    toggleSnapToExtensions,
+    rectangleDrawMode
   } = useCanvasEditor();
 
   // Force canvas redraw when tool or styling changes to ensure correct rendering

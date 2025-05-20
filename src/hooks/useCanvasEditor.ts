@@ -22,9 +22,13 @@ export const useCanvasEditor = () => {
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
   const [previewLine, setPreviewLine] = useState<PreviewLine | null>(null);
   const [mouseMoved, setMouseMoved] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState<Point | null>(null);
+  const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
+  const [mouseDownTimer, setMouseDownTimer] = useState<number | null>(null);
   
   // Rectangle drawing mode: 'click' for click-release-click or 'drag' for click-drag-release
-  const [rectangleDrawMode, setRectangleDrawMode] = useState<'click' | 'drag'>('drag');
+  const [rectangleDrawMode, setRectangleDrawMode] = useState<'click' | 'drag'>('click');
   
   // New state for snapping controls
   const [snapToAngle, setSnapToAngle] = useState<boolean>(true);
@@ -77,6 +81,10 @@ export const useCanvasEditor = () => {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Apply canvas transform for panning
+    ctx.save();
+    ctx.translate(canvasOffset.x, canvasOffset.y);
+
     // Draw all saved shapes
     drawShapes(ctx, shapes, selectedShape?.id || null, fillColor);
 
@@ -88,7 +96,7 @@ export const useCanvasEditor = () => {
       drawInProgressPolygon(ctx, wallPolygonPoints, currentPoint, '#000000', 'transparent', true, false);
       
       // Draw dotted extension line if there is one - same as for wall tool
-      if (extensionLine) {
+      if (extensionLine && snapToExtensions) {
         drawExtensionLine(ctx, extensionLine.start, extensionLine.end);
       }
     }
@@ -159,7 +167,7 @@ export const useCanvasEditor = () => {
       drawPreviewLine(ctx, startPoint, endPoint, currentColor);
       
       // Draw dotted extension line if there is one
-      if (extensionLine) {
+      if (extensionLine && snapToExtensions) {
         drawExtensionLine(ctx, extensionLine.start, extensionLine.end); // Never blocked in this case
       }
     }
@@ -203,6 +211,8 @@ export const useCanvasEditor = () => {
       ctx.lineWidth = 1;
       ctx.stroke();
     }
+
+    ctx.restore();
   };
 
   // Function to snap angle to nearest 45 degrees if within threshold
@@ -331,11 +341,24 @@ export const useCanvasEditor = () => {
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = e.clientX - rect.left - canvasOffset.x;
+    const y = e.clientY - rect.top - canvasOffset.y;
     
     const point: Point = { x, y };
     setMouseMoved(false);
+    
+    // Set up potential panning on any tool with click-hold
+    setPanStart({ x: e.clientX, y: e.clientY });
+    
+    // Start a timer to detect if this is a click-hold (for panning)
+    const timerId = window.setTimeout(() => {
+      // Only activate panning if mouse hasn't moved significantly and button is still down
+      if (!mouseMoved && e.buttons === 1) {
+        setIsPanning(true);
+      }
+    }, 150); // Short delay to detect hold vs click
+    
+    setMouseDownTimer(timerId);
     
     if (activeTool === 'select') {
       handleSelectToolMouseDown(point);
@@ -362,9 +385,7 @@ export const useCanvasEditor = () => {
     } else if (activeTool === 'wall-polygon') {
       handleWallPolygonToolMouseDown(point);
     } else if (activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') {
-      // Fix rectangle drawing mode
-      // In drag mode, first click starts drawing, mouse release completes it
-      handleRectangleToolMouseDown(point);
+      handleRectangleToolClick(point);
     } else if (activeTool === 'yellow-polygon' || activeTool === 'green-polygon') {
       handlePolygonToolMouseDown(point);
     }
@@ -376,8 +397,47 @@ export const useCanvasEditor = () => {
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    
+    // Check if we're panning the canvas
+    if (isPanning && panStart) {
+      // Calculate pan amount
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      
+      // Update canvas offset
+      setCanvasOffset({
+        x: canvasOffset.x + dx,
+        y: canvasOffset.y + dy
+      });
+      
+      // Update pan start point
+      setPanStart({ x: e.clientX, y: e.clientY });
+      
+      // Redraw the canvas with updated offset
+      redrawCanvas();
+      return;
+    }
+    
+    // Set mouseMoved to true if we've moved more than a tiny amount
+    if (panStart) {
+      const moveDistance = Math.sqrt(
+        Math.pow(e.clientX - panStart.x, 2) + 
+        Math.pow(e.clientY - panStart.y, 2)
+      );
+      
+      if (moveDistance > 3) {
+        setMouseMoved(true);
+        
+        // Clear the mouse down timer if it exists to prevent panning
+        if (mouseDownTimer !== null) {
+          window.clearTimeout(mouseDownTimer);
+          setMouseDownTimer(null);
+        }
+      }
+    }
+    
+    const x = e.clientX - rect.left - canvasOffset.x;
+    const y = e.clientY - rect.top - canvasOffset.y;
     
     const point: Point = { x, y };
     
@@ -607,7 +667,7 @@ export const useCanvasEditor = () => {
       snappedPoint = endpointSnap;
     } 
     
-    // Apply angle snapping - remove condition to allow both to work together
+    // Apply angle snapping - removed condition to allow both to work together
     if (snapToAngle && wallPolygonPoints.length > 0) {
       // Apply angle snapping from the last polygon point
       const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
@@ -713,10 +773,29 @@ export const useCanvasEditor = () => {
     setIsDrawing(false);
   };
 
-  // Handle rectangle tool mouse down - fixed to work properly
-  const handleRectangleToolMouseDown = (point: Point) => {
-    setStartPoint(point);
-    setIsDrawing(true);
+  // Handle rectangle tool with click mode
+  const handleRectangleToolClick = (point: Point) => {
+    if (!startPoint) {
+      // First click - set start point
+      setStartPoint(point);
+      setCurrentPoint(point); // Initialize current point to same as start
+      setIsDrawing(true);
+    } else {
+      // Second click - complete the rectangle
+      const newRectangle = {
+        id: generateId(),
+        type: 'rectangle' as const,
+        start: { ...startPoint },
+        end: point,
+        color: 'transparent', // Make the border transparent
+        fillColor: activeTool === 'green-rectangle' ? greenFillColor : fillColor
+      };
+      
+      setShapes([...shapes, newRectangle]);
+      setStartPoint(null);  // Reset start point
+      setCurrentPoint(null); // Reset current point
+      setIsDrawing(false);  // End drawing mode
+    }
   };
   
   // Handle polygon tool mouse down
@@ -795,10 +874,23 @@ export const useCanvasEditor = () => {
   const endDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     
+    // Clear the mouse down timer if it exists
+    if (mouseDownTimer !== null) {
+      window.clearTimeout(mouseDownTimer);
+      setMouseDownTimer(null);
+    }
+    
+    // End panning if we were panning
+    if (isPanning) {
+      setIsPanning(false);
+      setPanStart(null);
+      return;
+    }
+    
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = e.clientX - rect.left - canvasOffset.x;
+    const y = e.clientY - rect.top - canvasOffset.y;
     
     const point: Point = { x, y };
     
@@ -820,6 +912,7 @@ export const useCanvasEditor = () => {
     
     setIsDragging(false);
     setMouseMoved(false);
+    setPanStart(null);
   };
 
   // Delete selected shape
@@ -840,6 +933,7 @@ export const useCanvasEditor = () => {
     setCurrentPoint(null);
     setIsDrawing(false);
     setPreviewLine(null);
+    setCanvasOffset({ x: 0, y: 0 }); // Reset canvas panning
   };
 
   // Toggle snap to angle
@@ -911,7 +1005,8 @@ export const useCanvasEditor = () => {
     startPoint,
     currentPoint,
     previewLine,
-    extensionLine
+    extensionLine,
+    canvasOffset
   ]);
   
   return {
@@ -937,7 +1032,6 @@ export const useCanvasEditor = () => {
     toggleSnapToLines,
     snapToExtensions,
     toggleSnapToExtensions,
-    rectangleDrawMode,
-    toggleRectangleDrawMode
+    rectangleDrawMode
   };
 };

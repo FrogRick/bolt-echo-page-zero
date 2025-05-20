@@ -6,6 +6,7 @@ import { PDFCanvasContent } from "./PDFCanvasContent";
 import { usePDFCanvasEventHandlers } from "./PDFCanvasEventHandlers";
 import { PDFCanvasProps } from "./PDFCanvasProps";
 import { useWallDrawing } from "@/hooks/useWallDrawing";
+import { usePDFInteractions } from "@/hooks/usePDFInteractions";
 
 const MIN_SCALE = 1.0;
 const MAX_SCALE = 3.0;
@@ -70,6 +71,30 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     wallThickness,
     snapToAngle,
     snapToWalls
+  });
+
+  // Use PDF interactions hook for more advanced interactions
+  const interactions = usePDFInteractions({
+    pdfContainerRef,
+    scale,
+    panPosition,
+    setPanPosition,
+    isDragging,
+    setIsDragging,
+    draggedSymbol,
+    setDraggedSymbol,
+    isPanning,
+    setIsPanning,
+    lastMousePosition,
+    setLastMousePosition,
+    activeSymbolType,
+    onSymbolPlace,
+    onSymbolDragEnd,
+    setScale,
+    minScale: MIN_SCALE,
+    maxScale: MAX_SCALE,
+    drawingWallMode,
+    onWallPointSet
   });
 
   // Update wall drawing mode when prop changes
