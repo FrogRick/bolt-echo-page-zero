@@ -1,167 +1,131 @@
 
-import { useState, useRef } from "react";
-import { PDFSection } from "./PDFSection";
-import { EditorSymbol, WallSymbol } from "@/types/editor";
-import { useEditorState } from "@/hooks/useEditorState";
+import React, { useEffect, useState } from "react";
+import { useCanvasEditor } from "@/hooks/useCanvasEditor";
+import { Tool } from "@/types/canvas";
 import { Toolbar } from "./Toolbar";
-import { TopMenu } from "./TopMenu";
-import { ExportOptions } from "./ExportOptions";
-import { WorkflowStage } from "./WorkflowSteps";
 
-const Canvas = () => {
-  // Mock project data
-  const mockProject = {
-    id: "1",
-    name: "Floor Plan",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    pdfs: []
-  };
-  
+const Canvas: React.FC = () => {
   const {
-    pdfFile,
-    setPdfFile,
-    numPages,
-    setNumPages,
-    pageNumber,
-    setPageNumber,
-    symbols,
-    setSymbols,
-    scale,
-    setScale,
-    selectedSymbol,
-    setSelectedSymbol,
-    activeSymbolType,
-    setActiveSymbolType,
-    drawingWallMode,
-    setDrawingWallMode,
-    wallStartPoint,
-    setWallStartPoint,
-    layers,
-    setLayers,
-    similarityDetectionMode,
-    setSimilarityDetectionMode,
-    wallThickness,
-    setWallThickness,
+    canvasRef,
+    activeTool,
+    setActiveTool,
+    currentColor,
+    setCurrentColor,
+    fillColor,
+    setFillColor,
+    startDrawing,
+    draw,
+    endDrawing,
+    deleteSelected,
+    clearCanvas,
+    canvasSize,
     snapToAngle,
-    setSnapToAngle,
-    snapToWalls,
-    setSnapToWalls,
-    currentStage,
-    setCurrentStage,
-    useManualWalls,
-    setUseManualWalls,
-    exportSettings,
-    setExportSettings
-  } = useEditorState();
-  
-  const pdfRef = useRef(null);
-  
-  // Handle document load success
-  const handleDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
-    setPageNumber(1);
-  };
+    toggleSnapToAngle,
+    snapToEndpoints,
+    toggleSnapToEndpoints,
+    snapToLines,
+    toggleSnapToLines,
+    snapToExtensions,
+    toggleSnapToExtensions
+  } = useCanvasEditor();
 
-  // Handle similar walls detected from the PDF
-  const handleSimilarWallsDetected = (walls: WallSymbol[]) => {
-    if (walls && walls.length > 0) {
-      setSymbols(prevSymbols => [...prevSymbols, ...walls]);
-      setSimilarityDetectionMode(false);
+  // Toggle state for the snap control group
+  const [snapEnabled, setSnapEnabled] = useState(true);
+
+  // Force canvas redraw when tool or styling changes to ensure correct rendering
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Force a clean redraw by clearing and triggering the redraw in useCanvasEditor
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // This will trigger the redraw effect in useCanvasEditor
+        setActiveTool(activeTool);
+      }
     }
-  };
+  }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions]);
+  // Added all snap settings and colors to the dependency array to ensure proper redrawing
 
-  // Handle export
-  const handleExport = () => {
-    console.log("Exporting with settings:", exportSettings);
-    // Implement actual export logic here
+  // Toggle all snap settings on/off
+  const toggleAllSnaps = () => {
+    const newState = !snapEnabled;
+    setSnapEnabled(newState);
+    
+    // Only toggle individual snap settings if they don't match the new group state
+    if (snapToAngle !== newState) toggleSnapToAngle();
+    if (snapToEndpoints !== newState) toggleSnapToEndpoints();
+    if (snapToLines !== newState) toggleSnapToLines();
+    if (snapToExtensions !== newState) toggleSnapToExtensions();
   };
 
   return (
-    <div className="canvas-container h-full flex flex-col">
-      <TopMenu 
-        project={mockProject}
-        numPages={numPages}
-        pageNumber={pageNumber}
-        setPageNumber={setPageNumber}
-        currentStage={currentStage as WorkflowStage}
-        setCurrentStage={setCurrentStage}
-        pdfFile={pdfFile}
-        isSaved={true}
-        onSave={() => console.log("Saving canvas...")}
-        onPrint={() => console.log("Printing canvas...")}
-        pdfs={[]}
+    <div className="flex flex-col h-full">
+      <Toolbar 
+        activeTool={activeTool}
+        onToolChange={setActiveTool}
+        onDelete={deleteSelected}
+        onClear={clearCanvas}
       />
-
-      <div className="flex flex-1 overflow-hidden">
-        <Toolbar 
-          onActiveSymbolChange={setActiveSymbolType}
-          onDrawingModeToggle={setDrawingWallMode}
-          onSimilarityModeToggle={setSimilarityDetectionMode}
-          onLayersChange={setLayers}
-          onWallThicknessChange={setWallThickness}
-          onSnapToAngleToggle={setSnapToAngle}
-          onSnapToWallsToggle={setSnapToWalls}
-          onUseManualWallsToggle={setUseManualWalls}
-          isDrawingModeActive={drawingWallMode}
-          isSimilarityModeActive={similarityDetectionMode}
-          activeLayers={layers}
-          currentWallThickness={wallThickness}
-          isSnapToAngleActive={snapToAngle}
-          isSnapToWallsActive={snapToWalls}
-          isManualWallsActive={useManualWalls}
-          currentStage={currentStage as WorkflowStage}
-        />
-
-        <div className="flex-1 relative overflow-hidden">
-          <PDFSection
-            ref={pdfRef}
-            pdfFile={pdfFile}
-            pageNumber={pageNumber}
-            scale={scale}
-            setScale={setScale}
-            symbols={symbols}
-            setSymbols={setSymbols}
-            onPDFUpload={setPdfFile}
-            onDocumentLoadSuccess={handleDocumentLoadSuccess}
-            activeSymbolType={activeSymbolType}
-            setActiveSymbolType={setActiveSymbolType}
-            selectedSymbol={selectedSymbol}
-            setSelectedSymbol={setSelectedSymbol}
-            drawingWallMode={drawingWallMode}
-            setDrawingWallMode={setDrawingWallMode}
-            wallStartPoint={wallStartPoint}
-            setWallStartPoint={setWallStartPoint}
-            layers={layers}
-            setLayers={setLayers}
-            similarityDetectionMode={similarityDetectionMode}
-            setSimilarityDetectionMode={setSimilarityDetectionMode}
-            onSimilarWallsDetected={handleSimilarWallsDetected}
-            currentStage={currentStage}
-            useManualWalls={useManualWalls}
-            setUseManualWalls={setUseManualWalls}
-            wallThickness={wallThickness}
-            snapToAngle={snapToAngle}
-            snapToWalls={snapToWalls}
-            hideBackgroundPDF={false}
+      
+      <div className="p-2 bg-white border-b flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label htmlFor="colorPicker" className="text-sm font-medium">Stroke:</label>
+          <input
+            id="colorPicker"
+            type="color"
+            value={currentColor}
+            onChange={(e) => setCurrentColor(e.target.value)}
+            className="w-8 h-8 rounded cursor-pointer"
           />
         </div>
 
-        {/* Right sidebar for properties or export */}
-        {exportSettings && (
-          <div className="w-80 border-l border-gray-200 p-4 overflow-y-auto">
-            <ExportOptions
-              pdfFile={pdfFile}
-              symbols={symbols}
-              project={null}
-              exportSettings={exportSettings}
-              setExportSettings={setExportSettings}
-              onExport={handleExport}
-              customLogoAllowed={true}
-              qrCodeAllowed={true}
-            />
+        <div className="flex items-center gap-2">
+          <label htmlFor="fillColorPicker" className="text-sm font-medium">Fill:</label>
+          <input
+            id="fillColorPicker"
+            type="color"
+            value={fillColor}
+            onChange={(e) => setFillColor(e.target.value)}
+            className="w-8 h-8 rounded cursor-pointer"
+          />
+        </div>
+        
+        <div className="border-l pl-4">
+          <div className="flex items-center gap-2">
+            <label className="inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={snapEnabled} 
+                onChange={toggleAllSnaps}
+                className="sr-only peer"
+              />
+              <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+              <span className="ml-2 text-sm font-medium">Snap</span>
+            </label>
           </div>
-        )}
+        </div>
+      </div>
+      
+      <div className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto p-4">
+        <div className="relative shadow-xl">
+          <canvas
+            ref={canvasRef}
+            width={canvasSize.width}
+            height={canvasSize.height}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={endDrawing}
+            onMouseLeave={endDrawing}
+            className={`bg-white border border-gray-200 ${
+              activeTool === "select" 
+                ? "cursor-default" 
+                : (activeTool === "wall" || activeTool === "wall-polygon" || activeTool === "yellow-polygon" || activeTool === "green-polygon")
+                  ? "cursor-crosshair" 
+                  : "cursor-crosshair"
+            }`}
+          />
+        </div>
       </div>
     </div>
   );
