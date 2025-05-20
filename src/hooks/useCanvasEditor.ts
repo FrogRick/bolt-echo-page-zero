@@ -336,15 +336,15 @@ export const useCanvasEditor = () => {
   };
 
   // Handle mouse down event
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>, point: Point) => {
     if (!canvasRef.current) return;
     
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left - canvasOffset.x;
-    const y = e.clientY - rect.top - canvasOffset.y;
+    // Apply canvas offset to the point AFTER receiving the raw coordinates
+    const adjustedPoint: Point = { 
+      x: point.x - canvasOffset.x,
+      y: point.y - canvasOffset.y
+    };
     
-    const point: Point = { x, y };
     setMouseMoved(false);
     
     // Set up potential panning on any tool with click-hold
@@ -361,14 +361,14 @@ export const useCanvasEditor = () => {
     setMouseDownTimer(timerId);
     
     if (activeTool === 'select') {
-      handleSelectToolMouseDown(point);
+      handleSelectToolMouseDown(adjustedPoint);
     } else if (activeTool === 'wall') {
       // Apply both endpoint and line snapping before starting to draw
-      let snappedPoint = point;
+      let snappedPoint = adjustedPoint;
       
       // First check if we can snap to a line
       if (snapToLines) {
-        const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
+        const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(adjustedPoint, shapes);
         if (lineSnap) {
           snappedPoint = lineSnap.point;
         }
@@ -383,20 +383,23 @@ export const useCanvasEditor = () => {
       // Use click-point-click mode exclusively for lines
       handleLineToolClick(snappedPoint);
     } else if (activeTool === 'wall-polygon') {
-      handleWallPolygonToolMouseDown(point);
+      handleWallPolygonToolMouseDown(adjustedPoint);
     } else if (activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') {
-      handleRectangleToolClick(point);
+      handleRectangleToolClick(adjustedPoint);
     } else if (activeTool === 'yellow-polygon' || activeTool === 'green-polygon') {
-      handlePolygonToolMouseDown(point);
+      handlePolygonToolMouseDown(adjustedPoint);
     }
   };
 
   // Handle mouse move event
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const draw = (e: React.MouseEvent<HTMLCanvasElement>, point: Point) => {
     if (!canvasRef.current) return;
     
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
+    // Apply canvas offset to the point AFTER receiving the raw coordinates
+    const adjustedPoint: Point = {
+      x: point.x - canvasOffset.x,
+      y: point.y - canvasOffset.y
+    };
     
     // Check if we're panning the canvas
     if (isPanning && panStart) {
@@ -436,23 +439,18 @@ export const useCanvasEditor = () => {
       }
     }
     
-    const x = e.clientX - rect.left - canvasOffset.x;
-    const y = e.clientY - rect.top - canvasOffset.y;
-    
-    const point: Point = { x, y };
-    
-    setCurrentPoint(point);
+    setCurrentPoint(adjustedPoint);
     
     if (isDragging && selectedShape) {
-      handleDragMove(point);
+      handleDragMove(adjustedPoint);
     } else if (activeTool === 'wall' && startPoint) {
       // For wall tool, check for perpendicular extension snapping during mouse move
-      let modifiedPoint = point; // Store the potentially modified point
+      let modifiedPoint = adjustedPoint; // Store the potentially modified point
       let extensionFound = false;
       
       // Only check for extension if the feature is enabled
       if (snapToExtensions) {
-        const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(startPoint, point, shapes);
+        const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(startPoint, adjustedPoint, shapes);
         if (extensionSnap) {
           // Set current point to the extension point
           modifiedPoint = extensionSnap.point;
@@ -496,7 +494,7 @@ export const useCanvasEditor = () => {
     } 
     else if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
       // For wall-polygon, apply the same snapping as wall tool during mouse movement
-      let snappedPoint = point;
+      let snappedPoint = adjustedPoint;
       let extensionFound = false;
       
       // Create a temporary array that includes both shapes and the current in-progress wall polygon
@@ -522,7 +520,7 @@ export const useCanvasEditor = () => {
       // Only check for extensions if the feature is enabled
       if (snapToExtensions) {
         // Use the extended shapes array that includes our in-progress wall polygon
-        const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, temporaryLines);
+        const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, adjustedPoint, temporaryLines);
         if (extensionSnap) {
           snappedPoint = extensionSnap.point;
           setCurrentPoint(extensionSnap.point);
@@ -543,7 +541,7 @@ export const useCanvasEditor = () => {
       
       // Then check if we can snap to a line if no extension was found
       if (!extensionFound && snapToLines) {
-        const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
+        const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(adjustedPoint, shapes);
         if (lineSnap) {
           snappedPoint = lineSnap.point;
           setCurrentPoint(lineSnap.point);
@@ -693,8 +691,7 @@ export const useCanvasEditor = () => {
       // If we already have points, check if this is a double-click (close to last point)
       const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
       const distance = Math.sqrt(
-        Math.pow(snappedPoint.x - lastPoint.x, 2) + 
-        Math.pow(snappedPoint.y - lastPoint.y, 2)
+        Math.pow(snappedPoint.x - lastPoint.x, 2) + Math.pow(snappedPoint.y - lastPoint.y, 2)
       );
       
       if (distance < 10) {
@@ -871,7 +868,7 @@ export const useCanvasEditor = () => {
   };
 
   // Handle mouse up event
-  const endDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const endDrawing = (e: React.MouseEvent<HTMLCanvasElement>, point: Point) => {
     if (!canvasRef.current) return;
     
     // Clear the mouse down timer if it exists
@@ -887,12 +884,11 @@ export const useCanvasEditor = () => {
       return;
     }
     
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left - canvasOffset.x;
-    const y = e.clientY - rect.top - canvasOffset.y;
-    
-    const point: Point = { x, y };
+    // Apply canvas offset to the point AFTER receiving the raw coordinates
+    const adjustedPoint: Point = {
+      x: point.x - canvasOffset.x,
+      y: point.y - canvasOffset.y
+    };
     
     if ((activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'drag' && startPoint) {
       // Complete rectangle on mouse up with no border
@@ -900,7 +896,7 @@ export const useCanvasEditor = () => {
         id: generateId(),
         type: 'rectangle' as const,
         start: { ...startPoint },
-        end: point,
+        end: adjustedPoint,
         color: 'transparent', // Make the border transparent
         fillColor: activeTool === 'green-rectangle' ? greenFillColor : fillColor
       };

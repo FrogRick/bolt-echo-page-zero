@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -32,9 +31,9 @@ const Canvas: React.FC = () => {
     setCurrentColor,
     fillColor,
     setFillColor,
-    startDrawing,
-    draw,
-    endDrawing,
+    startDrawing: startDrawingHook,
+    draw: drawHook,
+    endDrawing: endDrawingHook,
     deleteSelected,
     clearCanvas,
     canvasSize,
@@ -388,6 +387,52 @@ const Canvas: React.FC = () => {
     setSelectedImageId(null);
   };
 
+  // Fixed wrapper functions for mouse events that correctly translate coordinates
+  const handleStartDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Calculate correct position relative to the canvas element
+    // WITHOUT applying canvasOffset (panning offset) here - that will be handled in the hook
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Pass the raw coordinates to the hook
+    startDrawingHook(e, {x, y});
+  };
+  
+  const handleDraw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Calculate correct position relative to the canvas element
+    // WITHOUT applying canvasOffset (panning offset) here - that will be handled in the hook
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Pass the raw coordinates to the hook
+    drawHook(e, {x, y});
+  };
+  
+  const handleEndDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Calculate correct position relative to the canvas element
+    // WITHOUT applying canvasOffset (panning offset) here - that will be handled in the hook
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Pass the raw coordinates to the hook
+    endDrawingHook(e, {x, y});
+  };
+
   // Force canvas redraw when tool or styling changes to ensure correct rendering
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -593,15 +638,15 @@ const Canvas: React.FC = () => {
             </div>
           ))}
           
-          {/* Drawing canvas on top of everything */}
+          {/* Drawing canvas on top of everything - UPDATED EVENT HANDLERS */}
           <canvas
             ref={canvasRef}
             width={canvasSize.width}
             height={canvasSize.height}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={endDrawing}
-            onMouseLeave={endDrawing}
+            onMouseDown={handleStartDrawing}
+            onMouseMove={handleDraw}
+            onMouseUp={handleEndDrawing}
+            onMouseLeave={handleEndDrawing}
             className={`bg-transparent w-full absolute top-0 left-0 ${
               activeTool === "select" 
                 ? "cursor-default" 
