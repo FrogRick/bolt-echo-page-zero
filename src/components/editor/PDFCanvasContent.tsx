@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { PDFCanvasProps } from "./PDFCanvasProps";
 import PDFUploader from "@/components/editor/PDFUploader";
 import { PDFViewer } from "./PDFViewer";
@@ -63,43 +63,43 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
 }) => {
   
   const handleDocumentLoadError = (error: Error) => {
-    console.error("PDF load error:", error);
+    console.error("❌ PDF load error:", error);
     setPdfError("Failed to load PDF. Please try a different file.");
   };
 
   // Debug symbol count
-  React.useEffect(() => {
-    console.log(`PDFCanvasContent - Total symbols: ${symbols.length}, Underlays: ${symbols.filter(s => s.type === 'underlay').length}`);
+  useEffect(() => {
+    console.log(`📊 PDFCanvasContent - Total symbols: ${symbols.length}, Underlays: ${symbols.filter(s => s.type === 'underlay').length}`);
   }, [symbols]);
 
   const handleFileUpload = (file: File) => {
-    console.log("PDFCanvasContent - handleFileUpload called with:", file.name, file.type, file.size);
+    console.log("🔄 PDFCanvasContent - handleFileUpload called with:", file.name, file.type, file.size);
     
     // Handle as main PDF
     onPDFUpload(file);
     
     // Also handle as underlay if needed
     if (onFileUploaded && (file.type === "application/pdf" || file.type.startsWith("image/"))) {
-      console.log("PDFCanvasContent - Forwarding to onFileUploaded");
+      console.log("↪️ PDFCanvasContent - Forwarding to onFileUploaded for underlay creation");
       onFileUploaded(file);
       
-      // Add a delay and log to check if the symbols array gets updated
+      // Check if the symbols array gets updated after a delay
       setTimeout(() => {
-        console.log("PDFCanvasContent - After onFileUploaded delay - Symbols count:", symbols.length, 
+        console.log("⏱️ PDFCanvasContent - After onFileUploaded delay - Symbols count:", symbols.length, 
           "Underlays:", symbols.filter(s => s.type === 'underlay').length);
       }, 1000);
     }
   };
 
   // Add a useEffect to monitor pdfFile changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (pdfFile) {
-      console.log("PDFCanvasContent - PDF file changed:", pdfFile.name, pdfFile.type, pdfFile.size);
+      console.log("📄 PDFCanvasContent - PDF file changed:", pdfFile.name, pdfFile.type, pdfFile.size);
     }
   }, [pdfFile]);
 
   if (!pdfFile) {
-    console.log("PDFCanvasContent - No PDF file, showing uploader");
+    console.log("📁 PDFCanvasContent - No PDF file, showing uploader");
     return (
       <div className="flex items-center justify-center h-full border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
         <PDFUploader onUpload={handleFileUpload} />
@@ -107,7 +107,7 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
     );
   }
   
-  console.log("PDFCanvasContent - Rendering with PDF file:", pdfFile.name, pdfFile.type);
+  console.log("🔍 PDFCanvasContent - Rendering with PDF file:", pdfFile.name, pdfFile.type);
 
   return (
     <>
@@ -157,7 +157,7 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
         draggedSymbolId={draggedSymbol?.id || null}
         containerRef={pdfContainerRef}
         onDocumentLoadSuccess={(data) => {
-          console.log("PDFCanvasContent - Document load success:", data);
+          console.log("✅ PDFCanvasContent - Document load success:", data);
           onDocumentLoadSuccess(data);
         }}
         onDocumentLoadError={handleDocumentLoadError}
