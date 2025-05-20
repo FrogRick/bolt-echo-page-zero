@@ -139,11 +139,11 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     
     // Add the underlay to symbols
     if (setSymbols) {
-      setSymbols((prevSymbols: EditorSymbol[]) => [...prevSymbols, newUnderlay]);
+      setSymbols(prevSymbols => [...prevSymbols, newUnderlay]);
     }
   };
 
-  // Use our PDF canvas core hook - moved after the handleFileUploadForUnderlay declaration
+  // Use our PDF canvas core hook
   const {
     cursorStyle,
     handleCanvasClickCustom,
@@ -360,3 +360,4 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
 });
 
 PDFCanvas.displayName = 'PDFCanvas';
+
