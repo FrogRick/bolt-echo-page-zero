@@ -77,73 +77,7 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     snapToWalls
   });
 
-  // Use our PDF canvas core hook first
-  const {
-    cursorStyle,
-    handleCanvasClickCustom,
-    handleSelectionMove,
-    handleSelectionEnd,
-    isSelecting,
-    clearDetectedWalls,
-    redoWallDetection,
-    findSimilarWalls,
-    handleFileUpload
-  } = usePDFCanvasCore({
-    pdfFile,
-    scale,
-    panPosition,
-    isPanning,
-    setIsPanning,
-    similarityDetectionMode,
-    drawingWallMode,
-    activeSymbolType,
-    onWallPointSet,
-    onSymbolPlace,
-    onSimilarWallsDetected,
-    symbols,
-    onExitDetectionMode: () => onSimilarityModeToggle && onSimilarityModeToggle(false),
-    onMouseDown: handleMouseDown,
-    onMouseMove: handleMouseMove,
-    onMouseUp: handleMouseUp,
-    onFileUploaded: handleFileUploadForUnderlay
-  });
-
-  // Use our PDF canvas event handlers
-  const {
-    handleCanvasClick,
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd,
-    handleMouseDown,
-    handleMouseMove,
-    handleMouseUp,
-    handlePDFUpload
-  } = usePDFCanvasEventHandlers({
-    pdfContainerRef,
-    scale,
-    panPosition,
-    setPanPosition,
-    isDragging,
-    setIsDragging,
-    draggedSymbol,
-    setDraggedSymbol,
-    isPanning,
-    setIsPanning,
-    lastMousePosition,
-    setLastMousePosition,
-    activeSymbolType,
-    onSymbolPlace,
-    onSymbolDragEnd,
-    setScale,
-    onZoomIn,
-    onZoomOut,
-    pdfFile,
-    similarityDetectionMode,
-    drawingWallMode,
-    onWallPointSet
-  });
-
-  // Handle file upload for underlays (PDF, images)
+  // Handle file upload for underlays (PDF, images) - Define this function before using it
   const handleFileUploadForUnderlay = (file: File) => {
     if (!file) return;
 
@@ -184,6 +118,72 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
       variant: "success"
     });
   };
+
+  // Use our PDF canvas event handlers - Define handlers before using them
+  const {
+    handleCanvasClick,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handlePDFUpload
+  } = usePDFCanvasEventHandlers({
+    pdfContainerRef,
+    scale,
+    panPosition,
+    setPanPosition,
+    isDragging,
+    setIsDragging,
+    draggedSymbol,
+    setDraggedSymbol,
+    isPanning,
+    setIsPanning,
+    lastMousePosition,
+    setLastMousePosition,
+    activeSymbolType,
+    onSymbolPlace,
+    onSymbolDragEnd,
+    setScale,
+    onZoomIn,
+    onZoomOut,
+    pdfFile,
+    similarityDetectionMode,
+    drawingWallMode,
+    onWallPointSet
+  });
+
+  // Use our PDF canvas core hook after defining the handlers it needs
+  const {
+    cursorStyle,
+    handleCanvasClickCustom,
+    handleSelectionMove,
+    handleSelectionEnd,
+    isSelecting,
+    clearDetectedWalls,
+    redoWallDetection,
+    findSimilarWalls,
+    handleFileUpload
+  } = usePDFCanvasCore({
+    pdfFile,
+    scale,
+    panPosition,
+    isPanning,
+    setIsPanning,
+    similarityDetectionMode,
+    drawingWallMode,
+    activeSymbolType,
+    onWallPointSet,
+    onSymbolPlace,
+    onSimilarWallsDetected,
+    symbols,
+    onExitDetectionMode: () => onSimilarityModeToggle && onSimilarityModeToggle(false),
+    onMouseDown: handleMouseDown,
+    onMouseMove: handleMouseMove,
+    onMouseUp: handleMouseUp,
+    onFileUploaded: handleFileUploadForUnderlay
+  });
 
   // Use PDF interactions hook for more advanced interactions
   const interactions = usePDFInteractions({
