@@ -86,6 +86,11 @@ export const useCanvasEditor = () => {
       // For wall polygon, we draw lines without fill - use black border and gray fill like walls
       // Pass false for showStartPoint to hide the red circle
       drawInProgressPolygon(ctx, wallPolygonPoints, currentPoint, '#000000', 'transparent', true, false);
+      
+      // Draw dotted extension line if there is one - same as for wall tool
+      if (extensionLine) {
+        drawExtensionLine(ctx, extensionLine.start, extensionLine.end);
+      }
     }
 
     // Draw polygon in progress
@@ -422,31 +427,33 @@ export const useCanvasEditor = () => {
       redrawCanvas();
     } 
     else if (activeTool === 'wall-polygon' && wallPolygonPoints.length > 0) {
-      // For wall-polygon, apply the same snapping as wall tool
+      // For wall-polygon, apply the same snapping as wall tool during mouse movement
       let snappedPoint = point;
-      let extensionFound = false;
       
-      // Check for perpendicular extension snapping
+      // Check for perpendicular extension snapping - Added this to match Wall tool behavior
       if (snapToExtensions) {
         const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
         const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, shapes);
         if (extensionSnap) {
           snappedPoint = extensionSnap.point;
+          setCurrentPoint(extensionSnap.point);
+          
+          // Set extension line to show the visual indicator
           setExtensionLine({
             start: extensionSnap.extendedLine.start,
             end: extensionSnap.point
           });
-          extensionFound = true;
         } else {
           setExtensionLine(null);
         }
       }
       
-      // First check if we can snap to a line
-      if (!extensionFound && snapToLines) {
+      // Then check if we can snap to a line if no extension was found
+      if (!extensionLine && snapToLines) {
         const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
         if (lineSnap) {
           snappedPoint = lineSnap.point;
+          setCurrentPoint(lineSnap.point);
         }
       }
       
@@ -454,26 +461,25 @@ export const useCanvasEditor = () => {
       const endpointSnap = findNearestEndpoint(snappedPoint);
       if (endpointSnap) {
         snappedPoint = endpointSnap;
-      } 
+        setCurrentPoint(endpointSnap);
+      }
       
-      // Apply angle snapping AFTER all other snapping
-      if (snapToAngle && wallPolygonPoints.length > 0) {
-        // Always try to apply angle snapping
+      // Apply angle snapping after all other snaps
+      if (snapToAngle && !extensionLine) {
         const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
         const angleSnappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
         
-        // Only use the angle-snapped point if it's close enough to our snapped point
+        // Only use the angle-snapped point if it's close enough to our current point
         const distToSnapped = Math.sqrt(
           Math.pow(angleSnappedPoint.x - snappedPoint.x, 2) + 
           Math.pow(angleSnappedPoint.y - snappedPoint.y, 2)
         );
         
-        if (distToSnapped < 20) { // Only apply angle snapping if close to current angle
-          snappedPoint = angleSnappedPoint;
+        if (distToSnapped < 20) {
+          setCurrentPoint(angleSnappedPoint);
         }
       }
       
-      setCurrentPoint(snappedPoint);
       redrawCanvas();
     } else if (isDrawing && (activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'drag') {
       redrawCanvas();
