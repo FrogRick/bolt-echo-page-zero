@@ -1,8 +1,7 @@
-
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Upload, Image } from "lucide-react";
+import { FileImage, Upload } from "lucide-react";
 
 interface PDFUploaderProps {
   onUpload: (file: File) => void;
@@ -147,8 +146,7 @@ const PDFUploader = ({
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
           ) : (
             <div className="flex">
-              <FileText className="w-8 h-8 text-primary mr-1" />
-              <Image className="w-8 h-8 text-primary ml-1" />
+              <FileImage className="w-8 h-8 text-primary" />
             </div>
           )}
         </div>
@@ -169,7 +167,7 @@ const PDFUploader = ({
         
         <Button 
           onClick={() => {
-            console.log("🔍 PDFUploader - Select file button clicked");
+            console.log("🔍 PDFUploader - Add Image button clicked");
             fileInputRef.current?.click();
           }} 
           className="mb-4 px-8 py-6 text-lg w-full relative overflow-hidden" 
@@ -177,7 +175,7 @@ const PDFUploader = ({
           disabled={isUploading}
         >
           <Upload className="mr-2 h-5 w-5" /> 
-          {isUploading ? 'Uploading...' : 'Select PDF or Image'}
+          {isUploading ? 'Uploading...' : 'Add Image'}
           
           {/* Add a pulsing effect to draw attention */}
           <span className="absolute inset-0 bg-white/20 animate-pulse-slow rounded-md"></span>

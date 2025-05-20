@@ -73,7 +73,7 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
   }, [symbols]);
 
   const handleFileUpload = (file: File) => {
-    console.log("🔄 PDFCanvasContent - handleFileUpload called with:", file.name, file.type, file.size);
+    console.log("🔍 PDFCanvasContent - handleFileUpload called with:", file.name, file.type, file.size);
     
     // Handle as main PDF
     onPDFUpload(file);
@@ -82,6 +82,10 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
     if (onFileUploaded && (file.type === "application/pdf" || file.type.startsWith("image/"))) {
       console.log("↪️ PDFCanvasContent - Forwarding to onFileUploaded for underlay creation");
       onFileUploaded(file);
+      
+      // Add more verbose logging to track the process
+      console.log("📈 PDFCanvasContent - After initiating onFileUploaded - Current symbols count:", 
+        symbols.length, "File details:", file.name, file.type, file.size);
       
       // Check if the symbols array gets updated after a delay
       setTimeout(() => {
