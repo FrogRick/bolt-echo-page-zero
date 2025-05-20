@@ -4,7 +4,7 @@ import { drawShapes, drawInProgressPolygon, drawPreviewLine, drawExtensionLine, 
 
 export const useCanvasEditor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isDrawing = useRef(false);
+  const [isDrawing, setIsDrawing] = useState(false);
   const startPoint = useRef<Point | null>(null);
   const lastPoint = useRef<Point | null>(null);
   const currentPoint = useRef<Point | null>(null);
@@ -34,10 +34,14 @@ export const useCanvasEditor = () => {
     );
   };
 
-  // Modify the startDrawing function to accept explicit coordinates
+  // Modified startDrawing function with improved logging and state management
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>, xPos?: number, yPos?: number) => {
-    if (isDrawing.current) return;
-    isDrawing.current = true;
+    console.log("startDrawing called", { xPos, yPos, activeTool, currentIsDrawing: isDrawing });
+    
+    // If already drawing, don't start a new drawing operation
+    if (isDrawing) return;
+    
+    setIsDrawing(true);
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -58,10 +62,13 @@ export const useCanvasEditor = () => {
       x = (e.clientX - rect.left) * scaleX;
       y = (e.clientY - rect.top) * scaleY;
     }
+    
+    console.log("Setting start point:", { x, y });
 
     // Store the starting point
     startPoint.current = { x, y };
     lastPoint.current = { x, y };
+    currentPoint.current = { x, y };
 
     // If selecting, start the selection process
     if (activeTool === 'select') {
@@ -77,11 +84,13 @@ export const useCanvasEditor = () => {
     else if (activeTool === 'wall') {
       // For wall tool, we'll start drawing a preview line
       // The actual wall will be created on mouse up
+      console.log("Drawing wall from", { x, y });
     }
     // If drawing polygons (any type)
     else if (['wall-polygon', 'yellow-polygon', 'green-polygon'].includes(activeTool)) {
       // If this is the first point, start a new polygon
       if (inProgressPolygon.current.length === 0) {
+        console.log("Starting new polygon at", { x, y });
         inProgressPolygon.current = [{ x, y }];
       } else {
         // Check if we're closing the polygon (clicking near the first point)
@@ -92,9 +101,11 @@ export const useCanvasEditor = () => {
         
         if (distance < 20 && inProgressPolygon.current.length > 2) {
           // Close the polygon
+          console.log("Closing polygon");
           finishPolygon();
         } else {
           // Add a new point to the polygon
+          console.log("Adding point to polygon", { x, y });
           inProgressPolygon.current = [...inProgressPolygon.current, { x, y }];
         }
       }
@@ -104,10 +115,12 @@ export const useCanvasEditor = () => {
     }
   };
 
-  // Update the draw function to also use explicit coordinates
+  // Updated draw function with improved coordinates handling and logging
   const draw = (e: React.MouseEvent<HTMLCanvasElement>, xPos?: number, yPos?: number) => {
+    if (!isDrawing) return;
+    
     const canvas = canvasRef.current;
-    if (!canvas || !isDrawing.current) return;
+    if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -249,8 +262,18 @@ export const useCanvasEditor = () => {
     }
   };
 
+  // Updated endDrawing function with improved state management
   const endDrawing = () => {
-    if (!isDrawing.current) return;
+    console.log("endDrawing called", { 
+      currentIsDrawing: isDrawing, 
+      activeTool, 
+      hasStartPoint: !!startPoint.current,
+      hasCurrentPoint: !!currentPoint.current,
+      polygonPoints: inProgressPolygon.current.length
+    });
+    
+    // If we weren't drawing, nothing to end
+    if (!isDrawing) return;
     
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -269,11 +292,12 @@ export const useCanvasEditor = () => {
         color: currentColor
       };
       
+      console.log("Created new wall", newShape);
       setShapes([...shapes, newShape]);
     }
     
     // Reset drawing state
-    isDrawing.current = false;
+    setIsDrawing(false);
     
     // Don't reset startPoint for polygon drawing
     if (!['wall-polygon', 'yellow-polygon', 'green-polygon'].includes(activeTool)) {
@@ -305,10 +329,20 @@ export const useCanvasEditor = () => {
     };
     
     // Add the new shape
+    console.log("Creating finished polygon", { 
+      type: newShape.type,
+      points: newShape.points.length,
+      color: newShape.color,
+      fillColor: newShape.fillColor
+    });
+    
     setShapes([...shapes, newShape]);
     
     // Reset the in-progress polygon
     inProgressPolygon.current = [];
+    
+    // Reset drawing state
+    setIsDrawing(false);
   };
 
   // Helper function to find a shape at a specific point
@@ -595,6 +629,7 @@ export const useCanvasEditor = () => {
     snapToExtensions,
     toggleSnapToExtensions,
     rectangleDrawMode,
-    toggleRectangleDrawMode
+    toggleRectangleDrawMode,
+    isDrawing  // Expose the isDrawing state to the component
   };
 };

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -6,7 +5,7 @@ import { Toolbar } from "./Toolbar";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { FileImage, Upload, X, ImageIcon, FileIcon } from "lucide-react";
+import { FileImage, Upload, X, ImageIcon, FileIcon, Square } from "lucide-react";
 
 // Define the Image object type for our canvas
 interface CanvasImage {
@@ -46,7 +45,8 @@ const Canvas: React.FC = () => {
     toggleSnapToLines,
     snapToExtensions,
     toggleSnapToExtensions,
-    rectangleDrawMode
+    rectangleDrawMode,
+    isDrawing
   } = useCanvasEditor();
   
   const { toast } = useToast();
@@ -106,7 +106,7 @@ const Canvas: React.FC = () => {
     }
   }, [canvasImages, containerDimensions]);
 
-  // Custom event handlers that properly handle canvas positioning
+  // FIXED: Improved mouse event handling to accurately track coordinates
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     
@@ -118,10 +118,18 @@ const Canvas: React.FC = () => {
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
     
+    console.log("Canvas MouseDown", { x, y, activeTool });
+    
     // Pass the correct coordinates to the startDrawing function
     startDrawing(e, x, y);
+    
+    // Prevent default actions if we're drawing
+    if (activeTool !== 'select') {
+      e.preventDefault();
+    }
   };
   
+  // FIXED: Improved mouse move event handling
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     
@@ -135,7 +143,35 @@ const Canvas: React.FC = () => {
     
     // Pass the correct coordinates to the draw function
     draw(e, x, y);
+    
+    // Prevent default actions if we're drawing
+    if (isDrawing) {
+      e.preventDefault();
+    }
   };
+  
+  // FIXED: Improved mouse up/leave event handling
+  const handleCanvasMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    endDrawing();
+  };
+  
+  const handleCanvasMouseLeave = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // End drawing when mouse leaves canvas
+    endDrawing();
+  };
+
+  // Add keyboard event handler for escape key to cancel drawing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isDrawing) {
+        console.log("Escape pressed, canceling drawing");
+        endDrawing();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDrawing, endDrawing]);
 
   // Render PDF using canvas rather than iframe
   const renderPdfToCanvas = async (file: File, image: CanvasImage) => {
@@ -501,6 +537,14 @@ const Canvas: React.FC = () => {
           </Toggle>
         </div>
         
+        {/* Add status indicator for drawing state */}
+        {isDrawing && (
+          <div className="ml-2 px-3 py-1 bg-yellow-100 border border-yellow-300 rounded text-sm flex items-center">
+            <Square className="w-3 h-3 mr-1" />
+            Drawing in progress... (ESC to cancel)
+          </div>
+        )}
+        
         {/* Add file upload button for PDFs and images */}
         <div className="ml-auto">
           <Button
@@ -604,8 +648,8 @@ const Canvas: React.FC = () => {
             height={canvasSize.height}
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
-            onMouseUp={endDrawing}
-            onMouseLeave={endDrawing}
+            onMouseUp={handleCanvasMouseUp}
+            onMouseLeave={handleCanvasMouseLeave}
             className={`bg-transparent w-full absolute top-0 left-0 ${
               activeTool === "select" 
                 ? "cursor-default" 
