@@ -2,7 +2,7 @@
 import { Document, Page } from "react-pdf";
 import { PDFSymbols } from "./PDFSymbols";
 import { VectorElements } from "./VectorElements";
-import { EditorSymbol } from "@/types/editor";
+import { EditorSymbol, UnderlaySymbol } from "@/types/editor";
 import { useEffect, useState } from "react";
 import { Layer } from "@/hooks/useEditorState";
 
@@ -95,9 +95,9 @@ export const PDFViewer = ({
     }
   });
 
-  // Separate the symbols into regular symbols and detected elements
+  // Separate the symbols into regular symbols, vector symbols, and underlays
   const regularSymbols = visibleSymbols.filter(s => 
-    !['wall', 'door', 'stairs', 'window'].includes(s.type) || 
+    !['wall', 'door', 'stairs', 'window', 'underlay'].includes(s.type) || 
     (!('start' in s) && !('width' in s))
   );
   
@@ -105,6 +105,10 @@ export const PDFViewer = ({
     ['wall', 'door', 'stairs', 'window'].includes(s.type) && 
     (('start' in s) || ('width' in s))
   );
+
+  const underlaySymbols = visibleSymbols.filter(s => 
+    s.type === 'underlay'
+  ) as UnderlaySymbol[];
 
   // Update dimensions on window resize
   useEffect(() => {
@@ -133,12 +137,61 @@ export const PDFViewer = ({
       }}
       className="pdf-viewer"
     >
+      {/* Render underlays/background images first with lowest z-index */}
+      <div className="absolute top-0 left-0 right-0 bottom-0" style={{ zIndex: 1 }}>
+        {underlaySymbols.map(underlay => (
+          <div
+            key={underlay.id}
+            className="absolute"
+            style={{
+              left: `${underlay.x}px`,
+              top: `${underlay.y}px`,
+              width: `${underlay.width}px`,
+              height: `${underlay.height}px`,
+              transform: `rotate(${underlay.rotation}deg)`,
+              cursor: underlay.draggable ? 'move' : 'default',
+              zIndex: 1,
+            }}
+            onMouseDown={(e) => onSymbolMouseDown(e, underlay)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSymbolSelect(underlay);
+            }}
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
+            {underlay.contentType === 'application/pdf' ? (
+              <iframe
+                src={underlay.src}
+                className="w-full h-full pointer-events-none"
+                title={`PDF underlay ${underlay.id}`}
+              />
+            ) : (
+              <img
+                src={underlay.src}
+                alt={`Underlay ${underlay.id}`}
+                className="w-full h-full object-contain pointer-events-none"
+              />
+            )}
+
+            {/* Resize handles - only shown when selected */}
+            {isDragging && draggedSymbolId === underlay.id && underlay.resizable && (
+              <>
+                <div className="absolute w-6 h-6 bg-blue-500 rounded-full bottom-0 right-0 
+                  transform translate-x-1/2 translate-y-1/2 z-10 cursor-se-resize" />
+                <div className="absolute inset-0 border-2 border-blue-500 rounded pointer-events-none" />
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
       {!hideBackgroundPDF && (
         <Document
           file={pdfFile}
           onLoadSuccess={onDocumentLoadSuccess}
           onLoadError={onDocumentLoadError}
           className="pdf-document"
+          style={{ zIndex: 2 }}
         >
           <Page 
             pageNumber={pageNumber} 

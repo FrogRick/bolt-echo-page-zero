@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useEffect } from "react";
-import { EditorSymbol, WallSymbol } from "@/types/editor";
+import { EditorSymbol, WallSymbol, UnderlaySymbol } from "@/types/editor";
 import { useToast } from "@/hooks/use-toast";
 import { PDFCursor } from "./PDFCursor";
 import { usePDFOpenCVHandler } from "./PDFOpenCVHandler";
@@ -24,6 +24,7 @@ interface PDFCanvasCoreProps {
   onMouseDown: (e: React.MouseEvent) => void;
   onMouseMove: (e: React.MouseEvent) => void;
   onMouseUp: (e: React.MouseEvent) => void;
+  onFileUploaded?: (file: File) => void;
 }
 
 interface PDFCanvasCoreResult {
@@ -36,6 +37,7 @@ interface PDFCanvasCoreResult {
   clearDetectedWalls: () => void;
   redoWallDetection: () => void;
   findSimilarWalls: () => WallSymbol[];
+  handleFileUpload: (file: File) => void;
 }
 
 export const usePDFCanvasCore = ({
@@ -55,7 +57,8 @@ export const usePDFCanvasCore = ({
   onCanvasClick,
   onMouseDown,
   onMouseMove,
-  onMouseUp
+  onMouseUp,
+  onFileUploaded
 }: PDFCanvasCoreProps): PDFCanvasCoreResult => {
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -111,6 +114,29 @@ export const usePDFCanvasCore = ({
     scale
   });
 
+  // Handle file upload for underlays (PDF, images)
+  const handleFileUpload = (file: File) => {
+    if (!file) return;
+
+    // Check if it's a PDF or image
+    if (file.type === "application/pdf" || file.type.startsWith("image/")) {
+      // Call the parent callback if provided
+      if (onFileUploaded) {
+        onFileUploaded(file);
+        toast({
+          title: "File uploaded",
+          description: `${file.name} has been added as an underlay.`,
+        });
+      }
+    } else {
+      toast({
+        title: "Unsupported file",
+        description: "Only PDF, JPEG, and PNG files are supported.",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     const preventZoom = (e: TouchEvent) => {
       if (e.touches.length === 2 && pdfFile) {
@@ -142,6 +168,7 @@ export const usePDFCanvasCore = ({
     isSelecting,
     clearDetectedWalls,
     redoWallDetection,
-    findSimilarWalls
+    findSimilarWalls,
+    handleFileUpload
   };
 };

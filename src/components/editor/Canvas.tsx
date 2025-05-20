@@ -1,9 +1,10 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
 import { Toolbar } from "./Toolbar";
 import { Toggle } from "@/components/ui/toggle";
+import { useToast } from "@/hooks/use-toast";
 
 const Canvas: React.FC = () => {
   const {
@@ -28,8 +29,56 @@ const Canvas: React.FC = () => {
     toggleSnapToLines,
     snapToExtensions,
     toggleSnapToExtensions,
-    rectangleDrawMode
+    rectangleDrawMode,
+    addImageToCanvas
   } = useCanvasEditor();
+  
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle file upload for underlays
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type === "application/pdf" || file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          // For images, use the image directly
+          if (file.type.startsWith("image/")) {
+            addImageToCanvas(event.target.result as string, file.type);
+            toast({
+              title: "Image added",
+              description: `${file.name} has been added to the canvas.`
+            });
+          } 
+          // For PDFs, use a PDF renderer
+          else if (file.type === "application/pdf") {
+            addImageToCanvas(URL.createObjectURL(file), file.type);
+            toast({
+              title: "PDF added",
+              description: `${file.name} has been added to the canvas.`
+            });
+          }
+        }
+      };
+      
+      reader.readAsDataURL(file);
+    } else {
+      toast({
+        title: "Unsupported file",
+        description: "Only PDF, JPEG, and PNG files are supported.",
+        variant: "destructive"
+      });
+    }
+    
+    // Clear the input value so the same file can be uploaded again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   // Force canvas redraw when tool or styling changes to ensure correct rendering
   useEffect(() => {
@@ -104,6 +153,26 @@ const Canvas: React.FC = () => {
           >
             <span className="text-sm">45°</span>
           </Toggle>
+        </div>
+        
+        {/* Add file upload button for PDFs and images */}
+        <div className="ml-auto">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-blue-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1 hover:bg-blue-700"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            Add Image
+          </button>
+          <input 
+            ref={fileInputRef}
+            type="file" 
+            accept="application/pdf,image/jpeg,image/png" 
+            className="hidden"
+            onChange={handleFileUpload}
+          />
         </div>
       </div>
       

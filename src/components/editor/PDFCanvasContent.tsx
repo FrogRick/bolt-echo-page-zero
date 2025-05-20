@@ -1,3 +1,4 @@
+
 import React from "react";
 import { PDFCanvasProps } from "./PDFCanvasProps";
 import PDFUploader from "@/components/editor/PDFUploader";
@@ -25,6 +26,7 @@ interface PDFCanvasContentProps extends PDFCanvasProps {
   pdfError: string | null;
   setPdfError: (error: string | null) => void;
   similarityDetectionMode: boolean;
+  onFileUploaded?: (file: File) => void;
 }
 
 export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
@@ -56,6 +58,7 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
   pdfError,
   setPdfError,
   similarityDetectionMode,
+  onFileUploaded,
   // We don't need to use setSymbols here, but we need to include it in the props
   setSymbols
 }) => {
@@ -68,7 +71,13 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
   if (!pdfFile) {
     return (
       <div className="flex items-center justify-center h-full border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
-        <PDFUploader onUpload={(file) => onPDFUpload(file)} />
+        <PDFUploader onUpload={(file) => {
+          onPDFUpload(file);
+          // Also check if it should be handled as an underlay
+          if (onFileUploaded && (file.type === "application/pdf" || file.type.startsWith("image/"))) {
+            onFileUploaded(file);
+          }
+        }} />
       </div>
     );
   }

@@ -1,4 +1,3 @@
-
 export type WallSymbol = {
   id: string;
   type: 'wall';
@@ -78,7 +77,22 @@ export type GenericSymbol = {
   size: number;
 };
 
-export type EditorSymbol = WallSymbol | DoorSymbol | StairsSymbol | WindowSymbol | GenericSymbol;
+export type UnderlaySymbol = {
+  id: string;
+  type: 'underlay';
+  x: number;
+  y: number;
+  rotation: number;
+  size: number;
+  width: number;
+  height: number;
+  src: string;
+  contentType: string; // "application/pdf", "image/jpeg", "image/png"
+  draggable: boolean;
+  resizable: boolean;
+};
+
+export type EditorSymbol = WallSymbol | DoorSymbol | StairsSymbol | WindowSymbol | GenericSymbol | UnderlaySymbol;
 
 // Keep the old type name for backward compatibility, but make it explicit it's our editor symbol
 export type Symbol = EditorSymbol;
