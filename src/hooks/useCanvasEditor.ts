@@ -89,7 +89,7 @@ export const useCanvasEditor = () => {
       
       // Draw dotted extension line if there is one - same as for wall tool
       if (extensionLine) {
-        drawExtensionLine(ctx, extensionLine.start, extensionLine.end);
+        drawExtensionLine(ctx, extensionLine.start, extensionLine.end, false);
       }
     }
 
@@ -109,14 +109,19 @@ export const useCanvasEditor = () => {
       if (snapToExtensions && !isDragging) {
         const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(startPoint, currentPoint, shapes);
         if (extensionSnap) {
-          endPoint = extensionSnap.point;
-          
-          // Set extension line for drawing dotted reference line
-          setExtensionLine({
-            start: extensionSnap.extendedLine.start,
-            end: extensionSnap.point
-          });
-          extensionFound = true;
+          // Only use unblocked extensions
+          if (!extensionSnap.blocked) {
+            endPoint = extensionSnap.point;
+            
+            // Set extension line for drawing dotted reference line
+            setExtensionLine({
+              start: extensionSnap.extendedLine.start,
+              end: extensionSnap.point
+            });
+            extensionFound = true;
+          } else {
+            setExtensionLine(null);
+          }
         } else {
           setExtensionLine(null);
         }
@@ -159,7 +164,7 @@ export const useCanvasEditor = () => {
       
       // Draw dotted extension line if there is one
       if (extensionLine) {
-        drawExtensionLine(ctx, extensionLine.start, extensionLine.end);
+        drawExtensionLine(ctx, extensionLine.start, extensionLine.end, false); // Never blocked in this case
       }
     }
     

@@ -234,7 +234,7 @@ const findPerpendicularExtension = (
   currentPoint: Point,
   shapes: Shape[],
   threshold: number = 30
-): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point} } | null => {
+): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point}, blocked: boolean } | null => {
   // First filter to only get walls (line shapes)
   const walls = shapes.filter(shape => shape.type === 'line');
   
@@ -244,103 +244,128 @@ const findPerpendicularExtension = (
   let bestExtension = null;
   let minDistance = Number.MAX_VALUE;
 
+  const directVector = {
+    x: currentPoint.x - startPoint.x,
+    y: currentPoint.y - startPoint.y
+  };
+  const directLength = Math.sqrt(directVector.x * directVector.x + directVector.y * directVector.y);
+  if (directLength === 0) return null;
+  
+  // Normalize the direct vector
+  const normalizedDirectVector = {
+    x: directVector.x / directLength,
+    y: directVector.y / directLength
+  };
+
+  // Collect all potential extensions
+  const potentialExtensions: {
+    point: Point, 
+    referenceLineId: string, 
+    extendedLine: {start: Point, end: Point},
+    distance: number,
+    blocked: boolean
+  }[] = [];
+
   // For each wall, check for potential perpendicular extensions
   for (const wall of walls) {
-    // Check both endpoints of the wall for potential extensions
+    // For walls, we want to extend perpendicular from both endpoints
     const endpoints = [wall.start, wall.end];
     
     for (const endpoint of endpoints) {
-      // Calculate perpendicular line from endpoint
+      // Calculate perpendicular vector from the wall
+      const wallVector = {
+        x: wall.end.x - wall.start.x,
+        y: wall.end.y - wall.start.y
+      };
+      
+      // Perpendicular = rotate 90 degrees
       const perpVector = {
-        x: -(wall.end.y - wall.start.y), // Perpendicular = rotate 90 degrees
-        y: wall.end.x - wall.start.x
+        x: -wallVector.y,
+        y: wallVector.x
       };
       
-      // Normalize vector
-      const length = Math.sqrt(perpVector.x * perpVector.x + perpVector.y * perpVector.y);
-      if (length === 0) continue;
+      // Normalize perpendicular vector
+      const perpLength = Math.sqrt(perpVector.x * perpVector.x + perpVector.y * perpVector.y);
+      if (perpLength === 0) continue;
       
-      const normalizedVector = {
-        x: perpVector.x / length,
-        y: perpVector.y / length
+      const normalizedPerpVector = {
+        x: perpVector.x / perpLength,
+        y: perpVector.y / perpLength
       };
       
-      // Create an extended perpendicular line from endpoint 
-      // (extending in both positive and negative directions)
-      const extendedPoints = [
-        {
-          x: endpoint.x + normalizedVector.x * 1000,
-          y: endpoint.y + normalizedVector.y * 1000
-        },
-        {
-          x: endpoint.x - normalizedVector.x * 1000,
-          y: endpoint.y - normalizedVector.y * 1000
-        }
-      ];
+      // Create extended point in both perpendicular directions
+      const directions = [1, -1]; // Try both directions
       
-      // For both directions of the perpendicular line
-      for (const extendedPoint of extendedPoints) {
-        // Find intersection between our drawing line and the perpendicular line
-        // Our drawing line is from startPoint through currentPoint
-        const drawingVector = {
-          x: currentPoint.x - startPoint.x,
-          y: currentPoint.y - startPoint.y
+      for (const direction of directions) {
+        // Calculate the direction to extend (perpendicular to wall)
+        const extendedPoint = {
+          x: endpoint.x + normalizedPerpVector.x * direction * 1000, // Long enough to intersect
+          y: endpoint.y + normalizedPerpVector.y * direction * 1000
         };
         
-        // Normalize and extend our drawing vector
-        const drawingLength = Math.sqrt(
-          drawingVector.x * drawingVector.x + drawingVector.y * drawingVector.y
-        );
-        
-        if (drawingLength === 0) continue;
-        
-        const extendedDrawingPoint = {
-          x: startPoint.x + (drawingVector.x / drawingLength) * 1000,
-          y: startPoint.y + (drawingVector.y / drawingLength) * 1000
-        };
-        
-        // Find intersection between extended drawing line and perpendicular line
+        // Find intersection between our drawing line and this perpendicular line
         const intersection = findIntersectionPoint(
           startPoint, 
-          extendedDrawingPoint,
+          { x: startPoint.x + normalizedDirectVector.x * 1000, y: startPoint.y + normalizedDirectVector.y * 1000 },
           endpoint, 
           extendedPoint
         );
         
         if (intersection) {
-          // Check if intersection is close enough to current mouse position
+          // Calculate distance from current mouse position to intersection
           const distToIntersection = Math.sqrt(
             Math.pow(intersection.x - currentPoint.x, 2) + 
             Math.pow(intersection.y - currentPoint.y, 2)
           );
           
-          // Only consider if within threshold and closer than previous candidates
-          if (distToIntersection < threshold && distToIntersection < minDistance) {
-            // Check if the line from startPoint to intersection is obstructed by any walls
-            const isObstructed = isLineObstructed(
-              startPoint,
-              intersection,
-              shapes
-            );
-            
-            // Only consider this extension if the path is clear
-            if (!isObstructed) {
-              minDistance = distToIntersection;
-              bestExtension = {
-                point: intersection,
-                referenceLineId: wall.id,
-                extendedLine: {
-                  start: endpoint,
-                  end: intersection
-                }
-              };
+          // Only consider if within threshold
+          if (distToIntersection < threshold) {
+            // Now check for obstructions between startPoint and intersection
+            // This is the key new part - we check for ALL intersections, not just the first
+            let blocked = false;
+            for (const obstruction of walls) {
+              // Skip the wall itself
+              if (obstruction.id === wall.id) continue;
+              
+              // Check if any other wall obstructs the path
+              if (doLinesIntersect(startPoint, intersection, obstruction.start, obstruction.end)) {
+                blocked = true;
+                break;
+              }
             }
+            
+            // Add to potential extensions list
+            potentialExtensions.push({
+              point: intersection,
+              referenceLineId: wall.id,
+              extendedLine: { start: endpoint, end: intersection },
+              distance: distToIntersection,
+              blocked
+            });
           }
         }
       }
     }
   }
   
+  // Sort by distance
+  potentialExtensions.sort((a, b) => a.distance - b.distance);
+  
+  // First try to find an unblocked extension
+  for (const extension of potentialExtensions) {
+    if (!extension.blocked && extension.distance < minDistance) {
+      bestExtension = {
+        point: extension.point,
+        referenceLineId: extension.referenceLineId,
+        extendedLine: extension.extendedLine,
+        blocked: false
+      };
+      break; // Take the first unblocked one
+    }
+  }
+  
+  // If no unblocked extension was found, return null
+  // (We're now ignoring blocked extensions entirely)
   return bestExtension;
 };
 
@@ -350,7 +375,7 @@ const findLineExtensionPoint = (
   currentPoint: Point,
   shapes: Shape[],
   threshold: number = 30
-): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point} } | null => {
+): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point}, blocked?: boolean } | null => {
   return findPerpendicularExtension(startPoint, currentPoint, shapes, threshold);
 };
 
@@ -674,11 +699,12 @@ export const drawPreviewLine = (
   ctx.restore();
 };
 
-// UPDATED: Extension line drawing with green color and better visual indicators
+// UPDATED: Extension line drawing with different colors based on blocked status
 export const drawExtensionLine = (
   ctx: CanvasRenderingContext2D,
   start: Point,
-  end: Point
+  end: Point,
+  blocked: boolean = false
 ): void => {
   // Save the current state
   ctx.save();
@@ -687,12 +713,15 @@ export const drawExtensionLine = (
   ctx.setLineDash([5, 5]);
   ctx.lineDashOffset = 0;
   
-  // Draw a green dashed line
+  // Use different color based on blocked status
+  const lineColor = blocked ? '#ef4444' : '#22c55e'; // Red if blocked, green if not
+  
+  // Draw a dashed line
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
   ctx.lineWidth = 2; 
-  ctx.strokeStyle = '#22c55e'; // Green color for the line
+  ctx.strokeStyle = lineColor;
   ctx.stroke();
   
   // Draw a small X at the starting point to show where the extension is from
@@ -702,7 +731,7 @@ export const drawExtensionLine = (
   ctx.lineTo(start.x + crossSize, start.y + crossSize);
   ctx.moveTo(start.x + crossSize, start.y - crossSize);
   ctx.lineTo(start.x - crossSize, start.y + crossSize);
-  ctx.strokeStyle = '#22c55e'; // Green color for the X
+  ctx.strokeStyle = lineColor;
   ctx.lineWidth = 1.5;
   ctx.stroke();
   

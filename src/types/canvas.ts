@@ -26,6 +26,7 @@ export type Shape = {
   strokeColor?: string;
   color?: string; // For backward compatibility
   lineWidth?: number;
+  blocked?: boolean; // Flag to indicate if an extension was blocked
 };
 
 // Preview line for drawing guidance
@@ -39,4 +40,5 @@ export type ExtensionLine = {
   start: Point;
   end: Point;
   referenceLineId: string;
+  blocked?: boolean; // Flag to indicate if the extension is blocked
 };
