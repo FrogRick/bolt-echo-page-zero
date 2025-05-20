@@ -6,35 +6,46 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Check, ChevronDown, FileText, Save } from "lucide-react";
 import { PDFManager, DuplicatePDFButton, ReplacePDFButton } from "./PDFManager";
+import { WorkflowStage } from "./WorkflowSteps";
 
 interface TopMenuProps {
-  project: Project;
-  isSaved: boolean;
-  onSave: () => void;
-  onPrint: () => void;
-  pdfs: ProjectPDF[];
-  onPDFAdd: (name: string, file: File) => void;
-  onPDFDelete: (pdfId: string) => void;
-  onPDFSelect: (pdf: ProjectPDF) => void;
-  onPDFRename: (pdfId: string, newName: string) => void;
+  project?: Project;
+  isSaved?: boolean;
+  onSave?: () => void;
+  onPrint?: () => void;
+  pdfs?: ProjectPDF[];
+  onPDFAdd?: (name: string, file: File) => void;
+  onPDFDelete?: (pdfId: string) => void;
+  onPDFSelect?: (pdf: ProjectPDF) => void;
+  onPDFRename?: (pdfId: string, newName: string) => void;
   selectedPdfId?: string;
-  currentStage?: string;
+  currentStage?: WorkflowStage;
   renderSelectedPDF?: () => React.ReactNode;
+  numPages?: number;
+  pageNumber?: number;
+  setPageNumber?: (page: number) => void;
+  setCurrentStage?: (stage: WorkflowStage) => void;
+  pdfFile?: File;
 }
 
-export const TopMenu = ({
+export const TopMenu: React.FC<TopMenuProps> = ({
   project,
-  isSaved,
+  isSaved = true,
   onSave,
   onPrint,
-  pdfs,
+  pdfs = [],
   onPDFAdd,
   onPDFDelete,
   onPDFSelect,
   onPDFRename,
   selectedPdfId,
   currentStage,
-  renderSelectedPDF
+  renderSelectedPDF,
+  numPages,
+  pageNumber,
+  setPageNumber,
+  setCurrentStage,
+  pdfFile
 }: TopMenuProps) => {
   const [showPDFManager, setShowPDFManager] = React.useState(false);
   
@@ -43,7 +54,7 @@ export const TopMenu = ({
       <CardContent className="p-2">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="text-lg font-semibold">{project.name}</div>
+            <div className="text-lg font-semibold">{project?.name || "Untitled Canvas"}</div>
             
             {/* PDF selector dropdown */}
             <DropdownMenu>
@@ -69,7 +80,7 @@ export const TopMenu = ({
                   {pdfs.map((pdf) => (
                     <DropdownMenuItem 
                       key={pdf.id}
-                      onClick={() => onPDFSelect(pdf)}
+                      onClick={() => onPDFSelect && onPDFSelect(pdf)}
                       className="cursor-pointer"
                     >
                       <div className="flex items-center w-full">
@@ -90,7 +101,7 @@ export const TopMenu = ({
             </DropdownMenu>
 
             {/* PDF Manager dialog */}
-            {showPDFManager && (
+            {showPDFManager && onPDFAdd && onPDFDelete && onPDFRename && onPDFSelect && (
               <PDFManager 
                 pdfs={pdfs}
                 onAddPDF={onPDFAdd}
@@ -114,7 +125,7 @@ export const TopMenu = ({
               {!isSaved && <span className="h-2 w-2 bg-orange-500 rounded-full"></span>}
             </Button>
             
-            {currentStage === "review" || currentStage === "export" ? (
+            {currentStage === "add_safety" || currentStage === "export" ? (
               <Button onClick={onPrint}>Export</Button>
             ) : (
               <Button onClick={onPrint}>Preview</Button>

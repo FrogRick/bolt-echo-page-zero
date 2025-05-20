@@ -6,8 +6,18 @@ import { useEditorState } from "@/hooks/useEditorState";
 import { Toolbar } from "./Toolbar";
 import { TopMenu } from "./TopMenu";
 import { ExportOptions } from "./ExportOptions";
+import { WorkflowStage } from "./WorkflowSteps";
 
 const Canvas = () => {
+  // Mock project data
+  const mockProject = {
+    id: "1",
+    name: "Floor Plan",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    pdfs: []
+  };
+  
   const {
     pdfFile,
     setPdfFile,
@@ -70,32 +80,37 @@ const Canvas = () => {
   return (
     <div className="canvas-container h-full flex flex-col">
       <TopMenu 
-        pdfFile={pdfFile}
+        project={mockProject}
         numPages={numPages}
         pageNumber={pageNumber}
         setPageNumber={setPageNumber}
-        currentStage={currentStage}
+        currentStage={currentStage as WorkflowStage}
         setCurrentStage={setCurrentStage}
+        pdfFile={pdfFile}
+        isSaved={true}
+        onSave={() => console.log("Saving canvas...")}
+        onPrint={() => console.log("Printing canvas...")}
+        pdfs={[]}
       />
 
       <div className="flex flex-1 overflow-hidden">
         <Toolbar 
-          activeSymbolType={activeSymbolType}
-          setActiveSymbolType={setActiveSymbolType}
-          drawingWallMode={drawingWallMode}
-          setDrawingWallMode={setDrawingWallMode}
-          similarityDetectionMode={similarityDetectionMode}
-          setSimilarityDetectionMode={setSimilarityDetectionMode}
-          layers={layers}
-          setLayers={setLayers}
-          wallThickness={wallThickness}
-          setWallThickness={setWallThickness}
-          snapToAngle={snapToAngle} 
-          setSnapToAngle={setSnapToAngle}
-          snapToWalls={snapToWalls}
-          setSnapToWalls={setSnapToWalls}
-          useManualWalls={useManualWalls}
-          setUseManualWalls={setUseManualWalls}
+          onActiveSymbolChange={setActiveSymbolType}
+          onDrawingModeToggle={setDrawingWallMode}
+          onSimilarityModeToggle={setSimilarityDetectionMode}
+          onLayersChange={setLayers}
+          onWallThicknessChange={setWallThickness}
+          onSnapToAngleToggle={setSnapToAngle}
+          onSnapToWallsToggle={setSnapToWalls}
+          onUseManualWallsToggle={setUseManualWalls}
+          isDrawingModeActive={drawingWallMode}
+          isSimilarityModeActive={similarityDetectionMode}
+          activeLayers={layers}
+          currentWallThickness={wallThickness}
+          isSnapToAngleActive={snapToAngle}
+          isSnapToWallsActive={snapToWalls}
+          isManualWallsActive={useManualWalls}
+          currentStage={currentStage as WorkflowStage}
         />
 
         <div className="flex-1 relative overflow-hidden">

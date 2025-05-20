@@ -28,23 +28,6 @@ const CanvasEditorPage = () => {
 
   return (
     <div className="h-screen flex flex-col">
-      <div className="bg-white border-b px-4 py-3 flex justify-between items-center">
-        <h1 className="text-lg font-semibold">Canvas Editor</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Canvas ID: {canvasId.substring(0, 8)}...</span>
-          <button
-            onClick={() => {
-              toast({
-                title: "Canvas Saved",
-                description: "Your canvas has been saved.",
-              });
-            }}
-            className="px-4 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
-          >
-            Save
-          </button>
-        </div>
-      </div>
       <div className="flex-grow overflow-hidden">
         <Canvas />
       </div>

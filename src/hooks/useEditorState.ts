@@ -1,105 +1,74 @@
 
-import { useState } from "react";
-import { EditorSymbol } from "@/types/editor";
-import { WorkflowStage } from "@/components/editor/WorkflowSteps";
-import { ExportSettings } from "@/components/editor/ExportOptions";
-
-export type Layer = {
-  id: string;
-  name: string;
-  type: string; // 'evacuation', 'building', etc.
-  visible: boolean;
-};
+import { useState } from 'react';
+import { EditorSymbol } from '@/types/editor';
+import { WorkflowStage } from '@/components/editor/WorkflowSteps';
 
 export const useEditorState = () => {
-  // PDF related state
+  // PDF state
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [numPages, setNumPages] = useState<number | null>(null);
+  const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
-  
-  // Symbol and interaction related state
-  const [symbols, setSymbols] = useState<EditorSymbol[]>([]);
   const [scale, setScale] = useState<number>(1.0);
+
+  // Symbol state
+  const [symbols, setSymbols] = useState<EditorSymbol[]>([]);
   const [selectedSymbol, setSelectedSymbol] = useState<EditorSymbol | null>(null);
-  const [activeSymbolType, setActiveSymbolType] = useState<string | null>(null);
-  const [isSaved, setIsSaved] = useState(true);
-  
-  // Detection modes
-  const [detectionMode, setDetectionMode] = useState<'walls' | 'full'>('walls');
+  const [activeSymbolType, setActiveSymbolType] = useState<string>('');
+
+  // Wall drawing state
   const [drawingWallMode, setDrawingWallMode] = useState<boolean>(false);
-  const [wallStartPoint, setWallStartPoint] = useState<{x: number, y: number} | null>(null);
-  const [similarityDetectionMode, setSimilarityDetectionMode] = useState<boolean>(false);
-  
-  // Workflow related state
-  const [currentStage, setCurrentStage] = useState<WorkflowStage>('draw_walls');
-  const [useManualWalls, setUseManualWalls] = useState<boolean>(true);
-  const [exportSettings, setExportSettings] = useState<ExportSettings | null>(null);
-  
-  // Wall settings state
+  const [wallStartPoint, setWallStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [wallThickness, setWallThickness] = useState<number>(5);
   const [snapToAngle, setSnapToAngle] = useState<boolean>(true);
   const [snapToWalls, setSnapToWalls] = useState<boolean>(true);
-  
-  // Trash/deleted items state
-  const [deletedItems, setDeletedItems] = useState<{id: string, type: string, deletedAt: Date}[]>([]);
-  
+  const [useManualWalls, setUseManualWalls] = useState<boolean>(true);
+
+  // Detection state
+  const [similarityDetectionMode, setSimilarityDetectionMode] = useState<boolean>(false);
+
   // Layers state
-  const [layers, setLayers] = useState<Layer[]>([
-    { id: 'evacuation', name: 'Evacuation Symbols', type: 'evacuation', visible: true },
-    { id: 'building', name: 'Building Elements', type: 'building', visible: true }
-  ]);
+  const [layers, setLayers] = useState<string[]>(['walls', 'doors', 'windows', 'furniture']);
+
+  // Workflow state
+  const [currentStage, setCurrentStage] = useState<WorkflowStage>('draw_walls');
+
+  // Export settings
+  const [exportSettings, setExportSettings] = useState<any>(null);
 
   return {
-    // PDF related state
     pdfFile,
     setPdfFile,
     numPages,
     setNumPages,
     pageNumber,
     setPageNumber,
-    
-    // Symbol and interaction related state
-    symbols,
-    setSymbols,
     scale,
     setScale,
+    symbols,
+    setSymbols,
     selectedSymbol,
     setSelectedSymbol,
     activeSymbolType,
     setActiveSymbolType,
-    isSaved,
-    setIsSaved,
-    
-    // Detection modes
-    detectionMode,
-    setDetectionMode,
     drawingWallMode,
     setDrawingWallMode,
     wallStartPoint,
     setWallStartPoint,
-    layers,
-    setLayers,
-    similarityDetectionMode,
-    setSimilarityDetectionMode,
-    
-    // Wall settings
     wallThickness,
     setWallThickness,
     snapToAngle,
-    setSnapToAngle, 
+    setSnapToAngle,
     snapToWalls,
     setSnapToWalls,
-    
-    // Workflow related state
-    currentStage,
-    setCurrentStage,
     useManualWalls,
     setUseManualWalls,
+    similarityDetectionMode,
+    setSimilarityDetectionMode,
+    layers,
+    setLayers,
+    currentStage,
+    setCurrentStage,
     exportSettings,
     setExportSettings,
-    
-    // Trash/deleted items state
-    deletedItems,
-    setDeletedItems
   };
 };
