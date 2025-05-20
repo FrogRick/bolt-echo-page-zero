@@ -73,7 +73,7 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
   }, [symbols]);
 
   const handleFileUpload = (file: File) => {
-    console.log("PDFCanvasContent - File upload called with:", file.name, file.type, file.size);
+    console.log("PDFCanvasContent - handleFileUpload called with:", file.name, file.type, file.size);
     
     // Handle as main PDF
     onPDFUpload(file);
@@ -82,16 +82,32 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
     if (onFileUploaded && (file.type === "application/pdf" || file.type.startsWith("image/"))) {
       console.log("PDFCanvasContent - Forwarding to onFileUploaded");
       onFileUploaded(file);
+      
+      // Add a delay and log to check if the symbols array gets updated
+      setTimeout(() => {
+        console.log("PDFCanvasContent - After onFileUploaded delay - Symbols count:", symbols.length, 
+          "Underlays:", symbols.filter(s => s.type === 'underlay').length);
+      }, 1000);
     }
   };
 
+  // Add a useEffect to monitor pdfFile changes
+  React.useEffect(() => {
+    if (pdfFile) {
+      console.log("PDFCanvasContent - PDF file changed:", pdfFile.name, pdfFile.type, pdfFile.size);
+    }
+  }, [pdfFile]);
+
   if (!pdfFile) {
+    console.log("PDFCanvasContent - No PDF file, showing uploader");
     return (
       <div className="flex items-center justify-center h-full border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
         <PDFUploader onUpload={handleFileUpload} />
       </div>
     );
   }
+  
+  console.log("PDFCanvasContent - Rendering with PDF file:", pdfFile.name, pdfFile.type);
 
   return (
     <>
@@ -140,7 +156,10 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
         isDragging={isDragging}
         draggedSymbolId={draggedSymbol?.id || null}
         containerRef={pdfContainerRef}
-        onDocumentLoadSuccess={onDocumentLoadSuccess}
+        onDocumentLoadSuccess={(data) => {
+          console.log("PDFCanvasContent - Document load success:", data);
+          onDocumentLoadSuccess(data);
+        }}
         onDocumentLoadError={handleDocumentLoadError}
         onSymbolMouseDown={handleMouseDown}
         onSymbolSelect={onSymbolSelect}

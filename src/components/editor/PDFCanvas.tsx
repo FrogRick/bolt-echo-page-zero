@@ -79,9 +79,12 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
 
   // Handle file upload for underlays (PDF, images)
   const handleFileUploadForUnderlay = (file: File) => {
-    if (!file) return;
+    if (!file) {
+      console.log("PDFCanvas - handleFileUploadForUnderlay called with no file");
+      return;
+    }
 
-    console.log("PDFCanvas - Handling file upload for underlay:", file.type, file.name, file.size);
+    console.log("PDFCanvas - handleFileUploadForUnderlay called with:", file.name, file.type, file.size);
     
     // Create a URL for the file
     const fileUrl = URL.createObjectURL(file);
@@ -115,6 +118,12 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
       console.log("PDFCanvas - Updated symbols array:", updatedSymbols.length, "items including underlays:", updatedSymbols.filter(s => s.type === 'underlay').length);
       return updatedSymbols;
     });
+    
+    // Also log after a delay to check if state is updated
+    setTimeout(() => {
+      console.log("PDFCanvas - After setSymbols delay - Symbols count:", symbols.length, 
+        "Underlays:", symbols.filter(s => s.type === 'underlay').length);
+    }, 500);
     
     // Show success toast
     toast({
@@ -308,7 +317,7 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
         symbols={symbols}
         activeSymbolType={activeSymbolType}
         onPDFUpload={(file) => {
-          console.log("PDFCanvas - PDF upload triggered with file:", file.name, file.type);
+          console.log("PDFCanvas - PDF upload triggered with file:", file.name, file.type, file.size);
           setPdfError(null);
           onPDFUpload(file);
           handlePDFUpload(file);

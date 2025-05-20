@@ -45,6 +45,13 @@ export const PDFViewer = ({
 }: PDFViewerProps) => {
   const [pdfDimensions, setPdfDimensions] = useState({ width: 0, height: 0 });
   const [pageLoaded, setPageLoaded] = useState(false);
+  const [renderCount, setRenderCount] = useState(0);  // Add render counter for debugging
+
+  // Increment render count on each render
+  useEffect(() => {
+    setRenderCount(prev => prev + 1);
+    console.log(`PDFViewer - Render #${renderCount + 1}, PDF: ${pdfFile?.name}, Symbols: ${symbols.length}`);
+  }, [pdfFile, symbols.length]);
 
   // Function to calculate appropriate dimensions to fit PDF
   const calculateDimensions = () => {
@@ -62,6 +69,16 @@ export const PDFViewer = ({
     // Use the smaller ratio to ensure PDF fits both horizontally and vertically
     const fitScale = Math.min(widthRatio, heightRatio);
     
+    console.log("PDFViewer - Calculated dimensions:", {
+      containerWidth,
+      containerHeight,
+      pdfWidth: pdfDimensions.width,
+      pdfHeight: pdfDimensions.height,
+      fitScale,
+      finalWidth: pdfDimensions.width * fitScale * scale,
+      finalHeight: pdfDimensions.height * fitScale * scale
+    });
+    
     return {
       width: pdfDimensions.width * fitScale * scale,
       height: pdfDimensions.height * fitScale * scale
@@ -73,6 +90,7 @@ export const PDFViewer = ({
   // Handle when a page is rendered successfully
   const handlePageLoadSuccess = (page: any) => {
     const { width, height } = page.getViewport({ scale: 1 });
+    console.log("PDFViewer - Page loaded successfully", { width, height });
     setPdfDimensions({ width, height });
     setPageLoaded(true);
   };
@@ -115,13 +133,21 @@ export const PDFViewer = ({
 
   // Debug underlays
   useEffect(() => {
-    console.log("PDFViewer - All symbols length:", symbols.length);
-    console.log("PDFViewer - visibleSymbols length:", visibleSymbols.length);
-    console.log("PDFViewer - underlaySymbols length:", underlaySymbols.length);
+    console.log("PDFViewer - All symbols:", symbols.length);
+    console.log("PDFViewer - Visible symbols:", visibleSymbols.length);
+    console.log("PDFViewer - Underlays count:", underlaySymbols.length);
+    
     if (underlaySymbols.length > 0) {
-      console.log("PDFViewer - Rendering underlays:", underlaySymbols);
-    } else {
-      console.log("PDFViewer - No underlays to render");
+      underlaySymbols.forEach((underlay, index) => {
+        console.log(`PDFViewer - Underlay #${index + 1}:`, {
+          id: underlay.id,
+          type: underlay.contentType,
+          src: underlay.src.substring(0, 50) + '...',
+          position: `x:${underlay.x}, y:${underlay.y}`,
+          dimensions: `${underlay.width}x${underlay.height}`,
+          rotation: underlay.rotation
+        });
+      });
     }
   }, [underlaySymbols, symbols, visibleSymbols]);
 
@@ -153,13 +179,14 @@ export const PDFViewer = ({
       className="pdf-viewer"
     >
       {/* Render underlays/background images first with lowest z-index */}
-      <div className="absolute top-0 left-0 right-0 bottom-0 z-[1]" style={{ pointerEvents: "all" }}>
-        {underlaySymbols.map(underlay => {
-          console.log("PDFViewer - Rendering underlay:", underlay.id, underlay.contentType, underlay.src);
+      <div className="absolute top-0 left-0 right-0 bottom-0 z-[1]" 
+        style={{ pointerEvents: "all" }}>
+        {underlaySymbols.map((underlay, index) => {
+          console.log(`PDFViewer - Rendering underlay #${index + 1}:`, underlay.id, underlay.contentType);
           return (
             <div
               key={underlay.id}
-              className="absolute border-2 border-blue-400 border-dashed"
+              className="absolute border-4 border-blue-500 border-dashed"
               style={{
                 left: `${underlay.x}px`,
                 top: `${underlay.y}px`,
@@ -169,7 +196,7 @@ export const PDFViewer = ({
                 cursor: underlay.draggable ? 'move' : 'default',
                 zIndex: 1,
                 overflow: 'hidden',
-                backgroundColor: 'rgba(200, 200, 255, 0.1)',
+                backgroundColor: 'rgba(200, 200, 255, 0.2)',
               }}
               onMouseDown={(e) => {
                 console.log("PDFViewer - Underlay mouse down:", underlay.id);
@@ -187,7 +214,7 @@ export const PDFViewer = ({
                   src={underlay.src}
                   className="w-full h-full"
                   title={`PDF underlay ${underlay.id}`}
-                  style={{ border: 'none', pointerEvents: 'none' }}
+                  style={{ border: 'none' }}
                   onLoad={() => console.log("PDFViewer - PDF iframe loaded for:", underlay.id)}
                   onError={(e) => console.error("PDFViewer - PDF iframe error:", e)}
                 />
@@ -196,11 +223,15 @@ export const PDFViewer = ({
                   src={underlay.src}
                   alt={`Underlay ${underlay.id}`}
                   className="w-full h-full object-contain"
-                  style={{ pointerEvents: 'none' }}
                   onLoad={() => console.log("PDFViewer - Image loaded for:", underlay.id)}
                   onError={(e) => console.error("PDFViewer - Image load error:", e)}
                 />
               )}
+
+              {/* Debug label */}
+              <div className="absolute top-0 left-0 bg-blue-500 text-white px-1 text-xs">
+                Underlay: {underlay.contentType.split('/')[1]}
+              </div>
 
               {/* Resize handles - only shown when selected */}
               {isDragging && draggedSymbolId === underlay.id && underlay.resizable && (
@@ -218,8 +249,14 @@ export const PDFViewer = ({
       {!hideBackgroundPDF && (
         <Document
           file={pdfFile}
-          onLoadSuccess={onDocumentLoadSuccess}
-          onLoadError={onDocumentLoadError}
+          onLoadSuccess={(data) => {
+            console.log("PDFViewer - Document loaded successfully:", data);
+            onDocumentLoadSuccess(data);
+          }}
+          onLoadError={(error) => {
+            console.error("PDFViewer - Document load error:", error);
+            onDocumentLoadError(error);
+          }}
           className="pdf-document"
           style={{ zIndex: 2 }}
         >
@@ -232,6 +269,11 @@ export const PDFViewer = ({
             width={dimensions?.width}
             height={dimensions?.height}
             className="shadow-xl"
+            loading={() => <div className="bg-gray-200 animate-pulse w-full h-full min-h-[300px]">Loading...</div>}
+            error={(error) => {
+              console.error("PDFViewer - Page render error:", error);
+              return <div className="bg-red-100 border border-red-400 text-red-700 p-4">Error loading PDF page</div>;
+            }}
           />
         </Document>
       )}

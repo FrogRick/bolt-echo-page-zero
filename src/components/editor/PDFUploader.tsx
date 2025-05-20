@@ -20,6 +20,8 @@ const PDFUploader = ({
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
+    console.log("PDFUploader - handleFileChange triggered", files ? files.length : 0, "files");
+    
     if (files && files.length > 0) {
       console.log("PDFUploader - File selected:", files[0].name, files[0].type, files[0].size);
       
@@ -41,6 +43,7 @@ const PDFUploader = ({
     console.log("PDFUploader - Validating file:", file.name, file.type);
     
     if (file.type !== "application/pdf" && !file.type.startsWith("image/")) {
+      console.error("PDFUploader - Invalid file type:", file.type);
       toast({
         title: "Invalid file type",
         description: "Please upload a PDF or image file.",
@@ -51,6 +54,7 @@ const PDFUploader = ({
     
     if (file.size > 10 * 1024 * 1024) {
       // 10MB limit
+      console.error("PDFUploader - File too large:", file.size);
       toast({
         title: "File too large",
         description: "File size should be less than 10MB.",
@@ -68,9 +72,10 @@ const PDFUploader = ({
 
     // Simulate a slight delay to show uploading state
     setTimeout(() => {
-      console.log("PDFUploader - Uploading file:", newFile.name);
+      console.log("PDFUploader - Calling onUpload with file:", newFile.name);
       onUpload(newFile);
       setIsUploading(false);
+      console.log("PDFUploader - Upload complete");
     }, 500);
   };
   
@@ -86,6 +91,8 @@ const PDFUploader = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    console.log("PDFUploader - File dropped");
+    
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       console.log("PDFUploader - File dropped:", files[0].name, files[0].type);
