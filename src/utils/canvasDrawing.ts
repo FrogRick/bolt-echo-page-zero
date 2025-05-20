@@ -127,249 +127,6 @@ const findNearestPointOnAnyLine = (
   return closestPoint;
 };
 
-// Check if a line segment intersects with another line segment
-const doLinesIntersect = (
-  line1Start: Point,
-  line1End: Point,
-  line2Start: Point,
-  line2End: Point
-): boolean => {
-  // Calculate direction vectors
-  const v1 = {
-    x: line1End.x - line1Start.x,
-    y: line1End.y - line1Start.y
-  };
-  
-  const v2 = {
-    x: line2End.x - line2Start.x,
-    y: line2End.y - line2Start.y
-  };
-  
-  // Calculate cross product of the vectors
-  const cross = v1.x * v2.y - v1.y * v2.x;
-  
-  // If cross product is close to zero, lines are parallel or collinear
-  if (Math.abs(cross) < 0.0001) return false;
-  
-  // Calculate the parameters for intersection point
-  const s = (
-    (line2Start.x - line1Start.x) * v2.y - (line2Start.y - line1Start.y) * v2.x
-  ) / cross;
-  
-  const t = (
-    (line2Start.x - line1Start.x) * v1.y - (line2Start.y - line1Start.y) * v1.x
-  ) / cross;
-  
-  // Check if intersection point is within both line segments
-  return s >= 0 && s <= 1 && t >= 0 && t <= 1;
-}
-
-// IMPROVED: Check if a potential extension line is obstructed by any walls
-// This is the critical fix to prevent extension suggestions through walls
-const isExtensionLineObstructed = (
-  startPoint: Point,
-  endPoint: Point,
-  shapes: Shape[]
-): boolean => {
-  // Filter for only line shapes (walls)
-  const walls = shapes.filter(shape => shape.type === 'line');
-  
-  // Use a much smaller buffer to ensure we catch all real intersections
-  const buffer = 0.5; // Very small buffer to avoid precision issues
-  
-  // Calculate direction vector for offset calculations
-  const dx = endPoint.x - startPoint.x;
-  const dy = endPoint.y - startPoint.y;
-  const length = Math.sqrt(dx * dx + dy * dy);
-  
-  if (length === 0) return false; // Can't be obstructed if it has no length
-  
-  // Normalize direction
-  const nx = dx / length;
-  const ny = dy / length;
-  
-  // Create a slightly shortened test line segment to prevent false positives
-  const adjustedStart = {
-    x: startPoint.x + nx * buffer,
-    y: startPoint.y + ny * buffer
-  };
-  
-  const adjustedEnd = {
-    x: endPoint.x - nx * buffer,
-    y: endPoint.y - ny * buffer
-  };
-  
-  // Check each wall to see if it intersects with our extension line
-  for (const wall of walls) {
-    // Skip checking against very close/connected walls
-    const startDistance = Math.sqrt(
-      Math.pow(wall.start.x - startPoint.x, 2) + 
-      Math.pow(wall.start.y - startPoint.y, 2)
-    );
-    
-    const endDistance = Math.sqrt(
-      Math.pow(wall.end.x - startPoint.x, 2) + 
-      Math.pow(wall.end.y - startPoint.y, 2)
-    );
-    
-    // Skip if this wall starts or ends at our start point (within a small threshold)
-    if (startDistance < 5 || endDistance < 5) {
-      continue;
-    }
-    
-    // Skip if this wall lies on the same infinite line as our extension (collinear)
-    if (isPointOnLine(wall.start, startPoint, endPoint, 0.5) && 
-        isPointOnLine(wall.end, startPoint, endPoint, 0.5)) {
-      continue;
-    }
-    
-    // Check if this wall intersects our adjusted extension line
-    if (doLinesIntersect(adjustedStart, adjustedEnd, wall.start, wall.end)) {
-      return true; // This extension is obstructed
-    }
-  }
-  
-  return false; // No obstructions found
-}
-
-// UPDATED: Modified to only find perpendicular extension points that aren't obstructed
-const findLineExtensionPoint = (
-  startPoint: Point,
-  currentPoint: Point,
-  shapes: Shape[],
-  threshold: number = 30
-): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point} } | null => {
-  // We're only interested in perpendicular extensions now
-  return findPerpendicularExtension(startPoint, currentPoint, shapes, threshold);
-};
-
-// UPDATED: Helper function to find perpendicular line extensions from endpoints
-// Now with more strict obstruction checking
-const findPerpendicularExtension = (
-  startPoint: Point,
-  currentPoint: Point,
-  shapes: Shape[],
-  threshold: number = 30
-): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point} } | null => {
-  let closestIntersection = null;
-  let minDistance = Number.MAX_VALUE;
-
-  for (const shape of shapes) {
-    if (shape.type !== 'line') continue;
-    
-    // Check perpendicular projections from both endpoints of each line
-    const endpoints = [shape.start, shape.end];
-    
-    for (const endpoint of endpoints) {
-      // Calculate perpendicular line from the endpoint
-      const lineVector = {
-        x: shape.end.x - shape.start.x,
-        y: shape.end.y - shape.start.y
-      };
-      
-      // Create a perpendicular vector (rotated 90 degrees)
-      const perpVector = {
-        x: -lineVector.y,
-        y: lineVector.x
-      };
-      
-      // Normalize perpendicular vector
-      const perpLength = Math.sqrt(perpVector.x * perpVector.x + perpVector.y * perpVector.y);
-      if (perpLength === 0) continue;
-      
-      const perpNormalized = {
-        x: perpVector.x / perpLength,
-        y: perpVector.y / perpLength
-      };
-      
-      // Create a perpendicular line from endpoint (extend in both directions)
-      const perpLine1 = {
-        start: endpoint,
-        end: {
-          x: endpoint.x + perpNormalized.x * 1000,
-          y: endpoint.y + perpNormalized.y * 1000
-        }
-      };
-      
-      const perpLine2 = {
-        start: endpoint,
-        end: {
-          x: endpoint.x - perpNormalized.x * 1000,
-          y: endpoint.y - perpNormalized.y * 1000
-        }
-      };
-      
-      // Check if our current drawing line intersects with either perpendicular line
-      // Create extended line from startPoint through currentPoint
-      const dx = currentPoint.x - startPoint.x;
-      const dy = currentPoint.y - startPoint.y;
-      
-      if (dx === 0 && dy === 0) continue;
-      
-      const currentDist = Math.sqrt(dx * dx + dy * dy);
-      const dirX = dx / currentDist;
-      const dirY = dy / currentDist;
-      
-      const extendedEnd = {
-        x: startPoint.x + dirX * 1000,
-        y: startPoint.y + dirY * 1000
-      };
-      
-      // Check intersection with both perpendicular lines
-      for (const perpLine of [perpLine1, perpLine2]) {
-        const intersection = findIntersectionPoint(
-          startPoint,
-          extendedEnd,
-          perpLine.start,
-          perpLine.end
-        );
-        
-        if (intersection) {
-          const distToIntersection = Math.sqrt(
-            Math.pow(intersection.x - currentPoint.x, 2) + 
-            Math.pow(intersection.y - currentPoint.y, 2)
-          );
-          
-          // Only consider intersections that are within our threshold distance and closer than previous candidates
-          if (distToIntersection < threshold && distToIntersection < minDistance) {
-            // Calculate the distance from the start point to the intersection
-            const distFromStart = Math.sqrt(
-              Math.pow(intersection.x - startPoint.x, 2) + 
-              Math.pow(intersection.y - startPoint.y, 2)
-            );
-            
-            // Only consider intersections that are reasonably far from the start point
-            // to prevent tiny extension lines
-            if (distFromStart > 10) {
-              // THIS IS THE CRITICAL CHECK: Ensure the extension is not obstructed by any walls
-              const isObstructed = isExtensionLineObstructed(
-                startPoint,
-                intersection,
-                shapes
-              );
-              
-              // Only consider this extension if it's not obstructed
-              if (!isObstructed) {
-                minDistance = distToIntersection;
-                closestIntersection = {
-                  point: intersection,
-                  referenceLineId: shape.id,
-                  extendedLine: {
-                    start: endpoint,
-                    end: intersection
-                  }
-                };
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  
-  return closestIntersection;
-};
-
 // Helper function to find intersection point of two infinite lines
 const findIntersectionPoint = (
   line1Start: Point, 
@@ -394,6 +151,207 @@ const findIntersectionPoint = (
   const y = y1 + ua * (y2 - y1);
   
   return { x, y };
+};
+
+// Check if a line segment intersects with another line segment
+// Returns true if they intersect, false otherwise
+const doLinesIntersect = (
+  line1Start: Point,
+  line1End: Point,
+  line2Start: Point,
+  line2End: Point
+): boolean => {
+  // Line 1 represented as a1x + b1y = c1
+  const a1 = line1End.y - line1Start.y;
+  const b1 = line1Start.x - line1End.x;
+  const c1 = a1 * line1Start.x + b1 * line1Start.y;
+  
+  // Line 2 represented as a2x + b2y = c2
+  const a2 = line2End.y - line2Start.y;
+  const b2 = line2Start.x - line2End.x;
+  const c2 = a2 * line2Start.x + b2 * line2Start.y;
+  
+  const determinant = a1 * b2 - a2 * b1;
+  
+  // If determinant is zero, lines are parallel
+  if (Math.abs(determinant) < 0.001) {
+    return false;
+  }
+  
+  // Calculate intersection point
+  const x = (b2 * c1 - b1 * c2) / determinant;
+  const y = (a1 * c2 - a2 * c1) / determinant;
+  
+  // Check if intersection point is within both line segments
+  return (
+    x >= Math.min(line1Start.x, line1End.x) && x <= Math.max(line1Start.x, line1End.x) &&
+    x >= Math.min(line2Start.x, line2End.x) && x <= Math.max(line2Start.x, line2End.x) &&
+    y >= Math.min(line1Start.y, line1End.y) && y <= Math.max(line1Start.y, line1End.y) &&
+    y >= Math.min(line2Start.y, line2End.y) && y <= Math.max(line2Start.y, line2End.y)
+  );
+};
+
+// COMPLETELY REWRITTEN: Check if a line from start to end is obstructed by any walls
+// Using a more direct and robust approach
+const isLineObstructed = (
+  startPoint: Point,
+  endPoint: Point,
+  walls: Shape[]
+): boolean => {
+  // For each wall, check if it intersects with our line
+  for (const wall of walls) {
+    if (wall.type !== 'line') continue;
+    
+    // Skip checking very close points (within a small threshold)
+    // to prevent false positives with connected walls
+    const startToWallStart = Math.sqrt(
+      Math.pow(wall.start.x - startPoint.x, 2) + 
+      Math.pow(wall.start.y - startPoint.y, 2)
+    );
+    
+    const startToWallEnd = Math.sqrt(
+      Math.pow(wall.end.x - startPoint.x, 2) + 
+      Math.pow(wall.end.y - startPoint.y, 2)
+    );
+    
+    // Skip if this wall connects to our start point
+    if (startToWallStart < 5 || startToWallEnd < 5) {
+      continue;
+    }
+    
+    // Check if this wall intersects our line
+    if (doLinesIntersect(startPoint, endPoint, wall.start, wall.end)) {
+      return true; // Line is obstructed
+    }
+  }
+  
+  return false; // No obstructions found
+};
+
+// REWRITTEN: More reliable perpendicular extension finder with better obstruction detection
+const findPerpendicularExtension = (
+  startPoint: Point,
+  currentPoint: Point,
+  shapes: Shape[],
+  threshold: number = 30
+): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point} } | null => {
+  // First filter to only get walls (line shapes)
+  const walls = shapes.filter(shape => shape.type === 'line');
+  
+  // Return early if there are no walls
+  if (walls.length === 0) return null;
+  
+  let bestExtension = null;
+  let minDistance = Number.MAX_VALUE;
+
+  // For each wall, check for potential perpendicular extensions
+  for (const wall of walls) {
+    // Check both endpoints of the wall for potential extensions
+    const endpoints = [wall.start, wall.end];
+    
+    for (const endpoint of endpoints) {
+      // Calculate perpendicular line from endpoint
+      const perpVector = {
+        x: -(wall.end.y - wall.start.y), // Perpendicular = rotate 90 degrees
+        y: wall.end.x - wall.start.x
+      };
+      
+      // Normalize vector
+      const length = Math.sqrt(perpVector.x * perpVector.x + perpVector.y * perpVector.y);
+      if (length === 0) continue;
+      
+      const normalizedVector = {
+        x: perpVector.x / length,
+        y: perpVector.y / length
+      };
+      
+      // Create an extended perpendicular line from endpoint 
+      // (extending in both positive and negative directions)
+      const extendedPoints = [
+        {
+          x: endpoint.x + normalizedVector.x * 1000,
+          y: endpoint.y + normalizedVector.y * 1000
+        },
+        {
+          x: endpoint.x - normalizedVector.x * 1000,
+          y: endpoint.y - normalizedVector.y * 1000
+        }
+      ];
+      
+      // For both directions of the perpendicular line
+      for (const extendedPoint of extendedPoints) {
+        // Find intersection between our drawing line and the perpendicular line
+        // Our drawing line is from startPoint through currentPoint
+        const drawingVector = {
+          x: currentPoint.x - startPoint.x,
+          y: currentPoint.y - startPoint.y
+        };
+        
+        // Normalize and extend our drawing vector
+        const drawingLength = Math.sqrt(
+          drawingVector.x * drawingVector.x + drawingVector.y * drawingVector.y
+        );
+        
+        if (drawingLength === 0) continue;
+        
+        const extendedDrawingPoint = {
+          x: startPoint.x + (drawingVector.x / drawingLength) * 1000,
+          y: startPoint.y + (drawingVector.y / drawingLength) * 1000
+        };
+        
+        // Find intersection between extended drawing line and perpendicular line
+        const intersection = findIntersectionPoint(
+          startPoint, 
+          extendedDrawingPoint,
+          endpoint, 
+          extendedPoint
+        );
+        
+        if (intersection) {
+          // Check if intersection is close enough to current mouse position
+          const distToIntersection = Math.sqrt(
+            Math.pow(intersection.x - currentPoint.x, 2) + 
+            Math.pow(intersection.y - currentPoint.y, 2)
+          );
+          
+          // Only consider if within threshold and closer than previous candidates
+          if (distToIntersection < threshold && distToIntersection < minDistance) {
+            // Check if the line from startPoint to intersection is obstructed by any walls
+            const isObstructed = isLineObstructed(
+              startPoint,
+              intersection,
+              shapes
+            );
+            
+            // Only consider this extension if the path is clear
+            if (!isObstructed) {
+              minDistance = distToIntersection;
+              bestExtension = {
+                point: intersection,
+                referenceLineId: wall.id,
+                extendedLine: {
+                  start: endpoint,
+                  end: intersection
+                }
+              };
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  return bestExtension;
+};
+
+// Wrap the key function we need to export
+const findLineExtensionPoint = (
+  startPoint: Point,
+  currentPoint: Point,
+  shapes: Shape[],
+  threshold: number = 30
+): { point: Point, referenceLineId: string, extendedLine: {start: Point, end: Point} } | null => {
+  return findPerpendicularExtension(startPoint, currentPoint, shapes, threshold);
 };
 
 export const drawShapes = (
@@ -758,5 +716,5 @@ export const lineSnappingHelpers = {
   findClosestPointOnLine,
   isPointOnLine,
   findLineExtensionPoint,
-  isExtensionLineObstructed
+  isLineObstructed
 };

@@ -21,10 +21,10 @@ export type Shape = {
   type: 'line' | 'rectangle' | 'polygon';
   start?: Point;  // Optional for polygon type
   end?: Point;    // Optional for polygon type
-  points?: Point[];
+  points?: Point[];  // Required for polygon type
   fillColor?: string;
   strokeColor?: string;
-  color?: string; // Added for backward compatibility
+  color?: string; // For backward compatibility
   lineWidth?: number;
 };
 
