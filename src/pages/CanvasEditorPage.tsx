@@ -1,17 +1,20 @@
 
-import React, { useEffect } from "react";
-import Canvas from "@/features/canvas/components/Canvas";
 import { useParams, useNavigate } from "react-router-dom";
+import Canvas from "@/components/editor/Canvas";
+import { Toaster } from "@/components/ui/toaster";
+import { useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
-const CanvasEditorPage: React.FC = () => {
+const CanvasEditorPage = () => {
   const { canvasId } = useParams<{ canvasId: string }>();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
-  // If there's no canvas ID, generate one and redirect
+  // Generate a new ID if not provided
   useEffect(() => {
     if (!canvasId) {
-      const newCanvasId = crypto.randomUUID();
-      navigate(`/editor/${newCanvasId}`, { replace: true });
+      const newId = crypto.randomUUID();
+      navigate(`/editor/${newId}`, { replace: true });
     }
   }, [canvasId, navigate]);
 
@@ -25,15 +28,27 @@ const CanvasEditorPage: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col">
-      <header className="bg-white border-b px-4 py-3 flex justify-between items-center">
+      <div className="bg-white border-b px-4 py-3 flex justify-between items-center">
         <h1 className="text-lg font-semibold">Canvas Editor</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">Canvas ID: {canvasId.substring(0, 8)}...</span>
+          <button
+            onClick={() => {
+              toast({
+                title: "Canvas Saved",
+                description: "Your canvas has been saved.",
+              });
+            }}
+            className="px-4 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
+          >
+            Save
+          </button>
         </div>
-      </header>
+      </div>
       <div className="flex-grow overflow-hidden">
         <Canvas />
       </div>
+      <Toaster />
     </div>
   );
 };

@@ -1,17 +1,22 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 
 export const usePDFState = (scale: number) => {
-  const [isDragging, setIsDragging] = useState(false);
+  // Dragging state
+  const [isDragging, setIsDragging] = useState<boolean>(false);
   const [draggedSymbol, setDraggedSymbol] = useState<{ id: string; initialX: number; initialY: number } | null>(null);
-  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [lastMousePosition, setLastMousePosition] = useState({ x: 0, y: 0 });
+  
+  // Panning state
+  const [panPosition, setPanPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState<boolean>(false);
+  const [lastMousePosition, setLastMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  
+  // Error state
   const [pdfError, setPdfError] = useState<string | null>(null);
-
-  // Reset pan position when scale changes to 1
+  
+  // Reset pan position when scale changes to 1 (zoom out fully)
   useEffect(() => {
-    if (scale === 1) {
+    if (scale <= 1.0) {
       setPanPosition({ x: 0, y: 0 });
     }
   }, [scale]);
@@ -31,4 +36,3 @@ export const usePDFState = (scale: number) => {
     setPdfError
   };
 };
-
