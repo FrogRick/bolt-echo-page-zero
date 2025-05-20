@@ -116,23 +116,23 @@ export const usePDFCanvasCore = ({
   const handleFileUpload = (file: File) => {
     if (!file) return;
 
-    console.log("PDFCanvasCore handleFileUpload called with:", file.name, file.type);
+    console.log("PDFCanvasCore - handleFileUpload called with:", file.name, file.type, file.size);
 
     // Check if it's a PDF or image
     if (file.type === "application/pdf" || file.type.startsWith("image/")) {
       // Show toast notification
       toast({
-        title: "File upload successful",
-        description: `${file.name} format supported.`,
+        title: "File format supported",
+        description: `${file.name} will be added to canvas.`,
         variant: "success",
       });
       
       // Call the parent callback if provided
       if (onFileUploaded) {
-        console.log("Calling onFileUploaded callback");
+        console.log("PDFCanvasCore - Calling onFileUploaded callback");
         onFileUploaded(file);
       } else {
-        console.warn("onFileUploaded callback is not provided");
+        console.warn("PDFCanvasCore - onFileUploaded callback is not provided");
       }
     } else {
       toast({
@@ -142,6 +142,12 @@ export const usePDFCanvasCore = ({
       });
     }
   };
+
+  // Debug logging for uploaded file
+  useEffect(() => {
+    console.log("PDFCanvasCore - Current symbols count:", symbols.length);
+    console.log("PDFCanvasCore - Underlays count:", symbols.filter(s => s.type === 'underlay').length);
+  }, [symbols]);
 
   useEffect(() => {
     const preventZoom = (e: TouchEvent) => {

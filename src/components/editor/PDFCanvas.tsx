@@ -1,3 +1,4 @@
+
 import { useRef, useState, forwardRef, useImperativeHandle, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePDFState } from "@/hooks/usePDFState";
@@ -80,10 +81,11 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
   const handleFileUploadForUnderlay = (file: File) => {
     if (!file) return;
 
-    console.log("Handling file upload for underlay:", file.type, file.name);
+    console.log("PDFCanvas - Handling file upload for underlay:", file.type, file.name, file.size);
     
     // Create a URL for the file
     const fileUrl = URL.createObjectURL(file);
+    console.log("PDFCanvas - Created file URL:", fileUrl);
     
     // Default dimensions - make them larger for better visibility
     const defaultWidth = 500;
@@ -105,10 +107,14 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
       resizable: true
     };
     
-    console.log("Created new underlay:", newUnderlay);
+    console.log("PDFCanvas - Created new underlay:", newUnderlay);
     
     // Add the underlay to symbols
-    setSymbols(prevSymbols => [...prevSymbols, newUnderlay]);
+    setSymbols(prevSymbols => {
+      const updatedSymbols = [...prevSymbols, newUnderlay];
+      console.log("PDFCanvas - Updated symbols array:", updatedSymbols.length, "items including underlays:", updatedSymbols.filter(s => s.type === 'underlay').length);
+      return updatedSymbols;
+    });
     
     // Show success toast
     toast({
@@ -224,7 +230,7 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     const x = (e.clientX - rect.left - panPosition.x) / scale;
     const y = (e.clientY - rect.top - panPosition.y) / scale;
     
-    console.log("Direct canvas click:", { x, y, drawingWallMode, activeSymbolType });
+    console.log("PDFCanvas - Direct canvas click:", { x, y, drawingWallMode, activeSymbolType });
     
     if (drawingWallMode) {
       e.preventDefault();
@@ -263,8 +269,11 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
   // Debug logging for symbols to check if underlays are present
   useEffect(() => {
     const underlays = symbols.filter(s => s.type === 'underlay');
+    console.log("PDFCanvas - Symbols array length:", symbols.length);
     if (underlays.length > 0) {
-      console.log("Current underlays:", underlays);
+      console.log("PDFCanvas - Current underlays:", underlays.length, underlays);
+    } else {
+      console.log("PDFCanvas - No underlays found in symbols array");
     }
   }, [symbols]);
 
@@ -299,6 +308,7 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
         symbols={symbols}
         activeSymbolType={activeSymbolType}
         onPDFUpload={(file) => {
+          console.log("PDFCanvas - PDF upload triggered with file:", file.name, file.type);
           setPdfError(null);
           onPDFUpload(file);
           handlePDFUpload(file);
@@ -368,7 +378,7 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
           onChange={(e) => {
             if (e.target.files?.[0]) {
               const file = e.target.files[0];
-              console.log("File selected:", file.name, file.type);
+              console.log("PDFCanvas - File input change:", file.name, file.type, file.size);
               handleFileUploadForUnderlay(file);
             }
           }}

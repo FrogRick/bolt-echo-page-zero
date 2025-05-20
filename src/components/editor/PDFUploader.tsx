@@ -21,6 +21,8 @@ const PDFUploader = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
+      console.log("PDFUploader - File selected:", files[0].name, files[0].type, files[0].size);
+      
       // For now we only handle the first file, but UI makes it clear multiple can be uploaded
       validateAndUploadFile(files[0]);
       
@@ -36,10 +38,12 @@ const PDFUploader = ({
   };
   
   const validateAndUploadFile = (file: File) => {
-    if (file.type !== "application/pdf") {
+    console.log("PDFUploader - Validating file:", file.name, file.type);
+    
+    if (file.type !== "application/pdf" && !file.type.startsWith("image/")) {
       toast({
         title: "Invalid file type",
-        description: "Please upload a PDF file.",
+        description: "Please upload a PDF or image file.",
         variant: "destructive"
       });
       return;
@@ -49,7 +53,7 @@ const PDFUploader = ({
       // 10MB limit
       toast({
         title: "File too large",
-        description: "PDF file size should be less than 10MB.",
+        description: "File size should be less than 10MB.",
         variant: "destructive"
       });
       return;
@@ -60,9 +64,11 @@ const PDFUploader = ({
     // Create a copy of the file to ensure proper handling
     const fileBlob = new Blob([file], { type: file.type });
     const newFile = new File([fileBlob], file.name, { type: file.type });
+    console.log("PDFUploader - File validated, creating new file object:", newFile.name, newFile.type);
 
     // Simulate a slight delay to show uploading state
     setTimeout(() => {
+      console.log("PDFUploader - Uploading file:", newFile.name);
       onUpload(newFile);
       setIsUploading(false);
     }, 500);
@@ -82,13 +88,14 @@ const PDFUploader = ({
     setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
+      console.log("PDFUploader - File dropped:", files[0].name, files[0].type);
       validateAndUploadFile(files[0]);
       
       // Let users know more PDFs can be added later
       if (files.length > 1) {
         toast({
           title: "Multiple files detected",
-          description: "First PDF will be uploaded now. You can add additional PDFs later from the top menu.",
+          description: "First file will be uploaded now. You can add additional files later from the top menu.",
           duration: 5000
         });
       }
@@ -118,21 +125,24 @@ const PDFUploader = ({
           ref={fileInputRef} 
           onChange={handleFileChange} 
           className="hidden" 
-          accept=".pdf,application/pdf" 
+          accept=".pdf,application/pdf,image/jpeg,image/png" 
         />
         
         <Button 
-          onClick={() => fileInputRef.current?.click()} 
+          onClick={() => {
+            console.log("PDFUploader - Select file button clicked");
+            fileInputRef.current?.click();
+          }} 
           className="mb-4 px-8 py-6 text-lg w-full" 
           size="lg" 
           disabled={isUploading}
         >
           <FileText className="mr-2 h-5 w-5" /> 
-          {isUploading ? 'Uploading...' : 'Select PDF'}
+          {isUploading ? 'Uploading...' : 'Select PDF or Image'}
         </Button>
         
         <p className="text-xs text-gray-400 mt-6">
-          Maximum file size: 10MB per PDF
+          Maximum file size: 10MB per file
         </p>
       </div>
     </div>

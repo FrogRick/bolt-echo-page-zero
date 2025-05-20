@@ -69,18 +69,18 @@ export const PDFCanvasContent: React.FC<PDFCanvasContentProps> = ({
 
   // Debug symbol count
   React.useEffect(() => {
-    console.log(`Total symbols: ${symbols.length}, Underlays: ${symbols.filter(s => s.type === 'underlay').length}`);
+    console.log(`PDFCanvasContent - Total symbols: ${symbols.length}, Underlays: ${symbols.filter(s => s.type === 'underlay').length}`);
   }, [symbols]);
 
   const handleFileUpload = (file: File) => {
-    console.log("PDFCanvasContent file upload called with:", file.name, file.type);
+    console.log("PDFCanvasContent - File upload called with:", file.name, file.type, file.size);
     
     // Handle as main PDF
     onPDFUpload(file);
     
     // Also handle as underlay if needed
     if (onFileUploaded && (file.type === "application/pdf" || file.type.startsWith("image/"))) {
-      console.log("Forwarding to onFileUploaded");
+      console.log("PDFCanvasContent - Forwarding to onFileUploaded");
       onFileUploaded(file);
     }
   };

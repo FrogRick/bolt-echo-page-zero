@@ -115,10 +115,15 @@ export const PDFViewer = ({
 
   // Debug underlays
   useEffect(() => {
+    console.log("PDFViewer - All symbols length:", symbols.length);
+    console.log("PDFViewer - visibleSymbols length:", visibleSymbols.length);
+    console.log("PDFViewer - underlaySymbols length:", underlaySymbols.length);
     if (underlaySymbols.length > 0) {
-      console.log("Rendering underlays:", underlaySymbols);
+      console.log("PDFViewer - Rendering underlays:", underlaySymbols);
+    } else {
+      console.log("PDFViewer - No underlays to render");
     }
-  }, [underlaySymbols]);
+  }, [underlaySymbols, symbols, visibleSymbols]);
 
   // Update dimensions on window resize
   useEffect(() => {
@@ -148,58 +153,66 @@ export const PDFViewer = ({
       className="pdf-viewer"
     >
       {/* Render underlays/background images first with lowest z-index */}
-      <div className="absolute top-0 left-0 right-0 bottom-0 z-[1]">
-        {underlaySymbols.map(underlay => (
-          <div
-            key={underlay.id}
-            className="absolute border border-dashed border-gray-400"
-            style={{
-              left: `${underlay.x}px`,
-              top: `${underlay.y}px`,
-              width: `${underlay.width}px`,
-              height: `${underlay.height}px`,
-              transform: `rotate(${underlay.rotation}deg)`,
-              cursor: underlay.draggable ? 'move' : 'default',
-              zIndex: 1,
-              overflow: 'hidden',
-            }}
-            onMouseDown={(e) => {
-              console.log("Underlay mouse down:", underlay.id);
-              onSymbolMouseDown(e, underlay);
-            }}
-            onClick={(e) => {
-              console.log("Underlay clicked:", underlay.id);
-              e.stopPropagation();
-              onSymbolSelect(underlay);
-            }}
-            onDoubleClick={(e) => e.stopPropagation()}
-          >
-            {underlay.contentType === 'application/pdf' ? (
-              <iframe
-                src={underlay.src}
-                className="w-full h-full"
-                title={`PDF underlay ${underlay.id}`}
-                style={{ border: 'none', pointerEvents: 'none' }}
-              />
-            ) : (
-              <img
-                src={underlay.src}
-                alt={`Underlay ${underlay.id}`}
-                className="w-full h-full object-contain"
-                style={{ pointerEvents: 'none' }}
-              />
-            )}
+      <div className="absolute top-0 left-0 right-0 bottom-0 z-[1]" style={{ pointerEvents: "all" }}>
+        {underlaySymbols.map(underlay => {
+          console.log("PDFViewer - Rendering underlay:", underlay.id, underlay.contentType, underlay.src);
+          return (
+            <div
+              key={underlay.id}
+              className="absolute border-2 border-blue-400 border-dashed"
+              style={{
+                left: `${underlay.x}px`,
+                top: `${underlay.y}px`,
+                width: `${underlay.width}px`,
+                height: `${underlay.height}px`,
+                transform: `rotate(${underlay.rotation}deg)`,
+                cursor: underlay.draggable ? 'move' : 'default',
+                zIndex: 1,
+                overflow: 'hidden',
+                backgroundColor: 'rgba(200, 200, 255, 0.1)',
+              }}
+              onMouseDown={(e) => {
+                console.log("PDFViewer - Underlay mouse down:", underlay.id);
+                onSymbolMouseDown(e, underlay);
+              }}
+              onClick={(e) => {
+                console.log("PDFViewer - Underlay clicked:", underlay.id);
+                e.stopPropagation();
+                onSymbolSelect(underlay);
+              }}
+              onDoubleClick={(e) => e.stopPropagation()}
+            >
+              {underlay.contentType === 'application/pdf' ? (
+                <iframe
+                  src={underlay.src}
+                  className="w-full h-full"
+                  title={`PDF underlay ${underlay.id}`}
+                  style={{ border: 'none', pointerEvents: 'none' }}
+                  onLoad={() => console.log("PDFViewer - PDF iframe loaded for:", underlay.id)}
+                  onError={(e) => console.error("PDFViewer - PDF iframe error:", e)}
+                />
+              ) : (
+                <img
+                  src={underlay.src}
+                  alt={`Underlay ${underlay.id}`}
+                  className="w-full h-full object-contain"
+                  style={{ pointerEvents: 'none' }}
+                  onLoad={() => console.log("PDFViewer - Image loaded for:", underlay.id)}
+                  onError={(e) => console.error("PDFViewer - Image load error:", e)}
+                />
+              )}
 
-            {/* Resize handles - only shown when selected */}
-            {isDragging && draggedSymbolId === underlay.id && underlay.resizable && (
-              <>
-                <div className="absolute w-6 h-6 bg-blue-500 rounded-full bottom-0 right-0 
-                  transform translate-x-1/2 translate-y-1/2 z-10 cursor-se-resize" />
-                <div className="absolute inset-0 border-2 border-blue-500 rounded pointer-events-none" />
-              </>
-            )}
-          </div>
-        ))}
+              {/* Resize handles - only shown when selected */}
+              {isDragging && draggedSymbolId === underlay.id && underlay.resizable && (
+                <>
+                  <div className="absolute w-6 h-6 bg-blue-500 rounded-full bottom-0 right-0 
+                    transform translate-x-1/2 translate-y-1/2 z-10 cursor-se-resize" />
+                  <div className="absolute inset-0 border-2 border-blue-500 rounded pointer-events-none" />
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {!hideBackgroundPDF && (
