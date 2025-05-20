@@ -410,6 +410,7 @@ export const useCanvasEditor = () => {
       let modifiedPoint = point; // Store the potentially modified point
       let extensionFound = false;
       
+      // Only check for extension if the feature is enabled
       if (snapToExtensions) {
         const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(startPoint, point, shapes);
         if (extensionSnap) {
@@ -426,6 +427,9 @@ export const useCanvasEditor = () => {
         } else {
           setExtensionLine(null);
         }
+      } else {
+        // Ensure extension line is removed when the feature is disabled
+        setExtensionLine(null);
       }
       
       // Apply angle snapping regardless of extension snapping
@@ -475,19 +479,25 @@ export const useCanvasEditor = () => {
       // Get the last point from the wall polygon points array
       const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
       
-      // Use the extended shapes array that includes our in-progress wall polygon
-      const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, temporaryLines);
-      if (extensionSnap) {
-        snappedPoint = extensionSnap.point;
-        setCurrentPoint(extensionSnap.point);
-        extensionFound = true;
-        
-        // Set extension line to show the visual indicator
-        setExtensionLine({
-          start: extensionSnap.extendedLine.start,
-          end: extensionSnap.point
-        });
+      // Only check for extensions if the feature is enabled
+      if (snapToExtensions) {
+        // Use the extended shapes array that includes our in-progress wall polygon
+        const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, temporaryLines);
+        if (extensionSnap) {
+          snappedPoint = extensionSnap.point;
+          setCurrentPoint(extensionSnap.point);
+          extensionFound = true;
+          
+          // Set extension line to show the visual indicator
+          setExtensionLine({
+            start: extensionSnap.extendedLine.start,
+            end: extensionSnap.point
+          });
+        } else {
+          setExtensionLine(null);
+        }
       } else {
+        // Ensure extension line is removed when feature is disabled
         setExtensionLine(null);
       }
       
@@ -508,7 +518,6 @@ export const useCanvasEditor = () => {
       }
       
       // Apply angle snapping after all other snaps
-      // Important: we removed the !extensionLine condition to allow both to work together
       if (snapToAngle) {
         const angleSnappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
         
@@ -594,7 +603,7 @@ export const useCanvasEditor = () => {
       }
     }
     
-    // Check for extension snapping - use the temporary lines array
+    // Check for extension snapping - only if the feature is enabled
     if (snapToExtensions && wallPolygonPoints.length > 0) {
       const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
       const extensionSnap = lineSnappingHelpers.findLineExtensionPoint(lastPoint, point, temporaryLines);
@@ -664,7 +673,7 @@ export const useCanvasEditor = () => {
   const completeLine = (endPoint: Point) => {
     if (!startPoint) return;
 
-    // First check for extension snapping
+    // First check for extension snapping - only if the feature is enabled
     let finalEndpoint = endPoint;
     let extensionFound = false;
     
