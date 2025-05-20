@@ -394,13 +394,13 @@ const Canvas: React.FC = () => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     
-    // Calculate correct position relative to the canvas element
-    // WITHOUT applying canvasOffset (panning offset) here - that will be handled in the hook
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Calculate position relative to the canvas element
+    // Get raw screen coordinates without any transformation
+    const rawX = e.clientX - rect.left;
+    const rawY = e.clientY - rect.top;
     
-    // Pass the raw coordinates to the hook
-    startDrawingHook(e, {x, y});
+    // Pass the raw coordinates to the hook, which will handle all transformations
+    startDrawingHook(e, {x: rawX, y: rawY});
   };
   
   const handleDraw = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -409,13 +409,12 @@ const Canvas: React.FC = () => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     
-    // Calculate correct position relative to the canvas element
-    // WITHOUT applying canvasOffset (panning offset) here - that will be handled in the hook
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Get raw screen coordinates without any transformation
+    const rawX = e.clientX - rect.left;
+    const rawY = e.clientY - rect.top;
     
     // Pass the raw coordinates to the hook
-    drawHook(e, {x, y});
+    drawHook(e, {x: rawX, y: rawY});
   };
   
   const handleEndDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -424,13 +423,12 @@ const Canvas: React.FC = () => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     
-    // Calculate correct position relative to the canvas element
-    // WITHOUT applying canvasOffset (panning offset) here - that will be handled in the hook
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Get raw screen coordinates without any transformation
+    const rawX = e.clientX - rect.left;
+    const rawY = e.clientY - rect.top;
     
     // Pass the raw coordinates to the hook
-    endDrawingHook(e, {x, y});
+    endDrawingHook(e, {x: rawX, y: rawY});
   };
 
   // Force canvas redraw when tool or styling changes to ensure correct rendering
@@ -638,7 +636,7 @@ const Canvas: React.FC = () => {
             </div>
           ))}
           
-          {/* Drawing canvas on top of everything - UPDATED EVENT HANDLERS */}
+          {/* Drawing canvas on top of everything */}
           <canvas
             ref={canvasRef}
             width={canvasSize.width}
