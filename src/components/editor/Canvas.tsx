@@ -44,8 +44,7 @@ const Canvas: React.FC = () => {
         setActiveTool(activeTool);
       }
     }
-  }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions]);
-  // Added all snap settings and colors to the dependency array to ensure proper redrawing
+  }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions, canvasRef, setActiveTool]);
 
   // Toggle all snap settings on/off
   const toggleAllSnaps = () => {
