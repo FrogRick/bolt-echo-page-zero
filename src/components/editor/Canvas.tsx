@@ -106,6 +106,37 @@ const Canvas: React.FC = () => {
     }
   }, [canvasImages, containerDimensions]);
 
+  // Custom event handlers that properly handle canvas positioning
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
+    
+    // Calculate the correct coordinates relative to the canvas
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    // Pass the correct coordinates to the startDrawing function
+    startDrawing(e, x, y);
+  };
+  
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
+    
+    // Calculate the correct coordinates relative to the canvas
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    // Pass the correct coordinates to the draw function
+    draw(e, x, y);
+  };
+
   // Render PDF using canvas rather than iframe
   const renderPdfToCanvas = async (file: File, image: CanvasImage) => {
     try {
@@ -389,20 +420,6 @@ const Canvas: React.FC = () => {
     setSelectedImageId(null);
   };
 
-  // Force canvas redraw when tool or styling changes to ensure correct rendering
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        // Force a clean redraw by clearing and triggering the redraw in useCanvasEditor
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // This will trigger the redraw effect in useCanvasEditor
-        setActiveTool(activeTool);
-      }
-    }
-  }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions, canvasRef, setActiveTool, canvasImages]);
-
   // Add dynamic import of pdf.js
   useEffect(() => {
     const loadPdfJs = async () => {
@@ -585,8 +602,8 @@ const Canvas: React.FC = () => {
             ref={canvasRef}
             width={canvasSize.width}
             height={canvasSize.height}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
+            onMouseDown={handleCanvasMouseDown}
+            onMouseMove={handleCanvasMouseMove}
             onMouseUp={endDrawing}
             onMouseLeave={endDrawing}
             className={`bg-transparent w-full absolute top-0 left-0 ${
