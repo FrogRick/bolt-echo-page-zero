@@ -75,102 +75,9 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     snapToWalls
   });
 
-  // Handle file upload for underlays (PDF, images)
-  const handleFileUploadForUnderlay = (file: File) => {
-    if (!file) return;
-
-    // Create a URL for the file
-    const fileUrl = URL.createObjectURL(file);
-    
-    // Default dimensions
-    const defaultWidth = 300;
-    const defaultHeight = 400;
-    
-    // Create a new underlay symbol
-    const newUnderlay: UnderlaySymbol = {
-      id: crypto.randomUUID(),
-      type: 'underlay',
-      x: 50,
-      y: 50,
-      rotation: 0,
-      size: 1,  // Scale factor
-      width: defaultWidth,
-      height: defaultHeight,
-      src: fileUrl,
-      contentType: file.type,
-      draggable: true,
-      resizable: true
-    };
-    
-    // Add the underlay to symbols
-    if (setSymbols) {
-      setSymbols([...symbols, newUnderlay]);
-    }
-  };
-
-  // Use our PDF canvas core hook
+  // Use our PDF canvas event handlers
   const {
-    cursorStyle,
-    handleCanvasClickCustom,
-    handleSelectionMove,
-    handleSelectionEnd,
-    isSelecting,
-    clearDetectedWalls,
-    redoWallDetection,
-    findSimilarWalls,
-    handleFileUpload
-  } = usePDFCanvasCore({
-    pdfFile,
-    scale,
-    panPosition,
-    isPanning,
-    setIsPanning,
-    similarityDetectionMode,
-    drawingWallMode,
-    activeSymbolType,
-    onWallPointSet,
-    onSymbolPlace,
-    onSimilarWallsDetected,
-    symbols,
-    onExitDetectionMode: () => onSimilarityModeToggle && onSimilarityModeToggle(false),
-    onCanvasClick: handleCanvasClickCustom,
-    onMouseDown: handleSelectionMove,
-    onMouseMove: handleSelectionMove,
-    onMouseUp: handleSelectionEnd,
-    onFileUploaded: handleFileUploadForUnderlay
-  });
-
-  // Use PDF interactions hook for more advanced interactions
-  const interactions = usePDFInteractions({
-    pdfContainerRef,
-    scale,
-    panPosition,
-    setPanPosition,
-    isDragging,
-    setIsDragging,
-    draggedSymbol,
-    setDraggedSymbol,
-    isPanning,
-    setIsPanning,
-    lastMousePosition,
-    setLastMousePosition,
-    activeSymbolType,
-    onSymbolPlace,
-    onSymbolDragEnd,
-    setScale,
-    minScale: MIN_SCALE,
-    maxScale: MAX_SCALE,
-    drawingWallMode,
-    onWallPointSet
-  });
-
-  // Update wall drawing mode when prop changes
-  useEffect(() => {
-    wallDrawing.toggleWallDrawingMode(drawingWallMode);
-  }, [drawingWallMode, wallDrawing]);
-
-  // Use our event handlers for other interactions
-  const {
+    handleCanvasClick,
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
@@ -202,6 +109,100 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     drawingWallMode,
     onWallPointSet
   });
+
+  // Handle file upload for underlays (PDF, images)
+  const handleFileUploadForUnderlay = (file: File) => {
+    if (!file) return;
+
+    // Create a URL for the file
+    const fileUrl = URL.createObjectURL(file);
+    
+    // Default dimensions
+    const defaultWidth = 300;
+    const defaultHeight = 400;
+    
+    // Create a new underlay symbol
+    const newUnderlay: UnderlaySymbol = {
+      id: crypto.randomUUID(),
+      type: 'underlay',
+      x: 50,
+      y: 50,
+      rotation: 0,
+      size: 1,  // Scale factor
+      width: defaultWidth,
+      height: defaultHeight,
+      src: fileUrl,
+      contentType: file.type,
+      draggable: true,
+      resizable: true
+    };
+    
+    // Add the underlay to symbols
+    if (setSymbols) {
+      setSymbols((prevSymbols: EditorSymbol[]) => [...prevSymbols, newUnderlay]);
+    }
+  };
+
+  // Use our PDF canvas core hook - moved after the handleFileUploadForUnderlay declaration
+  const {
+    cursorStyle,
+    handleCanvasClickCustom,
+    handleSelectionMove,
+    handleSelectionEnd,
+    isSelecting,
+    clearDetectedWalls,
+    redoWallDetection,
+    findSimilarWalls,
+    handleFileUpload
+  } = usePDFCanvasCore({
+    pdfFile,
+    scale,
+    panPosition,
+    isPanning,
+    setIsPanning,
+    similarityDetectionMode,
+    drawingWallMode,
+    activeSymbolType,
+    onWallPointSet,
+    onSymbolPlace,
+    onSimilarWallsDetected,
+    symbols,
+    onExitDetectionMode: () => onSimilarityModeToggle && onSimilarityModeToggle(false),
+    onCanvasClick: handleCanvasClick,
+    onMouseDown: handleMouseDown,
+    onMouseMove: handleMouseMove,
+    onMouseUp: handleMouseUp,
+    onFileUploaded: handleFileUploadForUnderlay
+  });
+
+  // Use PDF interactions hook for more advanced interactions
+  const interactions = usePDFInteractions({
+    pdfContainerRef,
+    scale,
+    panPosition,
+    setPanPosition,
+    isDragging,
+    setIsDragging,
+    draggedSymbol,
+    setDraggedSymbol,
+    isPanning,
+    setIsPanning,
+    lastMousePosition,
+    setLastMousePosition,
+    activeSymbolType,
+    onSymbolPlace,
+    onSymbolDragEnd,
+    setScale,
+    minScale: MIN_SCALE,
+    maxScale: MAX_SCALE,
+    drawingWallMode,
+    onWallPointSet
+  });
+
+  // Update wall drawing mode when prop changes
+  useEffect(() => {
+    wallDrawing.toggleWallDrawingMode(drawingWallMode);
+  }, [drawingWallMode, wallDrawing]);
 
   // Handle direct canvas click for wall drawing
   const handleDirectCanvasClick = (e: React.MouseEvent) => {

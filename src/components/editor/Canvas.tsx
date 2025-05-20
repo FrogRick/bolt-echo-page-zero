@@ -29,8 +29,7 @@ const Canvas: React.FC = () => {
     toggleSnapToLines,
     snapToExtensions,
     toggleSnapToExtensions,
-    rectangleDrawMode,
-    addImageToCanvas
+    rectangleDrawMode
   } = useCanvasEditor();
   
   const { toast } = useToast();
@@ -42,30 +41,24 @@ const Canvas: React.FC = () => {
     if (!file) return;
 
     if (file.type === "application/pdf" || file.type.startsWith("image/")) {
-      const reader = new FileReader();
+      toast({
+        title: "File selected",
+        description: `${file.name} has been selected.`
+      });
       
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          // For images, use the image directly
-          if (file.type.startsWith("image/")) {
-            addImageToCanvas(event.target.result as string, file.type);
-            toast({
-              title: "Image added",
-              description: `${file.name} has been added to the canvas.`
-            });
-          } 
-          // For PDFs, use a PDF renderer
-          else if (file.type === "application/pdf") {
-            addImageToCanvas(URL.createObjectURL(file), file.type);
-            toast({
-              title: "PDF added",
-              description: `${file.name} has been added to the canvas.`
-            });
-          }
-        }
-      };
-      
-      reader.readAsDataURL(file);
+      // For now, just show a toast notification instead of trying to add to canvas
+      if (file.type.startsWith("image/")) {
+        toast({
+          title: "Image format supported",
+          description: `Images can be added as underlays.`
+        });
+      } 
+      else if (file.type === "application/pdf") {
+        toast({
+          title: "PDF format supported",
+          description: `PDFs can be added as underlays.`
+        });
+      }
     } else {
       toast({
         title: "Unsupported file",
