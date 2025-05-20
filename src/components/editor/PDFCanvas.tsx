@@ -13,7 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 const MIN_SCALE = 1.0;
 const MAX_SCALE = 3.0;
 
-export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
+// Forward ref without named export
+const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
   pdfFile,
   symbols,
   activeSymbolType,
@@ -416,6 +417,8 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
   );
 });
 
+// Set display name
 PDFCanvas.displayName = 'PDFCanvas';
 
+// Single export statement at the end
 export { PDFCanvas };
