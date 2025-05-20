@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
 import { Toolbar } from "./Toolbar";
+import { Toggle } from "@/components/ui/toggle";
 
 const Canvas: React.FC = () => {
   const {
@@ -29,9 +30,6 @@ const Canvas: React.FC = () => {
     toggleSnapToExtensions
   } = useCanvasEditor();
 
-  // Toggle state for the snap control group
-  const [snapEnabled, setSnapEnabled] = useState(true);
-
   // Force canvas redraw when tool or styling changes to ensure correct rendering
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -45,18 +43,6 @@ const Canvas: React.FC = () => {
       }
     }
   }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions, canvasRef, setActiveTool]);
-
-  // Toggle all snap settings on/off
-  const toggleAllSnaps = () => {
-    const newState = !snapEnabled;
-    setSnapEnabled(newState);
-    
-    // Only toggle individual snap settings if they don't match the new group state
-    if (snapToAngle !== newState) toggleSnapToAngle();
-    if (snapToEndpoints !== newState) toggleSnapToEndpoints();
-    if (snapToLines !== newState) toggleSnapToLines();
-    if (snapToExtensions !== newState) toggleSnapToExtensions();
-  };
 
   return (
     <div className="flex flex-col h-full">
@@ -90,19 +76,33 @@ const Canvas: React.FC = () => {
           />
         </div>
         
-        <div className="border-l pl-4">
-          <div className="flex items-center gap-2">
-            <label className="inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={snapEnabled} 
-                onChange={toggleAllSnaps}
-                className="sr-only peer"
-              />
-              <div className="relative w-10 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-              <span className="ml-2 text-sm font-medium">Snap</span>
-            </label>
-          </div>
+        <div className="border-l pl-4 flex items-center gap-3">
+          <Toggle 
+            pressed={snapToEndpoints} 
+            onPressedChange={toggleSnapToEndpoints}
+            aria-label="Toggle snap to endpoints"
+            className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
+          >
+            <span className="text-sm">Snap</span>
+          </Toggle>
+          
+          <Toggle 
+            pressed={snapToExtensions} 
+            onPressedChange={toggleSnapToExtensions}
+            aria-label="Toggle snap to extensions"
+            className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
+          >
+            <span className="text-sm">Extension</span>
+          </Toggle>
+          
+          <Toggle 
+            pressed={snapToAngle} 
+            onPressedChange={toggleSnapToAngle}
+            aria-label="Toggle snap to 45 degree angles"
+            className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
+          >
+            <span className="text-sm">45°</span>
+          </Toggle>
         </div>
       </div>
       
