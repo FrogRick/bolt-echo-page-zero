@@ -18,7 +18,7 @@ export type Tool =
 // Shape types for drawing
 export type Shape = {
   id: string;
-  type: 'line' | 'rectangle' | 'polygon';
+  type: 'line' | 'rectangle' | 'polygon' | 'wall-polygon';
   start?: Point;  // Optional for polygon type
   end?: Point;    // Optional for polygon type
   points?: Point[];  // Required for polygon type
