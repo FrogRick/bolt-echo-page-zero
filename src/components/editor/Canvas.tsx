@@ -6,7 +6,19 @@ import { Toolbar } from "./Toolbar";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { FileImage, Upload } from "lucide-react";
+import { FileImage, Upload, X, ImageIcon, FileIcon } from "lucide-react";
+
+// Define the Image object type for our canvas
+interface CanvasImage {
+  id: string;
+  file: File;
+  url: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  selected: boolean;
+}
 
 const Canvas: React.FC = () => {
   const {
@@ -39,6 +51,9 @@ const Canvas: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadFeedback, setUploadFeedback] = useState<string | null>(null);
+  const [canvasImages, setCanvasImages] = useState<CanvasImage[]>([]);
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+  const canvasWrapperRef = useRef<HTMLDivElement>(null);
 
   // Handle file upload for underlays
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,10 +73,30 @@ const Canvas: React.FC = () => {
     if (file.type === "application/pdf" || file.type.startsWith("image/")) {
       // Process the file
       try {
-        // Create a URL for the file and log it for debugging
+        // Create a URL for the file
         const fileUrl = URL.createObjectURL(file);
         console.log("📄 Canvas - Created file URL:", fileUrl);
 
+        // Create a new image with default positioning
+        const newImage: CanvasImage = {
+          id: crypto.randomUUID(),
+          file: file,
+          url: fileUrl,
+          x: 50,
+          y: 50,
+          width: file.type === "application/pdf" ? 400 : 300,
+          height: file.type === "application/pdf" ? 500 : 300,
+          selected: true
+        };
+
+        // Add the image to our state
+        setCanvasImages(prev => {
+          // Deselect any previously selected images
+          const updatedPrev = prev.map(img => ({...img, selected: false}));
+          return [...updatedPrev, newImage];
+        });
+        setSelectedImageId(newImage.id);
+        
         // Show success feedback
         toast({
           title: "File uploaded",
@@ -70,16 +105,7 @@ const Canvas: React.FC = () => {
         });
         
         setUploadFeedback(`Upload complete: ${file.name}`);
-
-        // This would normally add the file to the canvas
-        // For now, just show a toast with clear feedback
-        setTimeout(() => {
-          toast({
-            title: "Success!",
-            description: "Your file is ready to use",
-            variant: "success",
-          });
-        }, 500);
+        setTimeout(() => setUploadFeedback(null), 3000);
       } catch (error) {
         console.error("❌ Canvas - Error in handleFileUpload:", error);
         toast({
@@ -133,6 +159,78 @@ const Canvas: React.FC = () => {
       
       handleFileUpload(fakeEvent);
     }
+  };
+
+  // Select an image when clicked
+  const handleImageClick = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCanvasImages(prev => 
+      prev.map(img => ({
+        ...img,
+        selected: img.id === id
+      }))
+    );
+    setSelectedImageId(id);
+  };
+
+  // Start dragging an image
+  const handleImageMouseDown = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Ensure the image is selected
+    if (selectedImageId !== id) {
+      handleImageClick(id, e);
+    }
+    
+    // Get the selected image
+    const image = canvasImages.find(img => img.id === id);
+    if (!image) return;
+    
+    // Set up the drag operation
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startImgX = image.x;
+    const startImgY = image.y;
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
+      
+      setCanvasImages(prev => 
+        prev.map(img => 
+          img.id === id 
+            ? { ...img, x: startImgX + dx, y: startImgY + dy }
+            : img
+        )
+      );
+    };
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  // Remove an image from the canvas
+  const handleImageRemove = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCanvasImages(prev => prev.filter(img => img.id !== id));
+    if (selectedImageId === id) {
+      setSelectedImageId(null);
+    }
+    toast({
+      title: "Image removed",
+      description: "The image has been removed from the canvas",
+    });
+  };
+
+  // Handle canvas click - deselect all images
+  const handleCanvasClick = () => {
+    setCanvasImages(prev => prev.map(img => ({...img, selected: false})));
+    setSelectedImageId(null);
   };
 
   // Force canvas redraw when tool or styling changes to ensure correct rendering
@@ -240,10 +338,12 @@ const Canvas: React.FC = () => {
       </div>
       
       <div 
-        className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto p-4"
+        ref={canvasWrapperRef}
+        className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto p-4 relative"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onClick={handleCanvasClick}
       >
         <div className={`relative shadow-xl ${isDragging ? 'outline-dashed outline-2 outline-blue-400' : ''}`}>
           <canvas
@@ -263,9 +363,65 @@ const Canvas: React.FC = () => {
             }`}
           />
           
+          {/* Render uploaded images/PDFs on top of the canvas */}
+          {canvasImages.map(image => (
+            <div
+              key={image.id}
+              className={`absolute border-2 ${image.selected ? 'border-blue-500' : 'border-transparent'}`}
+              style={{
+                left: `${image.x}px`,
+                top: `${image.y}px`,
+                width: `${image.width}px`,
+                height: `${image.height}px`,
+                zIndex: 50,
+                cursor: 'move',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              }}
+              onClick={(e) => handleImageClick(image.id, e)}
+              onMouseDown={(e) => handleImageMouseDown(image.id, e)}
+            >
+              {image.file.type.startsWith('image/') ? (
+                <img 
+                  src={image.url} 
+                  alt={`Uploaded ${image.file.name}`}
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                  <iframe 
+                    src={image.url} 
+                    title={`PDF ${image.file.name}`}
+                    className="w-full h-full border-0"
+                  />
+                </div>
+              )}
+              
+              {/* Show file type indicator and remove button when selected */}
+              {image.selected && (
+                <>
+                  <div className="absolute top-0 left-0 bg-blue-500 text-white px-2 py-1 text-xs flex items-center">
+                    {image.file.type.startsWith('image/') ? (
+                      <ImageIcon className="w-3 h-3 mr-1" />
+                    ) : (
+                      <FileIcon className="w-3 h-3 mr-1" />
+                    )}
+                    {image.file.name}
+                  </div>
+                  <button
+                    className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-bl"
+                    onClick={(e) => handleImageRemove(image.id, e)}
+                    title="Remove image"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+          
           {/* Drag overlay with instructions */}
           {isDragging && (
-            <div className="absolute inset-0 bg-blue-100/20 flex items-center justify-center">
+            <div className="absolute inset-0 bg-blue-100/20 flex items-center justify-center z-40">
               <div className="bg-white p-4 rounded-lg shadow-lg">
                 <Upload className="h-6 w-6 text-blue-600 mx-auto mb-2" />
                 <p className="text-blue-800 font-medium">Drop file to upload</p>
