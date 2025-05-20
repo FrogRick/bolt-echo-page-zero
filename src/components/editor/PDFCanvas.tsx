@@ -7,6 +7,9 @@ import { usePDFCanvasEventHandlers } from "./PDFCanvasEventHandlers";
 import { PDFCanvasProps } from "./PDFCanvasProps";
 import { useWallDrawing } from "@/hooks/useWallDrawing";
 import { usePDFInteractions } from "@/hooks/usePDFInteractions";
+import { Button } from "@/components/ui/button";
+import { Upload } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const MIN_SCALE = 1.0;
 const MAX_SCALE = 3.0;
@@ -46,6 +49,8 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
 }, ref) => {
   const isMobile = useIsMobile();
   const pdfContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
   // Use PDF state hook
   const {
@@ -96,6 +101,64 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
     drawingWallMode,
     onWallPointSet
   });
+
+  // Handle image upload
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const validImageTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    
+    if (!validImageTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a JPG, PNG, or PDF file.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (file.type === 'application/pdf') {
+      // Handle PDF file
+      onPDFUpload(file);
+    } else {
+      // Handle image file (JPG, PNG)
+      const reader = new FileReader();
+      
+      reader.onload = (event) => {
+        if (!event.target?.result) return;
+        
+        // Create a new image symbol
+        const newSymbol = {
+          id: `image-${Date.now()}`,
+          type: 'image',
+          x: 100,
+          y: 100,
+          width: 200,
+          height: 200,
+          src: event.target.result as string,
+          rotation: 0,
+          draggable: true,
+          resizable: true
+        };
+        
+        // Add the new image to symbols
+        setSymbols((prevSymbols: any[]) => [...prevSymbols, newSymbol]);
+        
+        toast({
+          title: "Image added",
+          description: "The image has been added to the canvas."
+        });
+      };
+      
+      reader.readAsDataURL(file);
+    }
+    
+    // Reset the input so the same file can be uploaded again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   // Update wall drawing mode when prop changes
   useEffect(() => {
@@ -219,6 +282,26 @@ export const PDFCanvas = forwardRef<any, PDFCanvasProps>(({
         bottom: 0
       }}
     >
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImageUpload}
+        accept=".jpg,.jpeg,.png,.pdf"
+        className="hidden"
+      />
+      
+      <div className="absolute top-4 right-4 z-10">
+        <Button 
+          variant="secondary"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-1 bg-white shadow-md"
+        >
+          <Upload size={16} />
+          <span>Upload Image/PDF</span>
+        </Button>
+      </div>
+      
       <PDFCanvasContent
         pdfFile={pdfFile}
         symbols={symbols}

@@ -36,6 +36,7 @@ interface PDFCanvasCoreResult {
   clearDetectedWalls: () => void;
   redoWallDetection: () => void;
   findSimilarWalls: () => WallSymbol[];
+  handleImageUpload?: (file: File) => void;
 }
 
 export const usePDFCanvasCore = ({
@@ -111,6 +112,30 @@ export const usePDFCanvasCore = ({
     scale
   });
 
+  // Handle image upload
+  const handleImageUpload = (file: File) => {
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a valid image file (JPG or PNG).",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        // Image loaded successfully
+        toast({
+          title: "Image uploaded",
+          description: "You can now place and position the image on the canvas."
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   useEffect(() => {
     const preventZoom = (e: TouchEvent) => {
       if (e.touches.length === 2 && pdfFile) {
@@ -142,6 +167,7 @@ export const usePDFCanvasCore = ({
     isSelecting,
     clearDetectedWalls,
     redoWallDetection,
-    findSimilarWalls
+    findSimilarWalls,
+    handleImageUpload
   };
 };
