@@ -58,30 +58,45 @@ const Canvas: React.FC = () => {
     fileInputRef.current?.click();
   };
 
-  // Adjust canvas width when container size changes
+  // Adjust canvas dimensions when container size changes
   useEffect(() => {
     if (!containerRef.current) return;
     
     const resizeObserver = new ResizeObserver(entries => {
       const containerWidth = entries[0].contentRect.width;
-      // Update canvas width to fit container (minus padding)
-      const newWidth = containerWidth - 32; // 16px padding on each side
+      const containerHeight = entries[0].contentRect.height;
       
-      if (newWidth > 0 && newWidth !== canvasSize.width) {
+      // Calculate available width (minus padding)
+      const availableWidth = containerWidth - 32; // 16px padding on each side
+      // Calculate available height (minus padding)
+      const availableHeight = containerHeight - 32; // 16px padding on each side
+      
+      if (availableWidth > 0 && availableHeight > 0) {
         // If we have an underlay image, maintain its aspect ratio
         if (underlayImage) {
-          const aspectRatio = underlayImage.height / underlayImage.width;
-          adjustCanvasSize(newWidth, Math.round(newWidth * aspectRatio));
+          const imageAspectRatio = underlayImage.height / underlayImage.width;
+          
+          // First try to fit by width and check if height fits
+          let newWidth = availableWidth;
+          let newHeight = Math.round(newWidth * imageAspectRatio);
+          
+          // If calculated height exceeds available height, constrain by height instead
+          if (newHeight > availableHeight) {
+            newHeight = availableHeight;
+            newWidth = Math.round(newHeight / imageAspectRatio);
+          }
+          
+          adjustCanvasSize(newWidth, newHeight);
         } else {
-          // Otherwise just update the width
-          adjustCanvasSize(newWidth, canvasSize.height);
+          // If no image, make the canvas fill the available space
+          adjustCanvasSize(availableWidth, availableHeight);
         }
       }
     });
     
     resizeObserver.observe(containerRef.current);
     return () => resizeObserver.disconnect();
-  }, [containerRef, underlayImage]);
+  }, [containerRef, underlayImage, adjustCanvasSize]);
 
   // Force canvas redraw when tool or styling changes
   useEffect(() => {
@@ -236,8 +251,8 @@ const Canvas: React.FC = () => {
         </div>
       </div>
       
-      <div ref={containerRef} className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto p-4">
-        <div className="relative shadow-xl">
+      <div ref={containerRef} className="flex-grow flex items-center justify-center bg-gray-50 overflow-hidden p-4">
+        <div className="relative">
           <canvas
             ref={canvasRef}
             width={canvasSize.width}
