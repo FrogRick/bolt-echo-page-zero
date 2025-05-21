@@ -581,23 +581,43 @@ export const useCanvasEditor = () => {
       // Update preview for click mode rectangle
       redrawCanvas();
     } else if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length > 0) {
-      // Add angle snapping for yellow and green polygons
+      // Apply both endpoint and line snapping for yellow and green polygons
+      let snappedPoint = point;
+      
+      // First check if we can snap to a line
+      if (snapToLines) {
+        const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
+        if (lineSnap) {
+          snappedPoint = lineSnap.point;
+        }
+      }
+      
+      // Then check endpoint snapping (this takes priority over line snapping)
+      const endpointSnap = findNearestEndpoint(snappedPoint);
+      if (endpointSnap) {
+        snappedPoint = endpointSnap;
+      }
+      
+      // Finally apply angle snapping if enabled
       if (snapToAngle) {
         const lastPoint = polygonPoints[polygonPoints.length - 1];
-        const snappedPoint = snapAngleToGrid(lastPoint, point);
+        const snappedAnglePoint = snapAngleToGrid(lastPoint, snappedPoint);
         
         // Only use the angle-snapped point if it's close enough to our current point
         const distToSnapped = Math.sqrt(
-          Math.pow(snappedPoint.x - point.x, 2) + 
-          Math.pow(snappedPoint.y - point.y, 2)
+          Math.pow(snappedAnglePoint.x - snappedPoint.x, 2) + 
+          Math.pow(snappedAnglePoint.y - snappedPoint.y, 2)
         );
         
         // Apply the angle snap if it's reasonably close to where we clicked
         if (distToSnapped < 20) {
-          setCurrentPoint(snappedPoint);
+          setCurrentPoint(snappedAnglePoint);
         } else {
-          setCurrentPoint(point);
+          setCurrentPoint(snappedPoint);
         }
+      } else {
+        // If angle snapping is disabled, use the line/endpoint snapped point
+        setCurrentPoint(snappedPoint);
       }
       
       // Update the current point for polygon preview
@@ -819,26 +839,43 @@ export const useCanvasEditor = () => {
   
   // Handle polygon tool mouse down
   const handlePolygonToolMouseDown = (point: Point) => {
+    // Apply endpoint and line snapping for yellow/green polygons
+    let snappedPoint = point;
+    
+    // First check if we can snap to a line
+    if (snapToLines) {
+      const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
+      if (lineSnap) {
+        snappedPoint = lineSnap.point;
+      }
+    }
+    
+    // Then check endpoint snapping (this takes priority)
+    const endpointSnap = findNearestEndpoint(snappedPoint);
+    if (endpointSnap) {
+      snappedPoint = endpointSnap;
+    }
+    
     if (polygonPoints.length === 0) {
       // First point of a new polygon
-      setPolygonPoints([point]);
+      setPolygonPoints([snappedPoint]);
     } else {
       // For subsequent points, apply angle snapping if enabled
-      let finalPoint = point;
+      let finalPoint = snappedPoint;
       
       if (snapToAngle) {
         const lastPoint = polygonPoints[polygonPoints.length - 1];
-        const snappedPoint = snapAngleToGrid(lastPoint, point);
+        const angleSnappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
         
-        // Only use the angle-snapped point if it's close enough to our click point
+        // Only use the angle-snapped point if it's close enough to our snapped point
         const distToSnapped = Math.sqrt(
-          Math.pow(snappedPoint.x - point.x, 2) + 
-          Math.pow(snappedPoint.y - point.y, 2)
+          Math.pow(angleSnappedPoint.x - snappedPoint.x, 2) + 
+          Math.pow(angleSnappedPoint.y - snappedPoint.y, 2)
         );
         
         // Apply the angle snap if it's reasonably close to where we clicked
         if (distToSnapped < 20) {
-          finalPoint = snappedPoint;
+          finalPoint = angleSnappedPoint;
         }
       }
       

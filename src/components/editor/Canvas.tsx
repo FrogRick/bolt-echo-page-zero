@@ -45,6 +45,12 @@ const Canvas: React.FC = () => {
     }
   }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions, canvasRef, setActiveTool]);
 
+  // Determine if the current tool uses snapping features
+  const isSnappingTool = activeTool === 'wall' || 
+                         activeTool === 'wall-polygon' || 
+                         activeTool === 'yellow-polygon' || 
+                         activeTool === 'green-polygon';
+
   return (
     <div className="flex flex-col h-full">
       <Toolbar 
@@ -88,12 +94,12 @@ const Canvas: React.FC = () => {
           </Toggle>
           
           <Toggle 
-            pressed={snapToExtensions} 
-            onPressedChange={toggleSnapToExtensions}
-            aria-label="Toggle snap to extensions"
+            pressed={snapToLines} 
+            onPressedChange={toggleSnapToLines}
+            aria-label="Toggle snap to lines"
             className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
           >
-            <span className="text-sm">Extension</span>
+            <span className="text-sm">Lines</span>
           </Toggle>
           
           <Toggle 
@@ -103,6 +109,16 @@ const Canvas: React.FC = () => {
             className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
           >
             <span className="text-sm">45°</span>
+          </Toggle>
+
+          {/* Extension snapping is still available but only used for wall tool */}
+          <Toggle 
+            pressed={snapToExtensions} 
+            onPressedChange={toggleSnapToExtensions}
+            aria-label="Toggle snap to extensions"
+            className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
+          >
+            <span className="text-sm">Extension</span>
           </Toggle>
         </div>
       </div>
