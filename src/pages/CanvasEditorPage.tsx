@@ -2,22 +2,16 @@
 import React, { useEffect } from "react";
 import Canvas from "@/components/editor/Canvas";
 import { useParams, useNavigate } from "react-router-dom";
-import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/hooks/use-toast";
 
 const CanvasEditorPage: React.FC = () => {
   const { canvasId } = useParams<{ canvasId: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   // If there's no canvas ID, generate one and redirect
   useEffect(() => {
     if (!canvasId) {
       const newCanvasId = crypto.randomUUID();
       navigate(`/editor/${newCanvasId}`, { replace: true });
-    } else {
-      // Let the user know they're on the Canvas editor
-      console.log("🖌️ Canvas Editor initialized with ID:", canvasId);
     }
   }, [canvasId, navigate]);
 
@@ -35,24 +29,11 @@ const CanvasEditorPage: React.FC = () => {
         <h1 className="text-lg font-semibold">Canvas Editor</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">Canvas ID: {canvasId.substring(0, 8)}...</span>
-          <button
-            onClick={() => {
-              console.log("💾 Saving canvas state");
-              toast({
-                title: "Canvas Saved",
-                description: "Your canvas has been saved.",
-              });
-            }}
-            className="px-4 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
-          >
-            Save
-          </button>
         </div>
       </header>
       <div className="flex-grow overflow-hidden">
         <Canvas />
       </div>
-      <Toaster />
     </div>
   );
 };

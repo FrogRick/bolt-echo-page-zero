@@ -33,5 +33,5 @@ export interface PDFCanvasProps {
   onSnapToAngleToggle?: (enabled: boolean) => void;
   snapToWalls?: boolean;
   onSnapToWallsToggle?: (enabled: boolean) => void;
-  setSymbols: React.Dispatch<React.SetStateAction<EditorSymbol[]>>;
+  setSymbols: (symbols: EditorSymbol[]) => void;
 }

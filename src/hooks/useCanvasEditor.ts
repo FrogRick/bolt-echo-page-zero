@@ -335,16 +335,16 @@ export const useCanvasEditor = () => {
     setWallPolygonPoints([]);
   };
 
-  // Handle mouse down event - UPDATED to properly handle coordinates
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>, rawPoint: Point) => {
+  // Handle mouse down event
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     
-    // Apply canvas offset to the raw point to get the actual drawing coordinates
-    const point: Point = { 
-      x: rawPoint.x - canvasOffset.x,
-      y: rawPoint.y - canvasOffset.y
-    };
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - canvasOffset.x;
+    const y = e.clientY - rect.top - canvasOffset.y;
     
+    const point: Point = { x, y };
     setMouseMoved(false);
     
     // Set up potential panning on any tool with click-hold
@@ -391,15 +391,12 @@ export const useCanvasEditor = () => {
     }
   };
 
-  // Handle mouse move event - UPDATED to properly handle coordinates
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>, rawPoint: Point) => {
+  // Handle mouse move event
+  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     
-    // Apply canvas offset to the raw point to get the actual drawing coordinates
-    const point: Point = {
-      x: rawPoint.x - canvasOffset.x,
-      y: rawPoint.y - canvasOffset.y
-    };
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
     
     // Check if we're panning the canvas
     if (isPanning && panStart) {
@@ -438,6 +435,11 @@ export const useCanvasEditor = () => {
         }
       }
     }
+    
+    const x = e.clientX - rect.left - canvasOffset.x;
+    const y = e.clientY - rect.top - canvasOffset.y;
+    
+    const point: Point = { x, y };
     
     setCurrentPoint(point);
     
@@ -480,9 +482,12 @@ export const useCanvasEditor = () => {
           Math.pow(snappedAnglePoint.y - modifiedPoint.y, 2)
         );
         
-        // Only apply if reasonably close to current point or very close to extension point
-        if (distToSnapped < 20 || (extensionFound && distToSnapped < 5)) {
-          setCurrentPoint(snappedAnglePoint);
+        if (distToSnapped < 20) { // Apply angle snapping if close to current angle
+          // Only set if we didn't find an extension, or if the angle-snapped point
+          // is very close to the extension point (meaning they're compatible)
+          if (!extensionFound || distToSnapped < 5) {
+            setCurrentPoint(snappedAnglePoint);
+          }
         }
       }
       
@@ -688,7 +693,8 @@ export const useCanvasEditor = () => {
       // If we already have points, check if this is a double-click (close to last point)
       const lastPoint = wallPolygonPoints[wallPolygonPoints.length - 1];
       const distance = Math.sqrt(
-        Math.pow(snappedPoint.x - lastPoint.x, 2) + Math.pow(snappedPoint.y - lastPoint.y, 2)
+        Math.pow(snappedPoint.x - lastPoint.x, 2) + 
+        Math.pow(snappedPoint.y - lastPoint.y, 2)
       );
       
       if (distance < 10) {
@@ -864,8 +870,8 @@ export const useCanvasEditor = () => {
     setSelectedShape(updatedShapes.find(shape => shape.id === selectedShape.id) || null);
   };
 
-  // Handle mouse up event - UPDATED to properly handle coordinates
-  const endDrawing = (e: React.MouseEvent<HTMLCanvasElement>, rawPoint: Point) => {
+  // Handle mouse up event
+  const endDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     
     // Clear the mouse down timer if it exists
@@ -881,11 +887,12 @@ export const useCanvasEditor = () => {
       return;
     }
     
-    // Apply canvas offset to the raw point to get the actual drawing coordinates
-    const point: Point = {
-      x: rawPoint.x - canvasOffset.x,
-      y: rawPoint.y - canvasOffset.y
-    };
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - canvasOffset.x;
+    const y = e.clientY - rect.top - canvasOffset.y;
+    
+    const point: Point = { x, y };
     
     if ((activeTool === 'yellow-rectangle' || activeTool === 'green-rectangle') && rectangleDrawMode === 'drag' && startPoint) {
       // Complete rectangle on mouse up with no border
