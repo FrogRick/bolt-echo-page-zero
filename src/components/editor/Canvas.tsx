@@ -21,19 +21,13 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 
-// Standard paper sizes in mm (ISO A series)
-const PAPER_SIZES = {
-  a4: { width: 210, height: 297 },
-  a3: { width: 297, height: 420 },
-  letter: { width: 216, height: 279 },
-  legal: { width: 216, height: 356 }
-};
+// Use only A3 size in mm (ISO A series)
+const A3_SIZE = { width: 297, height: 420 };
 
 // Scaling factor to convert mm to pixels at a reasonable size
 const SCALE_FACTOR = 2.5;
 
 const Canvas: React.FC = () => {
-  const [paperSize, setPaperSize] = useState<keyof typeof PAPER_SIZES>("a4");
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
   
   const {
@@ -85,51 +79,31 @@ const Canvas: React.FC = () => {
     fileInputRef.current?.click();
   };
   
-  // Handle paper size change
-  const handlePaperSizeChange = (value: string) => {
-    setPaperSize(value as keyof typeof PAPER_SIZES);
-    updateCanvasSize(value as keyof typeof PAPER_SIZES, orientation);
-  };
-  
   // Handle orientation change
   const handleOrientationChange = (value: string) => {
     setOrientation(value as "portrait" | "landscape");
-    updateCanvasSize(paperSize, value as "portrait" | "landscape");
+    updateCanvasSize(value as "portrait" | "landscape");
   };
   
-  // Update canvas size based on paper size and orientation
-  const updateCanvasSize = (size: keyof typeof PAPER_SIZES, orient: "portrait" | "landscape") => {
-    const paperDimensions = PAPER_SIZES[size];
-    
+  // Update canvas size based on orientation
+  const updateCanvasSize = (orient: "portrait" | "landscape") => {
     if (orient === "portrait") {
       adjustCanvasSize(
-        Math.round(paperDimensions.width * SCALE_FACTOR),
-        Math.round(paperDimensions.height * SCALE_FACTOR)
+        Math.round(A3_SIZE.width * SCALE_FACTOR),
+        Math.round(A3_SIZE.height * SCALE_FACTOR)
       );
     } else {
       adjustCanvasSize(
-        Math.round(paperDimensions.height * SCALE_FACTOR),
-        Math.round(paperDimensions.width * SCALE_FACTOR)
+        Math.round(A3_SIZE.height * SCALE_FACTOR),
+        Math.round(A3_SIZE.width * SCALE_FACTOR)
       );
     }
   };
 
   // Initialize canvas size
   useEffect(() => {
-    updateCanvasSize(paperSize, orientation);
+    updateCanvasSize(orientation);
   }, []);
-
-  // Adjust container dimensions to fit the canvas
-  useEffect(() => {
-    if (!containerRef.current) return;
-    
-    const resizeObserver = new ResizeObserver(entries => {
-      // Container will adjust based on the canvas size now, not the other way around
-    });
-    
-    resizeObserver.observe(containerRef.current);
-    return () => resizeObserver.disconnect();
-  }, [containerRef, underlayImage, adjustCanvasSize]);
 
   // Force canvas redraw when tool or styling changes
   useEffect(() => {
@@ -183,26 +157,8 @@ const Canvas: React.FC = () => {
           />
         </div>
         
-        {/* Paper size and orientation controls */}
+        {/* Orientation control only */}
         <div className="border-l pl-4 flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <span className="text-sm font-medium">Size:</span>
-            <Select
-              value={paperSize}
-              onValueChange={handlePaperSizeChange}
-            >
-              <SelectTrigger className="w-24 h-8 text-xs">
-                <SelectValue placeholder="A4" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="a4">A4</SelectItem>
-                <SelectItem value="a3">A3</SelectItem>
-                <SelectItem value="letter">Letter</SelectItem>
-                <SelectItem value="legal">Legal</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
           <div className="flex items-center gap-1">
             <span className="text-sm font-medium">Orientation:</span>
             <Select
@@ -322,7 +278,7 @@ const Canvas: React.FC = () => {
       </div>
       
       <div ref={containerRef} className="flex-grow flex items-center justify-center bg-gray-50 overflow-hidden p-4">
-        <div className="relative">
+        <div className="relative py-8"> {/* Added consistent vertical padding */}
           <canvas
             ref={canvasRef}
             width={canvasSize.width}
@@ -331,7 +287,7 @@ const Canvas: React.FC = () => {
             onMouseMove={draw}
             onMouseUp={endDrawing}
             onMouseLeave={endDrawing}
-            className={`bg-white border border-gray-200 rounded-lg ${
+            className={`bg-white border border-gray-200 rounded-lg shadow-md ${
               activeTool === "select" 
                 ? (underlayImage ? "cursor-move" : "cursor-default")
                 : (activeTool === "wall" || activeTool === "wall-polygon" || activeTool === "yellow-polygon" || activeTool === "green-polygon")

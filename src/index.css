@@ -70,6 +70,24 @@
   .glass-panel {
     @apply bg-white/80 backdrop-blur-sm border border-white/20 shadow-lg;
   }
+  
+  /* Canvas container styling */
+  .canvas-container {
+    @apply flex-grow flex items-center justify-center bg-gray-50 overflow-hidden p-4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Canvas wrapper with consistent padding */
+  .canvas-wrapper {
+    padding: 2rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-height: 100%;
+    max-width: 100%;
+  }
 }
 
 /* Keep other styles from index.css that don't conflict */
