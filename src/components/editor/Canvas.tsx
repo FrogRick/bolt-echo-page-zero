@@ -278,7 +278,7 @@ const Canvas: React.FC = () => {
       </div>
       
       <div ref={containerRef} className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto p-4">
-        <div className="py-12 my-8"> {/* Increased vertical padding and added margin */}
+        <div className="py-16 my-12"> {/* Significantly increased vertical padding and margin for space above and below */}
           <canvas
             ref={canvasRef}
             width={canvasSize.width}
