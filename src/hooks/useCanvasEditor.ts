@@ -581,6 +581,25 @@ export const useCanvasEditor = () => {
       // Update preview for click mode rectangle
       redrawCanvas();
     } else if ((activeTool === 'yellow-polygon' || activeTool === 'green-polygon') && polygonPoints.length > 0) {
+      // Add angle snapping for yellow and green polygons
+      if (snapToAngle) {
+        const lastPoint = polygonPoints[polygonPoints.length - 1];
+        const snappedPoint = snapAngleToGrid(lastPoint, point);
+        
+        // Only use the angle-snapped point if it's close enough to our current point
+        const distToSnapped = Math.sqrt(
+          Math.pow(snappedPoint.x - point.x, 2) + 
+          Math.pow(snappedPoint.y - point.y, 2)
+        );
+        
+        // Apply the angle snap if it's reasonably close to where we clicked
+        if (distToSnapped < 20) {
+          setCurrentPoint(snappedPoint);
+        } else {
+          setCurrentPoint(point);
+        }
+      }
+      
       // Update the current point for polygon preview
       redrawCanvas();
     }
@@ -772,7 +791,7 @@ export const useCanvasEditor = () => {
     setPreviewLine(null);
     setIsDrawing(false);
   };
-
+  
   // Handle rectangle tool with click mode
   const handleRectangleToolClick = (point: Point) => {
     if (!startPoint) {
@@ -804,16 +823,35 @@ export const useCanvasEditor = () => {
       // First point of a new polygon
       setPolygonPoints([point]);
     } else {
+      // For subsequent points, apply angle snapping if enabled
+      let finalPoint = point;
+      
+      if (snapToAngle) {
+        const lastPoint = polygonPoints[polygonPoints.length - 1];
+        const snappedPoint = snapAngleToGrid(lastPoint, point);
+        
+        // Only use the angle-snapped point if it's close enough to our click point
+        const distToSnapped = Math.sqrt(
+          Math.pow(snappedPoint.x - point.x, 2) + 
+          Math.pow(snappedPoint.y - point.y, 2)
+        );
+        
+        // Apply the angle snap if it's reasonably close to where we clicked
+        if (distToSnapped < 20) {
+          finalPoint = snappedPoint;
+        }
+      }
+      
       // Check if we're closing the polygon (clicking near the first point)
       const firstPoint = polygonPoints[0];
-      const distance = Math.sqrt(Math.pow(point.x - firstPoint.x, 2) + Math.pow(point.y - firstPoint.y, 2));
+      const distance = Math.sqrt(Math.pow(finalPoint.x - firstPoint.x, 2) + Math.pow(finalPoint.y - firstPoint.y, 2));
       
       if (polygonPoints.length > 2 && distance < 10) {
         // Close the polygon and save it
         completePolygon();
       } else {
         // Add a new point to the polygon
-        setPolygonPoints([...polygonPoints, point]);
+        setPolygonPoints([...polygonPoints, finalPoint]);
       }
     }
   };
