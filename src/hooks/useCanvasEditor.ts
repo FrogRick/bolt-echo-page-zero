@@ -17,6 +17,7 @@ export const useCanvasEditor = () => {
   const [wallPolygonPoints, setWallPolygonPoints] = useState<Point[]>([]);
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedShape, setSelectedShape] = useState<Shape | null>(null);
+  // Update canvasSize state to include aspectRatio
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
@@ -53,14 +54,23 @@ export const useCanvasEditor = () => {
   // Import shape detection functions
   const { findShapeAtPoint } = useShapeDetection();
 
-  // Function to add an underlay image
+  // Function to add an underlay image with auto-sizing
   const addUnderlayImage = (file: File) => {
     const img = new Image();
     img.onload = () => {
-      // Center the image on the canvas
-      const x = (canvasSize.width - img.width * underlayScale) / 2;
-      const y = (canvasSize.height - img.height * underlayScale) / 2;
-      setUnderlayPosition({ x, y });
+      // Calculate aspect ratio of the image
+      const aspectRatio = img.height / img.width;
+      
+      // Adjust the canvas size based on the image's aspect ratio
+      // Use the current canvas width, but adjust height according to aspect ratio
+      const newHeight = Math.round(canvasSize.width * aspectRatio);
+      setCanvasSize(prev => ({ width: prev.width, height: newHeight }));
+      
+      // Center the image on the canvas - use full canvas width
+      setUnderlayPosition({ x: 0, y: 0 });
+      // Set scale to fill canvas width completely
+      const newScale = canvasSize.width / img.width;
+      setUnderlayScale(newScale);
       setUnderlayImage(img);
       redrawCanvas();
     };
@@ -85,6 +95,12 @@ export const useCanvasEditor = () => {
   // Function to adjust underlay opacity
   const adjustUnderlayOpacity = (opacity: number) => {
     setUnderlayOpacity(opacity);
+    redrawCanvas();
+  };
+
+  // Function to adjust canvas size
+  const adjustCanvasSize = (width: number, height: number) => {
+    setCanvasSize({ width, height });
     redrawCanvas();
   };
 
@@ -272,21 +288,21 @@ export const useCanvasEditor = () => {
   };
 
   // Function to snap angle to nearest 45 degrees if within threshold
-  const snapAngleToGrid = (startPoint: Point, endPoint: Point): Point => {
-    if (!snapToAngle) return endPoint;
-
+  const snapAngleToGrid = (startPoint: Point, endPoint: Point, snapTo90 = false): Point => {
     const dx = endPoint.x - startPoint.x;
     const dy = endPoint.y - startPoint.y;
     
     // Calculate angle in radians and convert to degrees
     const angle = Math.atan2(dy, dx) * (180 / Math.PI);
     
-    // Determine nearest 45 degree increment
-    const snapAngle = Math.round(angle / 45) * 45;
+    // Determine nearest angle increment (45 or 90 degrees)
+    const snapIncrement = snapTo90 ? 90 : 45;
+    const snapAngle = Math.round(angle / snapIncrement) * snapIncrement;
     
-    // Check if we're within the threshold (15 degrees) of a 45-degree increment
-    const angleDiff = Math.abs((angle % 45) - 45) % 45;
-    const shouldSnap = angleDiff < 15 || angleDiff > 30; // Within 15 degrees of a 45 degree angle
+    // Check if we're within the threshold
+    const angleDiff = Math.abs((angle % snapIncrement) - snapIncrement) % snapIncrement;
+    const threshold = snapTo90 ? 5 : 15; // Stricter threshold for 90-degree snapping
+    const shouldSnap = angleDiff < threshold || angleDiff > (snapIncrement - threshold);
     
     if (!shouldSnap) return endPoint;
     
@@ -305,34 +321,7 @@ export const useCanvasEditor = () => {
 
   // Function to snap angle to nearest 90 degrees if within threshold
   const snapAngleTo90Degrees = (startPoint: Point, endPoint: Point): Point => {
-    if (!snapToAngle) return endPoint;
-
-    const dx = endPoint.x - startPoint.x;
-    const dy = endPoint.y - startPoint.y;
-    
-    // Calculate angle in radians and convert to degrees
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-    
-    // Determine nearest 90 degree increment
-    const snapAngle = Math.round(angle / 90) * 90;
-    
-    // Check if we're within the threshold (5 degrees) of a 90-degree increment - stricter threshold
-    const angleDiff = Math.abs((angle % 90) - 90) % 90;
-    const shouldSnap = angleDiff < 5 || angleDiff > 85; // Much stricter threshold - within 5 degrees of a 90 degree angle
-    
-    if (!shouldSnap) return endPoint;
-    
-    // Convert back to radians
-    const snapRadians = snapAngle * (Math.PI / 180);
-    
-    // Calculate distance
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    // Calculate new endpoint
-    return {
-      x: startPoint.x + distance * Math.cos(snapRadians),
-      y: startPoint.y + distance * Math.sin(snapRadians)
-    };
+    return snapAngleToGrid(startPoint, endPoint, true);
   };
 
   // Function to find nearest endpoint to snap to
@@ -1275,6 +1264,25 @@ export const useCanvasEditor = () => {
     underlayOpacity
   ]);
   
+  // Update the underlayImage effect to handle window resizing
+  useEffect(() => {
+    const handleResize = () => {
+      if (underlayImage) {
+        // Maintain the same aspect ratio when window is resized
+        const aspectRatio = underlayImage.height / underlayImage.width;
+        const newScale = canvasSize.width / underlayImage.width;
+        
+        setUnderlayScale(newScale);
+        setCanvasSize(prev => ({ width: prev.width, height: Math.round(prev.width * aspectRatio) }));
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [underlayImage, canvasSize.width]);
+
   return {
     canvasRef,
     activeTool,
@@ -1289,6 +1297,7 @@ export const useCanvasEditor = () => {
     deleteSelected,
     clearCanvas,
     canvasSize,
+    adjustCanvasSize,
     cancelDrawing,
     snapToAngle,
     toggleSnapToAngle,

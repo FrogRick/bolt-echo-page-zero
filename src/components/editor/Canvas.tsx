@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -23,6 +22,7 @@ const Canvas: React.FC = () => {
     deleteSelected,
     clearCanvas,
     canvasSize,
+    adjustCanvasSize,
     snapToAngle,
     toggleSnapToAngle,
     snapToEndpoints,
@@ -43,6 +43,7 @@ const Canvas: React.FC = () => {
   } = useCanvasEditor();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,7 +57,32 @@ const Canvas: React.FC = () => {
     fileInputRef.current?.click();
   };
 
-  // Force canvas redraw when tool or styling changes to ensure correct rendering
+  // Adjust canvas width when container size changes
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const resizeObserver = new ResizeObserver(entries => {
+      const containerWidth = entries[0].contentRect.width;
+      // Update canvas width to fit container (minus padding)
+      const newWidth = containerWidth - 32; // 16px padding on each side
+      
+      if (newWidth > 0 && newWidth !== canvasSize.width) {
+        // If we have an underlay image, maintain its aspect ratio
+        if (underlayImage) {
+          const aspectRatio = underlayImage.height / underlayImage.width;
+          adjustCanvasSize(newWidth, Math.round(newWidth * aspectRatio));
+        } else {
+          // Otherwise just update the width
+          adjustCanvasSize(newWidth, canvasSize.height);
+        }
+      }
+    });
+    
+    resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
+  }, [containerRef, underlayImage]);
+
+  // Force canvas redraw when tool or styling changes
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -209,7 +235,7 @@ const Canvas: React.FC = () => {
         </div>
       </div>
       
-      <div className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto p-4">
+      <div ref={containerRef} className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto p-4">
         <div className="relative shadow-xl">
           <canvas
             ref={canvasRef}
