@@ -42,8 +42,51 @@ export const useCanvasEditor = () => {
   const [snapToExtensions, setSnapToExtensions] = useState<boolean>(true);
   const [extensionLine, setExtensionLine] = useState<{start: Point, end: Point} | null>(null);
 
+  // New state for underlay image
+  const [underlayImage, setUnderlayImage] = useState<HTMLImageElement | null>(null);
+  const [underlayPosition, setUnderlayPosition] = useState({ x: 0, y: 0 });
+  const [underlayScale, setUnderlayScale] = useState(1);
+  const [underlayOpacity, setUnderlayOpacity] = useState(0.5);
+  const [isDraggingUnderlay, setIsDraggingUnderlay] = useState(false);
+  const [underlayDragOffset, setUnderlayDragOffset] = useState<Point>({ x: 0, y: 0 });
+
   // Import shape detection functions
   const { findShapeAtPoint } = useShapeDetection();
+
+  // Function to add an underlay image
+  const addUnderlayImage = (file: File) => {
+    const img = new Image();
+    img.onload = () => {
+      // Center the image on the canvas
+      const x = (canvasSize.width - img.width * underlayScale) / 2;
+      const y = (canvasSize.height - img.height * underlayScale) / 2;
+      setUnderlayPosition({ x, y });
+      setUnderlayImage(img);
+      redrawCanvas();
+    };
+    img.src = URL.createObjectURL(file);
+  };
+
+  // Function to remove the underlay image
+  const removeUnderlayImage = () => {
+    if (underlayImage) {
+      URL.revokeObjectURL(underlayImage.src);
+      setUnderlayImage(null);
+      redrawCanvas();
+    }
+  };
+
+  // Function to adjust underlay scale
+  const adjustUnderlayScale = (scale: number) => {
+    setUnderlayScale(scale);
+    redrawCanvas();
+  };
+
+  // Function to adjust underlay opacity
+  const adjustUnderlayOpacity = (opacity: number) => {
+    setUnderlayOpacity(opacity);
+    redrawCanvas();
+  };
 
   // Function to cancel the current drawing operation
   const cancelDrawing = () => {
@@ -84,6 +127,19 @@ export const useCanvasEditor = () => {
     // Apply canvas transform for panning
     ctx.save();
     ctx.translate(canvasOffset.x, canvasOffset.y);
+
+    // Draw underlay image if available
+    if (underlayImage) {
+      ctx.globalAlpha = underlayOpacity;
+      ctx.drawImage(
+        underlayImage, 
+        underlayPosition.x, 
+        underlayPosition.y, 
+        underlayImage.width * underlayScale, 
+        underlayImage.height * underlayScale
+      );
+      ctx.globalAlpha = 1.0;
+    }
 
     // Draw all saved shapes
     drawShapes(ctx, shapes, selectedShape?.id || null, fillColor);
@@ -379,6 +435,21 @@ export const useCanvasEditor = () => {
     const point: Point = { x, y };
     setMouseMoved(false);
     
+    // Check if we're clicking on the underlay image first
+    if (underlayImage && 
+        x >= underlayPosition.x && 
+        x <= underlayPosition.x + underlayImage.width * underlayScale &&
+        y >= underlayPosition.y && 
+        y <= underlayPosition.y + underlayImage.height * underlayScale &&
+        activeTool === 'select') {
+      setIsDraggingUnderlay(true);
+      setUnderlayDragOffset({ 
+        x: x - underlayPosition.x, 
+        y: y - underlayPosition.y 
+      });
+      return;
+    }
+    
     // Set up potential panning on any tool with click-hold
     setPanStart({ x: e.clientX, y: e.clientY });
     
@@ -446,6 +517,15 @@ export const useCanvasEditor = () => {
       setPanStart({ x: e.clientX, y: e.clientY });
       
       // Redraw the canvas with updated offset
+      redrawCanvas();
+      return;
+    }
+    
+    // Check if we're dragging the underlay image
+    if (isDraggingUnderlay) {
+      const x = e.clientX - rect.left - canvasOffset.x - underlayDragOffset.x;
+      const y = e.clientY - rect.top - canvasOffset.y - underlayDragOffset.y;
+      setUnderlayPosition({ x, y });
       redrawCanvas();
       return;
     }
@@ -1056,6 +1136,12 @@ export const useCanvasEditor = () => {
       setMouseDownTimer(null);
     }
     
+    // End underlay dragging if active
+    if (isDraggingUnderlay) {
+      setIsDraggingUnderlay(false);
+      return;
+    }
+    
     // End panning if we were panning
     if (isPanning) {
       setIsPanning(false);
@@ -1182,7 +1268,11 @@ export const useCanvasEditor = () => {
     currentPoint,
     previewLine,
     extensionLine,
-    canvasOffset
+    canvasOffset,
+    underlayImage,
+    underlayPosition,
+    underlayScale,
+    underlayOpacity
   ]);
   
   return {
@@ -1208,6 +1298,14 @@ export const useCanvasEditor = () => {
     toggleSnapToLines,
     snapToExtensions,
     toggleSnapToExtensions,
-    rectangleDrawMode
+    rectangleDrawMode,
+    // Underlay image controls
+    underlayImage,
+    addUnderlayImage,
+    removeUnderlayImage,
+    underlayScale,
+    adjustUnderlayScale,
+    underlayOpacity,
+    adjustUnderlayOpacity
   };
 };
