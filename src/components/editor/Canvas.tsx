@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -31,9 +32,9 @@ const Canvas: React.FC = () => {
     setCurrentColor,
     fillColor,
     setFillColor,
-    startDrawing: startDrawingHook,
-    draw: drawHook,
-    endDrawing: endDrawingHook,
+    startDrawing,
+    draw,
+    endDrawing,
     deleteSelected,
     clearCanvas,
     canvasSize,
@@ -395,12 +396,10 @@ const Canvas: React.FC = () => {
     const rect = canvas.getBoundingClientRect();
     
     // Calculate position relative to the canvas element
-    // Get raw screen coordinates without any transformation
-    const rawX = e.clientX - rect.left;
-    const rawY = e.clientY - rect.top;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
     
-    // Pass the raw coordinates to the hook, which will handle all transformations
-    startDrawingHook(e, {x: rawX, y: rawY});
+    startDrawing(e, { x: mouseX, y: mouseY });
   };
   
   const handleDraw = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -409,12 +408,11 @@ const Canvas: React.FC = () => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     
-    // Get raw screen coordinates without any transformation
-    const rawX = e.clientX - rect.left;
-    const rawY = e.clientY - rect.top;
+    // Calculate position relative to the canvas element
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
     
-    // Pass the raw coordinates to the hook
-    drawHook(e, {x: rawX, y: rawY});
+    draw(e, { x: mouseX, y: mouseY });
   };
   
   const handleEndDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -423,12 +421,11 @@ const Canvas: React.FC = () => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     
-    // Get raw screen coordinates without any transformation
-    const rawX = e.clientX - rect.left;
-    const rawY = e.clientY - rect.top;
+    // Calculate position relative to the canvas element
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
     
-    // Pass the raw coordinates to the hook
-    endDrawingHook(e, {x: rawX, y: rawY});
+    endDrawing(e, { x: mouseX, y: mouseY });
   };
 
   // Force canvas redraw when tool or styling changes to ensure correct rendering
