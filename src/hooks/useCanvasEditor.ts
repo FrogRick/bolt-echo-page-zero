@@ -215,8 +215,8 @@ export const useCanvasEditor = () => {
     ctx.restore();
   };
 
-  // Function to snap angle to nearest 45 degrees if within threshold
-  const snapAngleToGrid = (startPoint: Point, endPoint: Point): Point => {
+  // Function to snap angle to nearest 90 degrees if within threshold
+  const snapAngleTo90Degrees = (startPoint: Point, endPoint: Point): Point => {
     if (!snapToAngle) return endPoint;
 
     const dx = endPoint.x - startPoint.x;
@@ -225,12 +225,12 @@ export const useCanvasEditor = () => {
     // Calculate angle in radians and convert to degrees
     const angle = Math.atan2(dy, dx) * (180 / Math.PI);
     
-    // Determine nearest 45 degree increment
-    const snapAngle = Math.round(angle / 45) * 45;
+    // Determine nearest 90 degree increment
+    const snapAngle = Math.round(angle / 90) * 90;
     
-    // Check if we're within the threshold (5 degrees) of a 45-degree increment - stricter threshold
-    const angleDiff = Math.abs((angle % 45) - 45) % 45;
-    const shouldSnap = angleDiff < 5 || angleDiff > 40; // Much stricter threshold - within 5 degrees of a 45 degree angle
+    // Check if we're within the threshold (5 degrees) of a 90-degree increment - stricter threshold
+    const angleDiff = Math.abs((angle % 90) - 90) % 90;
+    const shouldSnap = angleDiff < 5 || angleDiff > 85; // Much stricter threshold - within 5 degrees of a 90 degree angle
     
     if (!shouldSnap) return endPoint;
     
@@ -560,13 +560,14 @@ export const useCanvasEditor = () => {
         const angleSnappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
         
         // Only use the angle-snapped point if it's close enough to our current point
+        // or if we're snapping to the first point - in that case we want to enforce the angle
         const distToSnapped = Math.sqrt(
           Math.pow(angleSnappedPoint.x - snappedPoint.x, 2) + 
           Math.pow(angleSnappedPoint.y - snappedPoint.y, 2)
         );
         
         // Only apply the angle snap if it's reasonably close to where we clicked
-        // or very close to the extension point (meaning they're compatible)
+        // OR if we're snapping to the first point (to close the polygon)
         if (distToSnapped < 20 || (extensionFound && distToSnapped < 5)) {
           setCurrentPoint(angleSnappedPoint);
         }
@@ -610,7 +611,9 @@ export const useCanvasEditor = () => {
       // Finally apply angle snapping if enabled - ALWAYS apply this even when snapping to first point
       if (snapToAngle) {
         const lastPoint = polygonPoints[polygonPoints.length - 1];
-        const snappedAnglePoint = snapAngleToGrid(lastPoint, snappedPoint);
+        
+        // Use 90-degree snapping for all polygon segments
+        const snappedAnglePoint = snapAngleTo90Degrees(lastPoint, snappedPoint);
         
         // Only use the angle-snapped point if it's close enough to our current point
         // or if we're snapping to the first point - in that case we want to enforce the angle
@@ -623,7 +626,7 @@ export const useCanvasEditor = () => {
         // OR if we're snapping to the first point (to close the polygon)
         if (distToSnapped < 20 || isSnappingToFirstPoint) {
           // When snapping to the first point, we keep X,Y coordinates of the first point
-          // but project the point onto the 45-degree angle line from the last point
+          // but project the point onto the 90-degree angle line from the last point
           if (isSnappingToFirstPoint) {
             // Get direction vector from last point to first point
             const firstPoint = polygonPoints[0];
@@ -634,8 +637,8 @@ export const useCanvasEditor = () => {
             // Calculate angle in radians and convert to degrees
             const angle = Math.atan2(dy, dx) * (180 / Math.PI);
             
-            // Determine nearest 45 degree increment
-            const snapAngle = Math.round(angle / 45) * 45;
+            // Determine nearest 90 degree increment
+            const snapAngle = Math.round(angle / 90) * 90;
             
             // Convert back to radians
             const snapRadians = snapAngle * (Math.PI / 180);
@@ -916,7 +919,7 @@ export const useCanvasEditor = () => {
         const lastPoint = polygonPoints[polygonPoints.length - 1];
         
         // If we're snapping to the first point to close the polygon, and angle snapping is enabled,
-        // we need to handle the special case to maintain the 45-degree constraint
+        // we need to handle the special case to maintain the 90-degree constraint
         if (isSnappingToFirstPoint) {
           // Get first point
           const firstPoint = polygonPoints[0];
@@ -927,8 +930,8 @@ export const useCanvasEditor = () => {
           
           // We'll let the completePolygon function handle the actual closing
         } else {
-          // Normal angle snapping for non-closing points
-          const angleSnappedPoint = snapAngleToGrid(lastPoint, snappedPoint);
+          // Normal angle snapping for non-closing points - use 90-degree snapping
+          const angleSnappedPoint = snapAngleTo90Degrees(lastPoint, snappedPoint);
           
           // Only use the angle-snapped point if it's close enough to our snapped point
           const distToSnapped = Math.sqrt(
