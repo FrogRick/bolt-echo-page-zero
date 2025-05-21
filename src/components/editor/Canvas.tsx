@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -245,7 +246,7 @@ const Canvas: React.FC = () => {
             onMouseMove={draw}
             onMouseUp={endDrawing}
             onMouseLeave={endDrawing}
-            className={`bg-white border border-gray-200 ${
+            className={`bg-white border border-gray-200 rounded-lg ${
               activeTool === "select" 
                 ? (underlayImage ? "cursor-move" : "cursor-default")
                 : (activeTool === "wall" || activeTool === "wall-polygon" || activeTool === "yellow-polygon" || activeTool === "green-polygon")
