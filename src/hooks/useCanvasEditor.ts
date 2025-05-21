@@ -482,12 +482,10 @@ export const useCanvasEditor = () => {
           Math.pow(snappedAnglePoint.y - modifiedPoint.y, 2)
         );
         
-        if (distToSnapped < 20) { // Apply angle snapping if close to current angle
-          // Only set if we didn't find an extension, or if the angle-snapped point
-          // is very close to the extension point (meaning they're compatible)
-          if (!extensionFound || distToSnapped < 5) {
-            setCurrentPoint(snappedAnglePoint);
-          }
+        // Only apply the angle snap if it's reasonably close to where we are
+        // or very close to the extension point (meaning they're compatible)
+        if (!extensionFound || distToSnapped < 5) {
+          setCurrentPoint(snappedAnglePoint);
         }
       }
       
@@ -567,7 +565,7 @@ export const useCanvasEditor = () => {
           Math.pow(angleSnappedPoint.y - snappedPoint.y, 2)
         );
         
-        // Only apply the angle snap if it's reasonably close to where we are
+        // Only apply the angle snap if it's reasonably close to where we clicked
         // or very close to the extension point (meaning they're compatible)
         if (distToSnapped < 20 || (extensionFound && distToSnapped < 5)) {
           setCurrentPoint(angleSnappedPoint);
@@ -596,6 +594,20 @@ export const useCanvasEditor = () => {
       const endpointSnap = findNearestEndpoint(snappedPoint);
       if (endpointSnap) {
         snappedPoint = endpointSnap;
+      }
+      
+      // Check if we need to snap to the first point (red dot) to close the polygon
+      if (polygonPoints.length > 2) {
+        const firstPoint = polygonPoints[0];
+        const distToFirst = Math.sqrt(
+          Math.pow(snappedPoint.x - firstPoint.x, 2) + 
+          Math.pow(snappedPoint.y - firstPoint.y, 2)
+        );
+        
+        // If close to the starting point, snap to it
+        if (distToFirst < snapDistance) {
+          snappedPoint = { ...firstPoint };
+        }
       }
       
       // Finally apply angle snapping if enabled
@@ -839,21 +851,27 @@ export const useCanvasEditor = () => {
   
   // Handle polygon tool mouse down
   const handlePolygonToolMouseDown = (point: Point) => {
-    // Apply endpoint and line snapping for yellow/green polygons
+    // Apply endpoint snapping for yellow/green polygons
     let snappedPoint = point;
     
-    // First check if we can snap to a line
-    if (snapToLines) {
-      const lineSnap = lineSnappingHelpers.findNearestPointOnAnyLine(point, shapes);
-      if (lineSnap) {
-        snappedPoint = lineSnap.point;
-      }
-    }
-    
-    // Then check endpoint snapping (this takes priority)
+    // First check endpoint snapping - this takes priority
     const endpointSnap = findNearestEndpoint(snappedPoint);
     if (endpointSnap) {
       snappedPoint = endpointSnap;
+    }
+    
+    // Check if we need to snap to the first point (red dot) to close the polygon
+    if (polygonPoints.length > 2) {
+      const firstPoint = polygonPoints[0];
+      const distToFirst = Math.sqrt(
+        Math.pow(snappedPoint.x - firstPoint.x, 2) + 
+        Math.pow(snappedPoint.y - firstPoint.y, 2)
+      );
+      
+      // If close to the starting point, snap to it
+      if (distToFirst < snapDistance) {
+        snappedPoint = { ...firstPoint };
+      }
     }
     
     if (polygonPoints.length === 0) {
@@ -884,7 +902,9 @@ export const useCanvasEditor = () => {
       const distance = Math.sqrt(Math.pow(finalPoint.x - firstPoint.x, 2) + Math.pow(finalPoint.y - firstPoint.y, 2));
       
       if (polygonPoints.length > 2 && distance < 10) {
-        // Close the polygon and save it
+        // Close the polygon and save it - use the exact first point coordinates for perfect closure
+        const closedPolygonPoints = [...polygonPoints.slice(0, -1), firstPoint];
+        setPolygonPoints(closedPolygonPoints);
         completePolygon();
       } else {
         // Add a new point to the polygon
