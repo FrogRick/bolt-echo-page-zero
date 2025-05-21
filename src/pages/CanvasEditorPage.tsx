@@ -25,7 +25,7 @@ const CanvasEditorPage: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <header className="bg-white border-b px-4 py-3 flex justify-between items-center">
+      <header className="bg-white border-b px-4 py-2 flex justify-between items-center">
         <h1 className="text-lg font-semibold">Canvas Editor</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">Canvas ID: {canvasId.substring(0, 8)}...</span>

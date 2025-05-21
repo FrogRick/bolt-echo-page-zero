@@ -157,7 +157,7 @@ const Canvas: React.FC = () => {
           />
         </div>
         
-        {/* Orientation control only */}
+        {/* Orientation control */}
         <div className="border-l pl-4 flex items-center gap-3">
           <div className="flex items-center gap-1">
             <span className="text-sm font-medium">Orientation:</span>
@@ -277,8 +277,8 @@ const Canvas: React.FC = () => {
         </div>
       </div>
       
-      <div ref={containerRef} className="flex-grow flex items-center justify-center bg-gray-50 overflow-hidden p-4">
-        <div className="relative py-8"> {/* Added consistent vertical padding */}
+      <div ref={containerRef} className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto p-4">
+        <div className="py-8"> {/* Consistent vertical margin */}
           <canvas
             ref={canvasRef}
             width={canvasSize.width}
