@@ -7,8 +7,35 @@ import { Toggle } from "@/components/ui/toggle";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { ImageIcon, ImageOff, Upload } from "lucide-react";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+
+// Standard paper sizes in mm (ISO A series)
+const PAPER_SIZES = {
+  a4: { width: 210, height: 297 },
+  a3: { width: 297, height: 420 },
+  letter: { width: 216, height: 279 },
+  legal: { width: 216, height: 356 }
+};
+
+// Scaling factor to convert mm to pixels at a reasonable size
+const SCALE_FACTOR = 2.5;
 
 const Canvas: React.FC = () => {
+  const [paperSize, setPaperSize] = useState<keyof typeof PAPER_SIZES>("a4");
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
+  
   const {
     canvasRef,
     activeTool,
@@ -57,41 +84,47 @@ const Canvas: React.FC = () => {
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
+  
+  // Handle paper size change
+  const handlePaperSizeChange = (value: string) => {
+    setPaperSize(value as keyof typeof PAPER_SIZES);
+    updateCanvasSize(value as keyof typeof PAPER_SIZES, orientation);
+  };
+  
+  // Handle orientation change
+  const handleOrientationChange = (value: string) => {
+    setOrientation(value as "portrait" | "landscape");
+    updateCanvasSize(paperSize, value as "portrait" | "landscape");
+  };
+  
+  // Update canvas size based on paper size and orientation
+  const updateCanvasSize = (size: keyof typeof PAPER_SIZES, orient: "portrait" | "landscape") => {
+    const paperDimensions = PAPER_SIZES[size];
+    
+    if (orient === "portrait") {
+      adjustCanvasSize(
+        Math.round(paperDimensions.width * SCALE_FACTOR),
+        Math.round(paperDimensions.height * SCALE_FACTOR)
+      );
+    } else {
+      adjustCanvasSize(
+        Math.round(paperDimensions.height * SCALE_FACTOR),
+        Math.round(paperDimensions.width * SCALE_FACTOR)
+      );
+    }
+  };
 
-  // Adjust canvas dimensions when container size changes
+  // Initialize canvas size
+  useEffect(() => {
+    updateCanvasSize(paperSize, orientation);
+  }, []);
+
+  // Adjust container dimensions to fit the canvas
   useEffect(() => {
     if (!containerRef.current) return;
     
     const resizeObserver = new ResizeObserver(entries => {
-      const containerWidth = entries[0].contentRect.width;
-      const containerHeight = entries[0].contentRect.height;
-      
-      // Calculate available width (minus padding)
-      const availableWidth = containerWidth - 32; // 16px padding on each side
-      // Calculate available height (minus padding)
-      const availableHeight = containerHeight - 32; // 16px padding on each side
-      
-      if (availableWidth > 0 && availableHeight > 0) {
-        // If we have an underlay image, maintain its aspect ratio
-        if (underlayImage) {
-          const imageAspectRatio = underlayImage.height / underlayImage.width;
-          
-          // First try to fit by width and check if height fits
-          let newWidth = availableWidth;
-          let newHeight = Math.round(newWidth * imageAspectRatio);
-          
-          // If calculated height exceeds available height, constrain by height instead
-          if (newHeight > availableHeight) {
-            newHeight = availableHeight;
-            newWidth = Math.round(newHeight / imageAspectRatio);
-          }
-          
-          adjustCanvasSize(newWidth, newHeight);
-        } else {
-          // If no image, make the canvas fill the available space
-          adjustCanvasSize(availableWidth, availableHeight);
-        }
-      }
+      // Container will adjust based on the canvas size now, not the other way around
     });
     
     resizeObserver.observe(containerRef.current);
@@ -148,6 +181,43 @@ const Canvas: React.FC = () => {
             onChange={(e) => setFillColor(e.target.value)}
             className="w-8 h-8 rounded cursor-pointer"
           />
+        </div>
+        
+        {/* Paper size and orientation controls */}
+        <div className="border-l pl-4 flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-medium">Size:</span>
+            <Select
+              value={paperSize}
+              onValueChange={handlePaperSizeChange}
+            >
+              <SelectTrigger className="w-24 h-8 text-xs">
+                <SelectValue placeholder="A4" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="a4">A4</SelectItem>
+                <SelectItem value="a3">A3</SelectItem>
+                <SelectItem value="letter">Letter</SelectItem>
+                <SelectItem value="legal">Legal</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-medium">Orientation:</span>
+            <Select
+              value={orientation}
+              onValueChange={handleOrientationChange}
+            >
+              <SelectTrigger className="w-28 h-8 text-xs">
+                <SelectValue placeholder="Portrait" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="portrait">Portrait</SelectItem>
+                <SelectItem value="landscape">Landscape</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
         <div className="border-l pl-4 flex items-center gap-3">
