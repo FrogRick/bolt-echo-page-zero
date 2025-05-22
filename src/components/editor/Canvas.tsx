@@ -276,8 +276,15 @@ const Canvas: React.FC = () => {
         </div>
       </div>
       
-      <div ref={containerRef} className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto p-4">
-        <div className="py-28 my-24"> {/* Drastically increased vertical padding and margin for space above and below */}
+      <div 
+        ref={containerRef} 
+        className="flex-grow flex items-center justify-center bg-gray-50 p-4 overflow-auto"
+        style={{ 
+          height: "calc(100vh - 170px)", // Account for header and toolbar height
+          minHeight: "500px"
+        }}
+      >
+        <div className={`flex items-center justify-center ${orientation === "portrait" ? "pt-16 pb-16" : "pt-8 pb-8"}`}>
           <canvas
             ref={canvasRef}
             width={canvasSize.width}
