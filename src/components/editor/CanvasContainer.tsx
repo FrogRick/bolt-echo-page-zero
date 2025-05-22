@@ -87,18 +87,6 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       style={{ height: "calc(100% - 120px)" }}
     >
       <div className="flex items-center justify-center relative">
-        <canvas
-          ref={canvasRef}
-          width={canvasSize.width}
-          height={canvasSize.height}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={endDrawing}
-          onMouseLeave={endDrawing}
-          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
-          style={{ position: "relative", zIndex: 5 }}
-        />
-        
         {/* Underlay Rectangle Placeholder */}
         {underlayRect && !underlayImage && (
           <div 
@@ -109,7 +97,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               width: underlayRect.width,
               height: underlayRect.height,
               cursor: movingUnderlayRect ? 'grabbing' : 'grab',
-              zIndex: 1
+              zIndex: 10 // Ensure placeholder is above canvas but below controls
             }}
             onClick={(e) => {
               if (!resizingUnderlayRect && !movingUnderlayRect) {
@@ -146,7 +134,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               width: underlayRect.width,
               height: underlayRect.height,
               cursor: isImageSelected && activeTool === "select" ? (movingUnderlayRect ? 'grabbing' : 'grab') : 'default',
-              zIndex: 1
+              zIndex: 10 // Ensure image is above canvas but below controls
             }}
             onClick={(e) => {
               if (activeTool === "select") {
@@ -194,6 +182,23 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           </div>
         )}
         
+        {/* Canvas Element - Intentionally placed AFTER the image/placeholder in the DOM to ensure it's on top for drawing */}
+        <canvas
+          ref={canvasRef}
+          width={canvasSize.width}
+          height={canvasSize.height}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={endDrawing}
+          onMouseLeave={endDrawing}
+          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+          style={{ 
+            position: "relative", 
+            zIndex: 15, // Higher than underlay elements but lower than resize handles
+            pointerEvents: movingUnderlayRect || resizingUnderlayRect ? 'none' : 'auto' // Disable canvas events when moving/resizing
+          }}
+        />
+        
         {/* Resize Handles - show for placeholder or when image is selected and using select tool */}
         {underlayRect && (isImageSelected || !underlayImage) && 
           (!resizingUnderlayRect && !movingUnderlayRect) && 
@@ -208,7 +213,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               cursor: handle.position === "nw" || handle.position === "se" 
                 ? "nwse-resize" 
                 : "nesw-resize",
-              zIndex: 15
+              zIndex: 20 // Ensure resize handles are always on top
             }}
             onMouseDown={(e) => {
               console.log(`Resize handle ${handle.position} onMouseDown triggered`, { clientX: e.clientX, clientY: e.clientY });
