@@ -17,11 +17,13 @@ const Layout = () => {
       <main className={`flex-1 ${isEditorPage ? 'w-full' : 'container mx-auto px-4 py-8 overflow-auto'}`}>
         <Outlet />
       </main>
-      <footer className="py-6 border-t border-slate-200 bg-white/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 text-center text-sm text-slate-600">
-          Firemap © {new Date().getFullYear()}
-        </div>
-      </footer>
+      {!isEditorPage && (
+        <footer className="py-6 border-t border-slate-200 bg-white/50 backdrop-blur-sm">
+          <div className="container mx-auto px-4 text-center text-sm text-slate-600">
+            Firemap © {new Date().getFullYear()}
+          </div>
+        </footer>
+      )}
     </div>
   );
 };
