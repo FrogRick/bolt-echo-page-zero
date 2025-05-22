@@ -297,7 +297,7 @@ export default function DashboardPage({ typeOverride }: { typeOverride?: string 
   };
 
   return (
-    <div>
+    <div className="dashboard-content">
       <div className="mb-6">
         {/* Layout with title, search, and new button in a single row */}
         <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">

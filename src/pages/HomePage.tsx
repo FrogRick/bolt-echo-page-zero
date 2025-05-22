@@ -210,7 +210,7 @@ const HomePage = () => {
   }
 
   return (
-    <div>
+    <div className="dashboard-content">
       <div className="relative">
         {/* Project management section */}
         <div className="flex justify-between items-center mb-6">

@@ -59,6 +59,12 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     overflow: auto; /* Allow body scrolling by default */
   }
+  
+  /* Make sure overflow is properly handled */
+  html, body, #root {
+    height: 100%;
+    min-height: 100%;
+  }
 }
 
 /* Custom component styles */
@@ -119,4 +125,10 @@
 .scrollable-container {
   overflow-y: auto;
   max-height: 100%;
+}
+
+/* Ensure dashboard pages have proper scrolling */
+.dashboard-content {
+  overflow-y: auto;
+  height: 100%;
 }
