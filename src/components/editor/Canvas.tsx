@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -68,19 +67,16 @@ const Canvas: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       addUnderlayImage(e.target.files[0]);
     }
   };
 
-  // Trigger file input click
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
   
-  // Handle orientation change
   const handleOrientationChange = (value: string) => {
     setOrientation(value as "portrait" | "landscape");
     updateCanvasSize(value as "portrait" | "landscape");
@@ -111,7 +107,6 @@ const Canvas: React.FC = () => {
     return Math.max(1, Math.min(newScaleFactor, 4)); // Limit between 1 and 4
   };
   
-  // Update container size on window resize
   useEffect(() => {
     const handleResize = () => {
       const newScaleFactor = calculateScaleFactor();
@@ -127,7 +122,6 @@ const Canvas: React.FC = () => {
     };
   }, [orientation, containerRef.current]);
   
-  // Update canvas size based on orientation and scale factor
   const updateCanvasSize = (orient: "portrait" | "landscape", scale = scaleFactor) => {
     if (orient === "portrait") {
       adjustCanvasSize(
@@ -142,12 +136,10 @@ const Canvas: React.FC = () => {
     }
   };
 
-  // Initialize canvas size
   useEffect(() => {
     updateCanvasSize(orientation);
   }, [scaleFactor]);
 
-  // Force canvas redraw when tool or styling changes
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -199,7 +191,6 @@ const Canvas: React.FC = () => {
           />
         </div>
         
-        {/* Orientation control */}
         <div className="border-l pl-4 flex items-center gap-3">
           <div className="flex items-center gap-1">
             <span className="text-sm font-medium">Orientation:</span>
@@ -256,7 +247,6 @@ const Canvas: React.FC = () => {
           </Toggle>
         </div>
         
-        {/* Underlay image controls */}
         <div className="border-l pl-4 flex items-center gap-3">
           <Button 
             variant="outline" 
@@ -323,7 +313,7 @@ const Canvas: React.FC = () => {
         ref={containerRef} 
         className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto"
         style={{ 
-          height: "100%",
+          height: "calc(100% - 30px)", // Reduce height to leave space at bottom
           paddingTop: "10px", // 10px top margin
           paddingBottom: "10px" // 10px bottom margin
         }}
@@ -347,6 +337,8 @@ const Canvas: React.FC = () => {
           />
         </div>
       </div>
+      
+      <div className="h-[30px] bg-gray-50"></div>
     </div>
   );
 };
