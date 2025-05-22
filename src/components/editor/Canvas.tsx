@@ -104,26 +104,31 @@ const Canvas: React.FC = () => {
     // Convert the canvas to a data URL and create a new image
     tempCanvas.toBlob((blob) => {
       if (blob) {
-        const newImage = new Image();
-        const url = URL.createObjectURL(blob);
-        newImage.onload = () => {
-          // Update the image
-          removeUnderlayImage();
-          addUnderlayImage(blob);
-          
-          // Update the rectangle to match the crop area
-          setUnderlayRect(cropRect);
-          
-          // Exit crop mode
-          setCropMode(false);
-          setCropRect(null);
-          
-          toast({
-            title: "Image cropped",
-            description: "The image has been cropped successfully",
-          });
-        };
-        newImage.src = url;
+        // Convert the blob to a File object by adding the required properties
+        const fileName = "cropped-image.png";
+        const currentDate = new Date();
+        
+        // Create a File object from the Blob
+        const croppedFile = new File([blob], fileName, {
+          type: blob.type,
+          lastModified: currentDate.getTime()
+        });
+        
+        // Update the image
+        removeUnderlayImage();
+        addUnderlayImage(croppedFile);
+        
+        // Update the rectangle to match the crop area
+        setUnderlayRect(cropRect);
+        
+        // Exit crop mode
+        setCropMode(false);
+        setCropRect(null);
+        
+        toast({
+          title: "Image cropped",
+          description: "The image has been cropped successfully",
+        });
       }
     });
   };
