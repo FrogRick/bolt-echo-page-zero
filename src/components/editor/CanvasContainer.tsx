@@ -87,6 +87,23 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       style={{ height: "calc(100% - 120px)" }}
     >
       <div className="flex items-center justify-center relative">
+        {/* Canvas Element - Base Layer */}
+        <canvas
+          ref={canvasRef}
+          width={canvasSize.width}
+          height={canvasSize.height}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={endDrawing}
+          onMouseLeave={endDrawing}
+          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+          style={{ 
+            position: "absolute", 
+            zIndex: 1, // Base layer
+            pointerEvents: movingUnderlayRect || resizingUnderlayRect ? 'none' : 'auto' // Disable canvas events when moving/resizing
+          }}
+        />
+        
         {/* Underlay Rectangle Placeholder */}
         {underlayRect && !underlayImage && (
           <div 
@@ -97,7 +114,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               width: underlayRect.width,
               height: underlayRect.height,
               cursor: movingUnderlayRect ? 'grabbing' : 'grab',
-              zIndex: 10 // Ensure placeholder is above canvas but below controls
+              zIndex: 10, // Above canvas
+              position: "absolute"
             }}
             onClick={(e) => {
               if (!resizingUnderlayRect && !movingUnderlayRect) {
@@ -134,7 +152,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               width: underlayRect.width,
               height: underlayRect.height,
               cursor: isImageSelected && activeTool === "select" ? (movingUnderlayRect ? 'grabbing' : 'grab') : 'default',
-              zIndex: 10 // Ensure image is above canvas but below controls
+              zIndex: 10, // Above canvas
+              position: "absolute"
             }}
             onClick={(e) => {
               if (activeTool === "select") {
@@ -182,20 +201,68 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           </div>
         )}
         
-        {/* Canvas Element - Intentionally placed AFTER the image/placeholder in the DOM to ensure it's on top for drawing */}
-        <canvas
-          ref={canvasRef}
-          width={canvasSize.width}
-          height={canvasSize.height}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={endDrawing}
-          onMouseLeave={endDrawing}
-          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
-          style={{ 
-            position: "relative", 
-            zIndex: 15, // Higher than underlay elements but lower than resize handles
-            pointerEvents: movingUnderlayRect || resizingUnderlayRect ? 'none' : 'auto' // Disable canvas events when moving/resizing
+        {/* Drawing Canvas (invisible, just for capturing events) */}
+        <div 
+          className="absolute"
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: canvasSize.width,
+            height: canvasSize.height,
+            zIndex: 15, // Above placeholder and image, below resize handles
+            pointerEvents: movingUnderlayRect || resizingUnderlayRect ? 'none' : 'auto'
+          }}
+          onMouseDown={(e) => {
+            // Forward events to the canvas
+            if (canvasRef.current) {
+              const rect = canvasRef.current.getBoundingClientRect();
+              const mouseEvent = new MouseEvent('mousedown', {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX: e.clientX,
+                clientY: e.clientY
+              });
+              canvasRef.current.dispatchEvent(mouseEvent);
+            }
+          }}
+          onMouseMove={(e) => {
+            // Forward events to the canvas
+            if (canvasRef.current) {
+              const mouseEvent = new MouseEvent('mousemove', {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX: e.clientX,
+                clientY: e.clientY
+              });
+              canvasRef.current.dispatchEvent(mouseEvent);
+            }
+          }}
+          onMouseUp={(e) => {
+            // Forward events to the canvas
+            if (canvasRef.current) {
+              const mouseEvent = new MouseEvent('mouseup', {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX: e.clientX,
+                clientY: e.clientY
+              });
+              canvasRef.current.dispatchEvent(mouseEvent);
+            }
+          }}
+          onMouseLeave={(e) => {
+            // Forward events to the canvas
+            if (canvasRef.current) {
+              const mouseEvent = new MouseEvent('mouseleave', {
+                bubbles: true,
+                cancelable: true,
+                view: window
+              });
+              canvasRef.current.dispatchEvent(mouseEvent);
+            }
           }}
         />
         
@@ -213,7 +280,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               cursor: handle.position === "nw" || handle.position === "se" 
                 ? "nwse-resize" 
                 : "nesw-resize",
-              zIndex: 20 // Ensure resize handles are always on top
+              zIndex: 20, // Highest z-index to be always on top
+              position: "absolute"
             }}
             onMouseDown={(e) => {
               console.log(`Resize handle ${handle.position} onMouseDown triggered`, { clientX: e.clientX, clientY: e.clientY });
