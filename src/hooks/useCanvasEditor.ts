@@ -58,19 +58,8 @@ export const useCanvasEditor = () => {
   const addUnderlayImage = (file: File) => {
     const img = new Image();
     img.onload = () => {
-      // Calculate aspect ratio of the image
-      const aspectRatio = img.height / img.width;
-      
-      // Adjust the canvas size based on the image's aspect ratio
-      // Use the current canvas width, but adjust height according to aspect ratio
-      const newHeight = Math.round(canvasSize.width * aspectRatio);
-      setCanvasSize(prev => ({ width: prev.width, height: newHeight }));
-      
-      // Center the image on the canvas - use full canvas width
-      setUnderlayPosition({ x: 0, y: 0 });
-      // Set scale to fill canvas width completely
-      const newScale = canvasSize.width / img.width;
-      setUnderlayScale(newScale);
+      // Don't modify canvas size when loading an image
+      // Instead, use the current underlayRect to position and scale the image
       setUnderlayImage(img);
       redrawCanvas();
     };
