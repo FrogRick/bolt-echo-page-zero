@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Tool } from "@/types/canvas";
-import { Upload, Move } from "lucide-react";
+import { Upload, Move, Crop } from "lucide-react";
 
 interface CanvasContainerProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -57,13 +57,19 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
     }
   };
 
-  // Calculate resize handle positions if underlayRect exists
+  // Calculate resize and crop handle positions if underlayRect exists
   const resizeHandles = underlayRect
     ? [
-        { position: "nw", x: underlayRect.x, y: underlayRect.y },
-        { position: "ne", x: underlayRect.x + underlayRect.width, y: underlayRect.y },
-        { position: "se", x: underlayRect.x + underlayRect.width, y: underlayRect.y + underlayRect.height },
-        { position: "sw", x: underlayRect.x, y: underlayRect.y + underlayRect.height },
+        // Corner handles (resize)
+        { position: "nw", x: underlayRect.x, y: underlayRect.y, type: "resize" },
+        { position: "ne", x: underlayRect.x + underlayRect.width, y: underlayRect.y, type: "resize" },
+        { position: "se", x: underlayRect.x + underlayRect.width, y: underlayRect.y + underlayRect.height, type: "resize" },
+        { position: "sw", x: underlayRect.x, y: underlayRect.y + underlayRect.height, type: "resize" },
+        // Side handles (crop)
+        { position: "n", x: underlayRect.x + underlayRect.width / 2, y: underlayRect.y, type: "crop" },
+        { position: "e", x: underlayRect.x + underlayRect.width, y: underlayRect.y + underlayRect.height / 2, type: "crop" },
+        { position: "s", x: underlayRect.x + underlayRect.width / 2, y: underlayRect.y + underlayRect.height, type: "crop" },
+        { position: "w", x: underlayRect.x, y: underlayRect.y + underlayRect.height / 2, type: "crop" },
       ]
     : [];
 
@@ -74,6 +80,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       style={{ height: "calc(100% - 120px)" }}
     >
       <div className="flex items-center justify-center relative">
+        {/* Canvas */}
         <canvas
           ref={canvasRef}
           width={canvasSize.width}
@@ -83,6 +90,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           onMouseUp={endDrawing}
           onMouseLeave={endDrawing}
           className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+          style={{ position: "relative", zIndex: 1 }}
         />
         
         {/* Underlay Rectangle Placeholder */}
@@ -94,7 +102,9 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              cursor: movingUnderlayRect ? 'grabbing' : 'grab'
+              cursor: movingUnderlayRect ? 'grabbing' : 'grab',
+              zIndex: 10,
+              position: "absolute"
             }}
             onClick={(e) => {
               if (!resizingUnderlayRect && !movingUnderlayRect) {
@@ -128,7 +138,9 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              cursor: movingUnderlayRect ? 'grabbing' : 'grab'
+              cursor: movingUnderlayRect ? 'grabbing' : 'grab',
+              zIndex: 10,
+              position: "absolute"
             }}
             onMouseDown={(e) => {
               console.log("Image container onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
@@ -153,34 +165,59 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <Move size={20} className="text-blue-600" />
             </div>
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-1">
+              <Crop size={16} className="text-blue-600" />
+            </div>
           </div>
         )}
         
-        {/* Resize Handles - show for both placeholder and image */}
+        {/* Resize and Crop Handles - show for both placeholder and image */}
         {underlayRect && !resizingUnderlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
           <div
             key={handle.position}
-            className="absolute w-5 h-5 bg-white border-2 border-blue-500 rounded-full hover:bg-blue-200 flex items-center justify-center"
+            className={`absolute ${handle.type === "crop" ? "w-4 h-4" : "w-5 h-5"} bg-white border-2 border-blue-500 rounded-full hover:bg-blue-200 flex items-center justify-center`}
             style={{
-              left: handle.x - 10, // Center the handle (half of width/height)
-              top: handle.y - 10,
-              cursor: handle.position === "nw" || handle.position === "se" 
-                ? "nwse-resize" 
-                : "nesw-resize",
-              zIndex: 10
+              left: handle.x - (handle.type === "crop" ? 8 : 10), // Center the handle (half of width/height)
+              top: handle.y - (handle.type === "crop" ? 8 : 10),
+              cursor: getHandleCursor(handle.position),
+              zIndex: 20
             }}
             onMouseDown={(e) => {
-              console.log(`Resize handle ${handle.position} onMouseDown triggered`, { clientX: e.clientX, clientY: e.clientY });
+              console.log(`${handle.type === "crop" ? "Crop" : "Resize"} handle ${handle.position} onMouseDown triggered`, { clientX: e.clientX, clientY: e.clientY });
               e.stopPropagation();
               e.preventDefault();
-              console.log(`Starting resize from ${handle.position} corner`);
+              console.log(`Starting ${handle.type === "crop" ? "crop" : "resize"} from ${handle.position} ${handle.type === "crop" ? "side" : "corner"}`);
               startResizingUnderlayRect(handle.position, e);
             }}
-          />
+          >
+            {handle.type === "crop" && (
+              <div className="w-2 h-2 bg-blue-600 rounded-full" />
+            )}
+          </div>
         ))}
       </div>
     </div>
   );
 };
+
+// Helper function to determine cursor style for handles
+function getHandleCursor(position: string): string {
+  switch (position) {
+    case "nw":
+    case "se":
+      return "nwse-resize";
+    case "ne":
+    case "sw":
+      return "nesw-resize";
+    case "n":
+    case "s":
+      return "ns-resize";
+    case "e":
+    case "w":
+      return "ew-resize";
+    default:
+      return "default";
+  }
+}
 
 export default CanvasContainer;
