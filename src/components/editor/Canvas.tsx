@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
-import { Tool, UnderlayImageCrop } from "@/types/canvas";
+import { Tool } from "@/types/canvas";
 import { Toolbar } from "./Toolbar";
 import CanvasToolbar from "./CanvasToolbar";
 import CanvasContainer from "./CanvasContainer";
@@ -20,10 +20,6 @@ const Canvas: React.FC = () => {
     width: number;
     height: number;
   } | null>(null);
-  
-  // Image crop state (used for rendering actual crop)
-  const [imageCrop, setImageCrop] = useState<UnderlayImageCrop | null>(null);
-  
   const [resizingUnderlayRect, setResizingUnderlayRect] = useState(false);
   const [resizeCorner, setResizeCorner] = useState<string | null>(null);
   const [resizeStartPos, setResizeStartPos] = useState<{ x: number; y: number } | null>(null);
@@ -87,11 +83,8 @@ const Canvas: React.FC = () => {
       const x = (canvasSize.width - width) / 2;
       const y = (canvasSize.height - height) / 2;
       
-      const newRect = { x, y, width, height };
-      setUnderlayRect(newRect);
-      // Initialize crop to match the full rect
-      setImageCrop(newRect);
-      console.log("Initializing underlayRect:", newRect);
+      setUnderlayRect({ x, y, width, height });
+      console.log("Initializing underlayRect:", { x, y, width, height });
     }
   }, [canvasSize, underlayRect]);
   
@@ -104,11 +97,8 @@ const Canvas: React.FC = () => {
       const x = (canvasSize.width - width) / 2;
       const y = (canvasSize.height - height) / 2;
       
-      const newRect = { x, y, width, height };
-      setUnderlayRect(newRect);
-      // Reset crop too
-      setImageCrop(newRect);
-      console.log("Reinitializing underlayRect after image removal:", newRect);
+      setUnderlayRect({ x, y, width, height });
+      console.log("Reinitializing underlayRect after image removal:", { x, y, width, height });
     }
   }, [underlayImage, underlayRect, canvasSize]);
 
@@ -119,7 +109,7 @@ const Canvas: React.FC = () => {
       addUnderlayImage(file);
       toast({
         title: "Image uploaded",
-        description: "You can now resize, move, and crop the image",
+        description: "You can now resize and move the image",
       });
     }
   };
@@ -136,7 +126,7 @@ const Canvas: React.FC = () => {
     }
   };
   
-  // Handle mouse move during resize or crop
+  // Handle mouse move during resize
   const handleResizeMove = useCallback((e: MouseEvent) => {
     if (!resizingUnderlayRect || !resizeStartPos || !resizeStartRect || !resizeCorner) {
       console.log("Missing state for resize", { 
@@ -151,133 +141,78 @@ const Canvas: React.FC = () => {
     const deltaX = e.clientX - resizeStartPos.x;
     const deltaY = e.clientY - resizeStartPos.y;
     
-    console.log("Resize/crop move:", { deltaX, deltaY, corner: resizeCorner });
+    console.log("Resize move:", { deltaX, deltaY, corner: resizeCorner });
     
-    // Make sure we have both underlayRect and imageCrop ready
-    if (!underlayRect || !imageCrop) {
-      console.log("Missing required state:", { hasUnderlayRect: !!underlayRect, hasImageCrop: !!imageCrop });
-      return;
+    const newRect = { ...resizeStartRect };
+    
+    switch (resizeCorner) {
+      case 'nw':
+        newRect.x = resizeStartRect.x + deltaX;
+        newRect.y = resizeStartRect.y + deltaY;
+        newRect.width = resizeStartRect.width - deltaX;
+        newRect.height = resizeStartRect.height - deltaY;
+        break;
+      case 'ne':
+        newRect.y = resizeStartRect.y + deltaY;
+        newRect.width = resizeStartRect.width + deltaX;
+        newRect.height = resizeStartRect.height - deltaY;
+        break;
+      case 'se':
+        newRect.width = resizeStartRect.width + deltaX;
+        newRect.height = resizeStartRect.height + deltaY;
+        break;
+      case 'sw':
+        newRect.x = resizeStartRect.x + deltaX;
+        newRect.width = resizeStartRect.width - deltaX;
+        newRect.height = resizeStartRect.height + deltaY;
+        break;
     }
     
-    // Check if this is a corner (resize) or side (crop) handle
-    const isCropHandle = ['n', 'e', 's', 'w'].includes(resizeCorner);
-    
-    if (isCropHandle) {
-      // Crop operation - adjust crop bounds but don't change the container rect
-      const newCrop = { ...imageCrop };
-      
-      switch (resizeCorner) {
-        case 'n':
-          // Top edge - adjust y position and height
-          newCrop.y = Math.max(
-            underlayRect.y,
-            Math.min(
-              resizeStartRect.y + deltaY,
-              underlayRect.y + underlayRect.height - 50 // Ensure minimum height
-            )
-          );
-          newCrop.height = Math.max(50, underlayRect.y + underlayRect.height - newCrop.y);
-          break;
-        case 'e':
-          // Right edge - adjust width
-          newCrop.width = Math.max(
-            50,
-            Math.min(
-              resizeStartRect.width - deltaX,
-              underlayRect.width
-            )
-          );
-          break;
-        case 's':
-          // Bottom edge - adjust height
-          newCrop.height = Math.max(
-            50,
-            Math.min(
-              resizeStartRect.height - deltaY,
-              underlayRect.height
-            )
-          );
-          break;
-        case 'w':
-          // Left edge - adjust x position and width
-          newCrop.x = Math.max(
-            underlayRect.x,
-            Math.min(
-              resizeStartRect.x + deltaX,
-              underlayRect.x + underlayRect.width - 50 // Ensure minimum width
-            )
-          );
-          newCrop.width = underlayRect.x + underlayRect.width - newCrop.x;
-          break;
+    // Ensure minimum dimensions
+    const minSize = 50;
+    if (newRect.width < minSize) {
+      if (['nw', 'sw'].includes(resizeCorner)) {
+        newRect.x = resizeStartRect.x + resizeStartRect.width - minSize;
       }
-      
-      console.log("New crop after crop operation:", newCrop);
-      
-      // Update only the crop, not the container rect
-      setImageCrop(newCrop);
-    } else {
-      // Full resize operation - resize both container and crop
-      const newRect = { ...resizeStartRect };
-      
-      switch (resizeCorner) {
-        case 'nw':
-          newRect.x = Math.max(0, resizeStartRect.x + deltaX);
-          newRect.y = Math.max(0, resizeStartRect.y + deltaY);
-          newRect.width = Math.max(50, resizeStartRect.width - (newRect.x - resizeStartRect.x));
-          newRect.height = Math.max(50, resizeStartRect.height - (newRect.y - resizeStartRect.y));
-          break;
-        case 'ne':
-          newRect.y = Math.max(0, resizeStartRect.y + deltaY);
-          newRect.width = Math.max(50, resizeStartRect.width + deltaX);
-          newRect.height = Math.max(50, resizeStartRect.height - (newRect.y - resizeStartRect.y));
-          break;
-        case 'se':
-          newRect.width = Math.max(50, resizeStartRect.width + deltaX);
-          newRect.height = Math.max(50, resizeStartRect.height + deltaY);
-          break;
-        case 'sw':
-          newRect.x = Math.max(0, resizeStartRect.x + deltaX);
-          newRect.width = Math.max(50, resizeStartRect.width - (newRect.x - resizeStartRect.x));
-          newRect.height = Math.max(50, resizeStartRect.height + deltaY);
-          break;
-      }
-      
-      // Ensure dimensions stay within canvas boundaries
-      if (newRect.x + newRect.width > canvasSize.width) {
-        newRect.width = canvasSize.width - newRect.x;
-      }
-      if (newRect.y + newRect.height > canvasSize.height) {
-        newRect.height = canvasSize.height - newRect.y;
-      }
-      
-      console.log("New rect after resize:", newRect);
-      
-      // Update the rectangle
-      setUnderlayRect(newRect);
-      
-      // Also update the crop to match the new rectangle size
-      const newCrop = {
-        x: Math.max(newRect.x, imageCrop.x + (newRect.x - resizeStartRect.x)),
-        y: Math.max(newRect.y, imageCrop.y + (newRect.y - resizeStartRect.y)),
-        width: Math.min(newRect.width, imageCrop.width * (newRect.width / resizeStartRect.width)),
-        height: Math.min(newRect.height, imageCrop.height * (newRect.height / resizeStartRect.height))
-      };
-      
-      // Ensure crop stays within the new rectangle bounds
-      if (newCrop.x + newCrop.width > newRect.x + newRect.width) {
-        newCrop.width = newRect.x + newRect.width - newCrop.x;
-      }
-      if (newCrop.y + newCrop.height > newRect.y + newRect.height) {
-        newCrop.height = newRect.y + newRect.height - newCrop.y;
-      }
-      
-      setImageCrop(newCrop);
+      newRect.width = minSize;
     }
-  }, [resizingUnderlayRect, resizeStartPos, resizeStartRect, resizeCorner, underlayRect, imageCrop, canvasSize.width, canvasSize.height]);
+    
+    if (newRect.height < minSize) {
+      if (['nw', 'ne'].includes(resizeCorner)) {
+        newRect.y = resizeStartRect.y + resizeStartRect.height - minSize;
+      }
+      newRect.height = minSize;
+    }
+    
+    // Constrain to canvas boundaries
+    if (newRect.x < 0) {
+      if (['nw', 'sw'].includes(resizeCorner)) {
+        newRect.width += newRect.x;
+        newRect.x = 0;
+      }
+    }
+    if (newRect.y < 0) {
+      if (['nw', 'ne'].includes(resizeCorner)) {
+        newRect.height += newRect.y;
+        newRect.y = 0;
+      }
+    }
+    if (newRect.x + newRect.width > canvasSize.width) {
+      newRect.width = canvasSize.width - newRect.x;
+    }
+    if (newRect.y + newRect.height > canvasSize.height) {
+      newRect.height = canvasSize.height - newRect.y;
+    }
+    
+    console.log("New rect after resize:", newRect);
+    
+    // Update rectangle
+    setUnderlayRect(newRect);
+  }, [resizingUnderlayRect, resizeStartPos, resizeStartRect, resizeCorner, canvasSize.width, canvasSize.height]);
   
   // Handle resize end
-  const handleResizeEnd = useCallback(() => {
-    console.log("Resize/crop ended");
+  const handleResizeEnd = useCallback((e: MouseEvent) => {
+    console.log("Resize ended");
     setResizingUnderlayRect(false);
     setResizeCorner(null);
     setResizeStartPos(null);
@@ -287,34 +222,114 @@ const Canvas: React.FC = () => {
     document.removeEventListener('mouseup', handleResizeEnd);
   }, [handleResizeMove]);
   
-  // Handle starting rectangle resize or crop
+  // Handle starting rectangle resize
   const startResizingUnderlayRect = useCallback((corner: string, e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     if (!underlayRect) return;
     
-    const isCropHandle = ['n', 'e', 's', 'w'].includes(corner);
-    console.log(`Starting ${isCropHandle ? 'crop' : 'resize'}:`, { corner, clientX: e.clientX, clientY: e.clientY });
+    console.log("Starting resize:", { corner, clientX: e.clientX, clientY: e.clientY });
+    
+    // Important: Set state synchronously to ensure it's available in the move handler
+    const newResizeStartPos = { x: e.clientX, y: e.clientY };
+    const newResizeStartRect = { ...underlayRect };
     
     setResizingUnderlayRect(true);
     setResizeCorner(corner);
-    setResizeStartPos({ x: e.clientX, y: e.clientY });
+    setResizeStartPos(newResizeStartPos);
+    setResizeStartRect(newResizeStartRect);
     
-    // Save initial state - important for comparing before/after
-    setResizeStartRect({ ...underlayRect });
+    // Use local variables for the event handlers to ensure they have the correct values
+    const moveHandler = (moveEvent: MouseEvent) => {
+      if (!newResizeStartPos || !newResizeStartRect) return;
+      
+      const deltaX = moveEvent.clientX - newResizeStartPos.x;
+      const deltaY = moveEvent.clientY - newResizeStartPos.y;
+      
+      console.log("Resize move (direct):", { deltaX, deltaY, corner });
+      
+      const newRect = { ...newResizeStartRect };
+      
+      switch (corner) {
+        case 'nw':
+          newRect.x = newResizeStartRect.x + deltaX;
+          newRect.y = newResizeStartRect.y + deltaY;
+          newRect.width = newResizeStartRect.width - deltaX;
+          newRect.height = newResizeStartRect.height - deltaY;
+          break;
+        case 'ne':
+          newRect.y = newResizeStartRect.y + deltaY;
+          newRect.width = newResizeStartRect.width + deltaX;
+          newRect.height = newResizeStartRect.height - deltaY;
+          break;
+        case 'se':
+          newRect.width = newResizeStartRect.width + deltaX;
+          newRect.height = newResizeStartRect.height + deltaY;
+          break;
+        case 'sw':
+          newRect.x = newResizeStartRect.x + deltaX;
+          newRect.width = newResizeStartRect.width - deltaX;
+          newRect.height = newResizeStartRect.height + deltaY;
+          break;
+      }
+      
+      // Ensure minimum dimensions
+      const minSize = 50;
+      if (newRect.width < minSize) {
+        if (['nw', 'sw'].includes(corner)) {
+          newRect.x = newResizeStartRect.x + newResizeStartRect.width - minSize;
+        }
+        newRect.width = minSize;
+      }
+      
+      if (newRect.height < minSize) {
+        if (['nw', 'ne'].includes(corner)) {
+          newRect.y = newResizeStartRect.y + newResizeStartRect.height - minSize;
+        }
+        newRect.height = minSize;
+      }
+      
+      // Constrain to canvas boundaries
+      if (newRect.x < 0) {
+        if (['nw', 'sw'].includes(corner)) {
+          newRect.width += newRect.x;
+          newRect.x = 0;
+        }
+      }
+      if (newRect.y < 0) {
+        if (['nw', 'ne'].includes(corner)) {
+          newRect.height += newRect.y;
+          newRect.y = 0;
+        }
+      }
+      if (newRect.x + newRect.width > canvasSize.width) {
+        newRect.width = canvasSize.width - newRect.x;
+      }
+      if (newRect.y + newRect.height > canvasSize.height) {
+        newRect.height = canvasSize.height - newRect.y;
+      }
+      
+      console.log("New rect after resize (direct):", newRect);
+      
+      // Update rectangle
+      setUnderlayRect(newRect);
+    };
     
-    // Make sure we have a crop defined
-    if (!imageCrop) {
-      // If no crop defined yet, initialize it to match the full underlay rect
-      setImageCrop({ ...underlayRect });
-    } else {
-      // We already have a crop, save its current state
-      setResizeStartRect(isCropHandle ? { ...imageCrop } : { ...underlayRect });
-    }
+    const endHandler = () => {
+      console.log("Resize ended (direct handler)");
+      setResizingUnderlayRect(false);
+      setResizeCorner(null);
+      setResizeStartPos(null);
+      setResizeStartRect(null);
+      
+      document.removeEventListener('mousemove', moveHandler);
+      document.removeEventListener('mouseup', endHandler);
+    };
     
-    document.addEventListener('mousemove', handleResizeMove);
-    document.addEventListener('mouseup', handleResizeEnd);
-  }, [underlayRect, handleResizeMove, handleResizeEnd, imageCrop]);
+    // Attach these handlers directly
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('mouseup', endHandler);
+  }, [underlayRect, canvasSize.width, canvasSize.height]);
   
   // Handle rectangle movement
   const handleMoveRect = useCallback((e: MouseEvent) => {
@@ -351,31 +366,9 @@ const Canvas: React.FC = () => {
     
     console.log("New rect after move:", newRect);
     
-    // Update rectangle position and adjust crop accordingly
+    // Update rectangle position
     setUnderlayRect(newRect);
-    
-    // Also move the crop with the same delta if it exists
-    if (imageCrop) {
-      const newCrop = {
-        x: imageCrop.x + deltaX,
-        y: imageCrop.y + deltaY,
-        width: imageCrop.width,
-        height: imageCrop.height
-      };
-      
-      // Adjust if crop would go outside the rect
-      if (newCrop.x < newRect.x) newCrop.x = newRect.x;
-      if (newCrop.y < newRect.y) newCrop.y = newRect.y;
-      if (newCrop.x + newCrop.width > newRect.x + newRect.width) {
-        newCrop.x = newRect.x + newRect.width - newCrop.width;
-      }
-      if (newCrop.y + newCrop.height > newRect.y + newRect.height) {
-        newCrop.y = newRect.y + newRect.height - newCrop.height;
-      }
-      
-      setImageCrop(newCrop);
-    }
-  }, [movingUnderlayRect, moveStartPos, moveStartRect, canvasSize.width, canvasSize.height, imageCrop]);
+  }, [movingUnderlayRect, moveStartPos, moveStartRect, canvasSize.width, canvasSize.height]);
   
   // Handle move end
   const handleMoveEnd = useCallback((e: MouseEvent) => {
@@ -437,28 +430,6 @@ const Canvas: React.FC = () => {
       
       // Update rectangle position
       setUnderlayRect(newRect);
-      
-      // Also move the crop with the same delta if it exists
-      if (imageCrop) {
-        const newCrop = {
-          x: imageCrop.x + deltaX,
-          y: imageCrop.y + deltaY,
-          width: imageCrop.width,
-          height: imageCrop.height
-        };
-        
-        // Adjust if crop would go outside the rect
-        if (newCrop.x < newRect.x) newCrop.x = newRect.x;
-        if (newCrop.y < newRect.y) newCrop.y = newRect.y;
-        if (newCrop.x + newCrop.width > newRect.x + newRect.width) {
-          newCrop.x = newRect.x + newRect.width - newCrop.width;
-        }
-        if (newCrop.y + newCrop.height > newRect.y + newRect.height) {
-          newCrop.y = newRect.y + newRect.height - newCrop.height;
-        }
-        
-        setImageCrop(newCrop);
-      }
     };
     
     const endHandler = () => {
@@ -474,8 +445,8 @@ const Canvas: React.FC = () => {
     // Attach these handlers directly
     document.addEventListener('mousemove', moveHandler);
     document.addEventListener('mouseup', endHandler);
-  }, [underlayRect, resizingUnderlayRect, canvasSize.width, canvasSize.height, imageCrop]);
-
+  }, [underlayRect, resizingUnderlayRect, canvasSize.width, canvasSize.height]);
+  
   // Calculate the appropriate scale factor based on container size
   useEffect(() => {
     const handleResize = () => {
@@ -532,21 +503,15 @@ const Canvas: React.FC = () => {
       hasImage: !!underlayImage,
       resizeCorner,
       hasResizeStartPos: !!resizeStartPos,
-      hasMoveStartPos: !!moveStartPos,
-      hasCrop: !!imageCrop
+      hasMoveStartPos: !!moveStartPos
     });
-  }, [resizingUnderlayRect, movingUnderlayRect, underlayImage, resizeCorner, resizeStartPos, moveStartPos, imageCrop]);
+  }, [resizingUnderlayRect, movingUnderlayRect, underlayImage, resizeCorner, resizeStartPos, moveStartPos]);
 
   // Debug output of underlayRect whenever it changes
   useEffect(() => {
     console.log("UnderlayRect updated:", underlayRect);
   }, [underlayRect]);
 
-  // Debug output of crop whenever it changes
-  useEffect(() => {
-    console.log("ImageCrop updated:", imageCrop);
-  }, [imageCrop]);
-  
   return (
     <div className="flex flex-col h-full">
       <Toolbar 
@@ -602,7 +567,6 @@ const Canvas: React.FC = () => {
         underlayImage={underlayImage}
         containerRef={containerRef}
         underlayRect={underlayRect}
-        imageCrop={imageCrop}
         handleUnderlayRectClick={handleUnderlayRectClick}
         resizingUnderlayRect={resizingUnderlayRect}
         startResizingUnderlayRect={startResizingUnderlayRect}

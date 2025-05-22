@@ -40,11 +40,3 @@ export type ExtensionLine = {
   end: Point;
   referenceLineId: string;
 };
-
-// Underlay image crop type
-export type UnderlayImageCrop = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
