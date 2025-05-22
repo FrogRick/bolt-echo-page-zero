@@ -27,7 +27,7 @@ const EditorPage = () => {
   }
 
   return (
-    <div className="editor-page-container">
+    <div className="editor-page-container h-full flex flex-col">
       <div className="bg-white border-b px-4 py-2 flex justify-between items-center">
         <h1 className="text-lg font-semibold">Canvas Editor</h1>
         <div className="flex items-center gap-2">
@@ -45,7 +45,7 @@ const EditorPage = () => {
           </button>
         </div>
       </div>
-      <div className="flex-grow overflow-hidden">
+      <div className="flex-1 overflow-hidden">
         <Canvas />
       </div>
       <Toaster />
