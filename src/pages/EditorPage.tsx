@@ -3,11 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import Canvas from "@/components/editor/Canvas";
 import { Toaster } from "@/components/ui/toaster";
 import { useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
 
 const EditorPage = () => {
   const { projectId } = useParams<{ projectId: string; }>();
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   // Generate a new ID if not provided
@@ -32,17 +30,6 @@ const EditorPage = () => {
         <h1 className="text-lg font-semibold">Canvas Editor</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">Canvas ID: {projectId.substring(0, 8)}...</span>
-          <button
-            onClick={() => {
-              toast({
-                title: "Canvas Saved",
-                description: "Your canvas has been saved.",
-              });
-            }}
-            className="px-4 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
-          >
-            Save
-          </button>
         </div>
       </div>
       <div className="flex-1 overflow-hidden">

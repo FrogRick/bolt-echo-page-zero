@@ -2,7 +2,8 @@
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Button } from "@/components/ui/button";
-import { MousePointer, Square, Triangle } from "lucide-react";
+import { MousePointer, Square, Triangle, Save } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface ToolbarProps {
   activeTool: Tool;
@@ -17,6 +18,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onClear,
   onDelete,
 }) => {
+  const { toast } = useToast();
+  
   const tools = [
     { id: "select", icon: MousePointer, label: "Select" },
     { id: "wall", icon: Square, label: "Wall" },
@@ -26,6 +29,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     { id: "green-rectangle", icon: Square, label: "Green Rectangle" },
     { id: "green-polygon", icon: Triangle, label: "Green Polygon" },
   ];
+
+  const handleSave = () => {
+    toast({
+      title: "Canvas Saved",
+      description: "Your canvas has been saved.",
+    });
+  };
 
   return (
     <div className="p-2 bg-white border-b flex items-center gap-2">
@@ -60,6 +70,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           className="bg-gray-50 hover:bg-gray-100"
         >
           Clear Canvas
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSave}
+          className="bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200 flex items-center gap-1"
+        >
+          <Save className="h-4 w-4" />
+          <span>Save</span>
         </Button>
       </div>
     </div>
