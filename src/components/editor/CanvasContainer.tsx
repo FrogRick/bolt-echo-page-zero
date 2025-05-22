@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Tool } from "@/types/canvas";
+import { Tool, UnderlayImageCrop } from "@/types/canvas";
 import { Upload, Move, Crop } from "lucide-react";
 
 interface CanvasContainerProps {
@@ -18,6 +18,7 @@ interface CanvasContainerProps {
     width: number;
     height: number;
   } | null;
+  imageCrop?: UnderlayImageCrop | null;
   handleUnderlayRectClick: () => void;
   resizingUnderlayRect: boolean;
   startResizingUnderlayRect: (corner: string, e: React.MouseEvent) => void;
@@ -35,6 +36,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   underlayImage,
   containerRef,
   underlayRect,
+  imageCrop,
   handleUnderlayRectClick,
   resizingUnderlayRect,
   startResizingUnderlayRect,
@@ -159,7 +161,14 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               className="object-contain w-full h-full"
               style={{
                 opacity: 0.5, // Use the opacity setting
-                pointerEvents: 'none'
+                pointerEvents: 'none',
+                // Apply cropping if imageCrop exists
+                clipPath: imageCrop ? `inset(
+                  ${(imageCrop.y - underlayRect.y) / underlayRect.height * 100}% 
+                  ${(underlayRect.x + underlayRect.width - imageCrop.x - imageCrop.width) / underlayRect.width * 100}% 
+                  ${(underlayRect.y + underlayRect.height - imageCrop.y - imageCrop.height) / underlayRect.height * 100}% 
+                  ${(imageCrop.x - underlayRect.x) / underlayRect.width * 100}%
+                )` : 'none'
               }}
             />
             <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -175,12 +184,22 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
         {underlayRect && !resizingUnderlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
           <div
             key={handle.position}
-            className={`absolute ${handle.type === "crop" ? "w-4 h-4" : "w-5 h-5"} bg-white border-2 border-blue-500 rounded-full hover:bg-blue-200 flex items-center justify-center`}
+            className={`absolute ${handle.type === "crop" ? "crop-handle" : "resize-handle"} flex items-center justify-center`}
             style={{
-              left: handle.x - (handle.type === "crop" ? 8 : 10), // Center the handle (half of width/height)
+              left: handle.x - (handle.type === "crop" ? 8 : 10),
               top: handle.y - (handle.type === "crop" ? 8 : 10),
               cursor: getHandleCursor(handle.position),
-              zIndex: 20
+              zIndex: 20,
+              ...(handle.type === "crop" 
+                ? getCropHandleStyles(handle.position) 
+                : {
+                    width: '20px',
+                    height: '20px',
+                    backgroundColor: 'white',
+                    border: '2px solid #3b82f6',
+                    borderRadius: '50%'
+                  }
+              )
             }}
             onMouseDown={(e) => {
               console.log(`${handle.type === "crop" ? "Crop" : "Resize"} handle ${handle.position} onMouseDown triggered`, { clientX: e.clientX, clientY: e.clientY });
@@ -189,11 +208,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               console.log(`Starting ${handle.type === "crop" ? "crop" : "resize"} from ${handle.position} ${handle.type === "crop" ? "side" : "corner"}`);
               startResizingUnderlayRect(handle.position, e);
             }}
-          >
-            {handle.type === "crop" && (
-              <div className="w-2 h-2 bg-blue-600 rounded-full" />
-            )}
-          </div>
+          />
         ))}
       </div>
     </div>
@@ -217,6 +232,38 @@ function getHandleCursor(position: string): string {
       return "ew-resize";
     default:
       return "default";
+  }
+}
+
+// Helper function to get specific styles for crop handles (thick lines)
+function getCropHandleStyles(position: string): React.CSSProperties {
+  const baseStyles: React.CSSProperties = {
+    backgroundColor: "#3b82f6",
+    border: "none",
+    position: "absolute",
+    zIndex: 20
+  };
+  
+  // Style the crop handles as thick lines based on their position
+  switch (position) {
+    case "n":
+    case "s":
+      return {
+        ...baseStyles,
+        width: "32px",
+        height: "6px",
+        transform: "translateX(-16px) translateY(-3px)" // Center the line
+      };
+    case "e":
+    case "w":
+      return {
+        ...baseStyles,
+        width: "6px",
+        height: "32px",
+        transform: "translateX(-3px) translateY(-16px)" // Center the line
+      };
+    default:
+      return baseStyles;
   }
 }
 
