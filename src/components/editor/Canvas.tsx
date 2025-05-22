@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -112,15 +111,10 @@ const Canvas: React.FC = () => {
             scaledWidth = underlayRect.height * imgRatio;
           }
           
-          // Pass original image to addUnderlayImage, positioning will happen in the hook
-          addUnderlayImage(file, {
-            x: underlayRect.x + (underlayRect.width - scaledWidth) / 2,
-            y: underlayRect.y + (underlayRect.height - scaledHeight) / 2,
-            width: scaledWidth,
-            height: scaledHeight
-          });
+          // Here's the fix - Only pass the file to addUnderlayImage
+          // The function should handle any positioning internally
+          addUnderlayImage(file);
         } else {
-          // Fallback to regular image upload
           addUnderlayImage(file);
         }
       };
