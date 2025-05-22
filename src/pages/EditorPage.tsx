@@ -19,9 +19,11 @@ const EditorPage = () => {
   }, [projectId, navigate]);
 
   if (!projectId) {
-    return <div className="flex items-center justify-center h-screen">
+    return (
+      <div className="flex items-center justify-center h-screen">
         <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>;
+      </div>
+    );
   }
 
   return (

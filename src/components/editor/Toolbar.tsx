@@ -2,7 +2,7 @@
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Button } from "@/components/ui/button";
-import { MousePointer, Square, Triangle, Save } from "lucide-react";
+import { MousePointer, Square, Triangle, Save, Trash2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ToolbarProps {
@@ -59,17 +59,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           variant="outline"
           size="sm"
           onClick={onDelete}
-          className="bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
+          className="bg-red-50 hover:bg-red-100 text-red-600 border-red-200 flex items-center gap-1"
         >
-          Delete Selected
+          <Trash2 className="h-4 w-4" />
+          <span>Delete Selected</span>
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={onClear}
-          className="bg-gray-50 hover:bg-gray-100"
+          className="bg-gray-50 hover:bg-gray-100 flex items-center gap-1"
         >
-          Clear Canvas
+          <X className="h-4 w-4" />
+          <span>Clear Canvas</span>
         </Button>
         <Button
           variant="outline"
