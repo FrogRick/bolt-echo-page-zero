@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -12,6 +13,9 @@ const Canvas: React.FC = () => {
   const [scaleFactor, setScaleFactor] = useState(INITIAL_SCALE_FACTOR);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Image selection state
+  const [isImageSelected, setIsImageSelected] = useState(false);
   
   // Underlay rectangle state
   const [underlayRect, setUnderlayRect] = useState<{
@@ -107,6 +111,7 @@ const Canvas: React.FC = () => {
       const file = e.target.files[0];
       console.log("File selected:", file.name);
       addUnderlayImage(file);
+      setIsImageSelected(true); // Auto-select image after upload
       toast({
         title: "Image uploaded",
         description: "You can now resize and move the image",
@@ -123,6 +128,8 @@ const Canvas: React.FC = () => {
     console.log("Underlay rect clicked, have image:", !!underlayImage);
     if (!underlayImage) {
       handleUploadClick();
+    } else if (activeTool === "select") {
+      setIsImageSelected(true);
     }
   };
   
@@ -226,7 +233,7 @@ const Canvas: React.FC = () => {
   const startResizingUnderlayRect = useCallback((corner: string, e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!underlayRect) return;
+    if (!underlayRect || !isImageSelected) return;
     
     console.log("Starting resize:", { corner, clientX: e.clientX, clientY: e.clientY });
     
@@ -329,7 +336,7 @@ const Canvas: React.FC = () => {
     // Attach these handlers directly
     document.addEventListener('mousemove', moveHandler);
     document.addEventListener('mouseup', endHandler);
-  }, [underlayRect, canvasSize.width, canvasSize.height]);
+  }, [underlayRect, isImageSelected, canvasSize.width, canvasSize.height]);
   
   // Handle rectangle movement
   const handleMoveRect = useCallback((e: MouseEvent) => {
@@ -385,8 +392,8 @@ const Canvas: React.FC = () => {
   const startMovingUnderlayRect = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!underlayRect || resizingUnderlayRect) {
-      console.log("Cannot start moving:", { hasUnderlayRect: !!underlayRect, isResizing: resizingUnderlayRect });
+    if (!underlayRect || resizingUnderlayRect || !isImageSelected) {
+      console.log("Cannot start moving:", { hasUnderlayRect: !!underlayRect, isResizing: resizingUnderlayRect, isSelected: isImageSelected });
       return;
     }
     
@@ -445,7 +452,7 @@ const Canvas: React.FC = () => {
     // Attach these handlers directly
     document.addEventListener('mousemove', moveHandler);
     document.addEventListener('mouseup', endHandler);
-  }, [underlayRect, resizingUnderlayRect, canvasSize.width, canvasSize.height]);
+  }, [underlayRect, resizingUnderlayRect, isImageSelected, canvasSize.width, canvasSize.height]);
   
   // Calculate the appropriate scale factor based on container size
   useEffect(() => {
@@ -503,14 +510,48 @@ const Canvas: React.FC = () => {
       hasImage: !!underlayImage,
       resizeCorner,
       hasResizeStartPos: !!resizeStartPos,
-      hasMoveStartPos: !!moveStartPos
+      hasMoveStartPos: !!moveStartPos,
+      isImageSelected
     });
-  }, [resizingUnderlayRect, movingUnderlayRect, underlayImage, resizeCorner, resizeStartPos, moveStartPos]);
+  }, [resizingUnderlayRect, movingUnderlayRect, underlayImage, resizeCorner, resizeStartPos, moveStartPos, isImageSelected]);
 
   // Debug output of underlayRect whenever it changes
   useEffect(() => {
     console.log("UnderlayRect updated:", underlayRect);
   }, [underlayRect]);
+  
+  // Handle canvas click to deselect image if clicking outside
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    // Only deselect if we're not clicking on the image and we're using the select tool
+    if (isImageSelected && activeTool === "select") {
+      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      if (!canvasRect) return;
+      
+      // Calculate click position relative to canvas
+      const x = e.clientX - canvasRect.left;
+      const y = e.clientY - canvasRect.top;
+      
+      // Check if click is inside underlay rect
+      const isInsideUnderlayRect = underlayRect && 
+        x >= underlayRect.x && 
+        x <= underlayRect.x + underlayRect.width && 
+        y >= underlayRect.y && 
+        y <= underlayRect.y + underlayRect.height;
+      
+      // If clicked outside the underlay rect, deselect it
+      if (!isInsideUnderlayRect) {
+        console.log("Clicked outside image, deselecting");
+        setIsImageSelected(false);
+      }
+    }
+  };
+  
+  // Deselect image when changing tools
+  useEffect(() => {
+    if (activeTool !== "select" && isImageSelected) {
+      setIsImageSelected(false);
+    }
+  }, [activeTool, isImageSelected]);
 
   return (
     <div className="flex flex-col h-full">
@@ -541,6 +582,7 @@ const Canvas: React.FC = () => {
         underlayImage={underlayImage !== null}
         removeUnderlayImage={() => {
           removeUnderlayImage();
+          setIsImageSelected(false);
           // Don't reset underlayRect here, it will be recreated by the effect
         }}
         underlayOpacity={underlayOpacity}
@@ -560,7 +602,10 @@ const Canvas: React.FC = () => {
       <CanvasContainer
         canvasRef={canvasRef}
         canvasSize={canvasSize}
-        startDrawing={startDrawing}
+        startDrawing={(e) => {
+          handleCanvasClick(e);
+          startDrawing(e);
+        }}
         draw={draw}
         endDrawing={endDrawing}
         activeTool={activeTool}
@@ -572,6 +617,7 @@ const Canvas: React.FC = () => {
         startResizingUnderlayRect={startResizingUnderlayRect}
         movingUnderlayRect={movingUnderlayRect}
         startMovingUnderlayRect={startMovingUnderlayRect}
+        isImageSelected={isImageSelected}
       />
     </div>
   );
