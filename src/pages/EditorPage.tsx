@@ -32,21 +32,15 @@ const EditorPage = () => {
         <h1 className="text-lg font-semibold">Canvas Editor</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">Canvas ID: {projectId.substring(0, 8)}...</span>
-          <button
-            onClick={() => {
-              toast({
-                title: "Canvas Saved",
-                description: "Your canvas has been saved.",
-              });
-            }}
-            className="px-4 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
-          >
-            Save
-          </button>
         </div>
       </div>
       <div className="flex-1 overflow-hidden">
-        <Canvas />
+        <Canvas projectId={projectId} onSave={() => {
+          toast({
+            title: "Canvas Saved",
+            description: "Your canvas has been saved.",
+          });
+        }} />
       </div>
       <Toaster />
     </div>

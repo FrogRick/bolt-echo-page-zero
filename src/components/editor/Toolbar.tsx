@@ -1,66 +1,154 @@
 
-import React from "react";
-import { Tool } from "@/types/canvas";
+import React from 'react';
 import { Button } from "@/components/ui/button";
-import { MousePointer, Square, Triangle } from "lucide-react";
+import { 
+  Pencil, 
+  Square, 
+  Circle, 
+  MousePointer, 
+  Trash2, 
+  Eraser, 
+  Type, 
+  Hexagon,
+  Hand,
+  GitBranch,
+  Save
+} from "lucide-react";
+import { Tool } from "@/types/canvas";
 
 interface ToolbarProps {
   activeTool: Tool;
   onToolChange: (tool: Tool) => void;
-  onClear: () => void;
   onDelete: () => void;
+  onClear: () => void;
+  onSave?: () => void;
+  projectId?: string;
 }
 
-export const Toolbar: React.FC<ToolbarProps> = ({
-  activeTool,
-  onToolChange,
+export const Toolbar: React.FC<ToolbarProps> = ({ 
+  activeTool, 
+  onToolChange, 
+  onDelete, 
   onClear,
-  onDelete,
+  onSave,
+  projectId
 }) => {
-  const tools = [
-    { id: "select", icon: MousePointer, label: "Select" },
-    { id: "wall", icon: Square, label: "Wall" },
-    { id: "yellow-rectangle", icon: Square, label: "Yellow Rectangle" },
-    { id: "yellow-polygon", icon: Triangle, label: "Yellow Polygon" },
-    { id: "wall-polygon", icon: Square, label: "Wall Polygon" },
-    { id: "green-rectangle", icon: Square, label: "Green Rectangle" },
-    { id: "green-polygon", icon: Triangle, label: "Green Polygon" },
-  ];
-
   return (
-    <div className="p-2 bg-white border-b flex items-center gap-2">
-      <div className="flex items-center gap-1">
-        {tools.map((tool) => (
-          <Button
-            key={tool.id}
-            variant={activeTool === tool.id as Tool ? "default" : "outline"}
-            size="sm"
-            onClick={() => onToolChange(tool.id as Tool)}
-            className="flex items-center gap-1 px-3"
-          >
-            <tool.icon className="h-4 w-4" />
-            <span className="hidden sm:inline">{tool.label}</span>
-          </Button>
-        ))}
+    <div className="p-2 bg-white border-b flex flex-wrap items-center justify-between">
+      <div className="flex items-center gap-1 flex-wrap">
+        <Button
+          size="sm"
+          variant={activeTool === "select" ? "default" : "outline"}
+          onClick={() => onToolChange("select")}
+          className="flex items-center gap-1"
+        >
+          <MousePointer size={16} />
+          <span className="hidden sm:inline">Select</span>
+        </Button>
+        
+        <Button
+          size="sm"
+          variant={activeTool === "pencil" ? "default" : "outline"}
+          onClick={() => onToolChange("pencil")}
+          className="flex items-center gap-1"
+        >
+          <Pencil size={16} />
+          <span className="hidden sm:inline">Pencil</span>
+        </Button>
+        
+        <Button
+          size="sm"
+          variant={activeTool === "rectangle" ? "default" : "outline"}
+          onClick={() => onToolChange("rectangle")}
+          className="flex items-center gap-1"
+        >
+          <Square size={16} />
+          <span className="hidden sm:inline">Rectangle</span>
+        </Button>
+        
+        <Button
+          size="sm"
+          variant={activeTool === "circle" ? "default" : "outline"}
+          onClick={() => onToolChange("circle")}
+          className="flex items-center gap-1"
+        >
+          <Circle size={16} />
+          <span className="hidden sm:inline">Circle</span>
+        </Button>
+        
+        <Button
+          size="sm"
+          variant={activeTool === "text" ? "default" : "outline"}
+          onClick={() => onToolChange("text")}
+          className="flex items-center gap-1"
+        >
+          <Type size={16} />
+          <span className="hidden sm:inline">Text</span>
+        </Button>
+        
+        <Button
+          size="sm"
+          variant={activeTool === "eraser" ? "default" : "outline"}
+          onClick={() => onToolChange("eraser")}
+          className="flex items-center gap-1"
+        >
+          <Eraser size={16} />
+          <span className="hidden sm:inline">Eraser</span>
+        </Button>
+        
+        <Button
+          size="sm"
+          variant={activeTool === "wall" ? "default" : "outline"}
+          onClick={() => onToolChange("wall")}
+          className="flex items-center gap-1"
+        >
+          <GitBranch size={16} />
+          <span className="hidden sm:inline">Wall</span>
+        </Button>
+        
+        <Button
+          size="sm"
+          variant={activeTool === "wall-polygon" ? "default" : "outline"}
+          onClick={() => onToolChange("wall-polygon")}
+          className="flex items-center gap-1"
+        >
+          <Hexagon size={16} />
+          <span className="hidden sm:inline">Polygon</span>
+        </Button>
       </div>
       
-      <div className="ml-auto flex items-center gap-2">
+      <div className="flex items-center gap-1">
         <Button
-          variant="outline"
           size="sm"
+          variant="outline"
           onClick={onDelete}
-          className="bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
+          className="flex items-center gap-1 text-red-500 hover:text-red-700"
         >
-          Delete Selected
+          <Trash2 size={16} />
+          <span className="hidden sm:inline">Delete</span>
         </Button>
+        
         <Button
-          variant="outline"
           size="sm"
+          variant="outline"
           onClick={onClear}
-          className="bg-gray-50 hover:bg-gray-100"
+          className="flex items-center gap-1"
         >
-          Clear Canvas
+          <Eraser size={16} />
+          <span className="hidden sm:inline">Clear Canvas</span>
         </Button>
+        
+        {onSave && (
+          <Button
+            size="sm"
+            variant="default"
+            onClick={onSave}
+            className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Save size={16} />
+            <span className="hidden sm:inline">Save</span>
+          </Button>
+        )}
       </div>
     </div>
   );

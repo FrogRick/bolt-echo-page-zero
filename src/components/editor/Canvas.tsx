@@ -26,7 +26,12 @@ const A3_SIZE = { width: 297, height: 420 };
 // Dynamic scaling factor that will be adjusted based on viewport
 const INITIAL_SCALE_FACTOR = 2.5;
 
-const Canvas: React.FC = () => {
+interface CanvasProps {
+  projectId?: string;
+  onSave?: () => void;
+}
+
+const Canvas: React.FC<CanvasProps> = ({ projectId, onSave }) => {
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
   const [scaleFactor, setScaleFactor] = useState(INITIAL_SCALE_FACTOR);
   
@@ -166,6 +171,8 @@ const Canvas: React.FC = () => {
         onToolChange={setActiveTool}
         onDelete={deleteSelected}
         onClear={clearCanvas}
+        onSave={onSave}
+        projectId={projectId}
       />
       
       <div className="p-2 bg-white border-b flex items-center gap-4 flex-wrap">
