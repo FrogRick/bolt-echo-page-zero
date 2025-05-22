@@ -90,7 +90,7 @@ const Canvas: React.FC = () => {
     if (!containerRef.current) return INITIAL_SCALE_FACTOR;
     
     const containerWidth = containerRef.current.clientWidth - 32; // Subtract padding
-    const containerHeight = containerRef.current.clientHeight - 80; // Adjusted for top/bottom margins
+    const containerHeight = containerRef.current.clientHeight - 20; // Adjusted for top and bottom margins of 10px each
     
     let width = A3_SIZE.width;
     let height = A3_SIZE.height;
@@ -323,8 +323,8 @@ const Canvas: React.FC = () => {
         className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto"
         style={{ 
           height: "100%",
-          paddingTop: "10px", // Reduced top margin
-          paddingBottom: "80px" // Increased bottom margin
+          paddingTop: "10px", // 10px top margin
+          paddingBottom: "10px" // Now matching 10px bottom margin
         }}
       >
         <div className="flex items-center justify-center">
