@@ -90,7 +90,6 @@ export const useCanvasEditor = () => {
   // Function to adjust canvas size
   const adjustCanvasSize = (width: number, height: number) => {
     setCanvasSize({ width, height });
-    redrawCanvas();
   };
 
   // Function to cancel the current drawing operation

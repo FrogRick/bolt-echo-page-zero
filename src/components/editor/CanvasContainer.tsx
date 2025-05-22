@@ -99,6 +99,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             }}
             onClick={handleUnderlayRectClick}
             onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
               // Only handle movement if it's not a resize operation
               if (!resizingUnderlayRect) {
                 startMovingUnderlayRect(e);
@@ -124,6 +126,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               cursor: movingUnderlayRect ? 'grabbing' : 'grab'
             }}
             onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
               // Only handle movement if it's not a resize operation
               if (!resizingUnderlayRect) {
                 startMovingUnderlayRect(e);
@@ -160,6 +164,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             }}
             onMouseDown={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               startResizingUnderlayRect(handle.position, e);
             }}
           />
