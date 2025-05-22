@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
 import { Toolbar } from "./Toolbar";
@@ -83,6 +83,7 @@ const Canvas: React.FC = () => {
       const y = (canvasSize.height - height) / 2;
       
       setUnderlayRect({ x, y, width, height });
+      console.log("Initializing underlayRect:", { x, y, width, height });
     }
   }, [canvasSize, underlayRect]);
   
@@ -96,32 +97,37 @@ const Canvas: React.FC = () => {
       const y = (canvasSize.height - height) / 2;
       
       setUnderlayRect({ x, y, width, height });
+      console.log("Reinitializing underlayRect after image removal:", { x, y, width, height });
     }
   }, [underlayImage, underlayRect, canvasSize]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      console.log("File selected:", file.name);
       addUnderlayImage(file);
     }
   };
 
   const handleUploadClick = () => {
+    console.log("Upload click triggered");
     fileInputRef.current?.click();
   };
   
   const handleUnderlayRectClick = () => {
+    console.log("Underlay rect clicked, have image:", !!underlayImage);
     if (!underlayImage) {
       handleUploadClick();
     }
   };
   
-  // Handle starting rectangle resize
-  const startResizingUnderlayRect = (corner: string, e: React.MouseEvent) => {
+  // Handle starting rectangle resize - with useCallback to ensure stable reference
+  const startResizingUnderlayRect = useCallback((corner: string, e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     if (!underlayRect) return;
     
+    console.log("Starting resize:", { corner, clientX: e.clientX, clientY: e.clientY });
     setResizingUnderlayRect(true);
     setResizeCorner(corner);
     setResizeStartPos({ x: e.clientX, y: e.clientY });
@@ -129,14 +135,24 @@ const Canvas: React.FC = () => {
     
     document.addEventListener('mousemove', handleResizeMove);
     document.addEventListener('mouseup', handleResizeEnd);
-  };
+  }, [underlayRect]);
   
-  // Handle resize movement
-  const handleResizeMove = (e: MouseEvent) => {
-    if (!resizingUnderlayRect || !resizeStartPos || !resizeStartRect || !resizeCorner) return;
+  // Handle resize movement - defined with useCallback to ensure stable reference
+  const handleResizeMove = useCallback((e: MouseEvent) => {
+    if (!resizingUnderlayRect || !resizeStartPos || !resizeStartRect || !resizeCorner) {
+      console.log("Missing state for resize", { 
+        resizingUnderlayRect, 
+        hasResizeStartPos: !!resizeStartPos, 
+        hasResizeStartRect: !!resizeStartRect, 
+        resizeCorner 
+      });
+      return;
+    }
     
     const deltaX = e.clientX - resizeStartPos.x;
     const deltaY = e.clientY - resizeStartPos.y;
+    
+    console.log("Resize move:", { deltaX, deltaY, corner: resizeCorner });
     
     const newRect = { ...resizeStartRect };
     
@@ -199,39 +215,56 @@ const Canvas: React.FC = () => {
       newRect.height = canvasSize.height - newRect.y;
     }
     
+    console.log("New rect after resize:", newRect);
+    
     // Update rectangle
     setUnderlayRect(newRect);
-  };
+  }, [resizingUnderlayRect, resizeStartPos, resizeStartRect, resizeCorner, canvasSize.width, canvasSize.height]);
   
-  const handleResizeEnd = () => {
+  // Handle resize end - with useCallback for stable reference
+  const handleResizeEnd = useCallback(() => {
+    console.log("Resize ended");
     setResizingUnderlayRect(false);
     setResizeCorner(null);
     setResizeStartPos(null);
     setResizeStartRect(null);
     document.removeEventListener('mousemove', handleResizeMove);
     document.removeEventListener('mouseup', handleResizeEnd);
-  };
+  }, [handleResizeMove]);
   
-  // Handle starting rectangle movement
-  const startMovingUnderlayRect = (e: React.MouseEvent) => {
+  // Handle starting rectangle movement - with useCallback for stable reference
+  const startMovingUnderlayRect = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!underlayRect || resizingUnderlayRect) return;
+    if (!underlayRect || resizingUnderlayRect) {
+      console.log("Cannot start moving:", { hasUnderlayRect: !!underlayRect, isResizing: resizingUnderlayRect });
+      return;
+    }
     
+    console.log("Starting to move rect:", { clientX: e.clientX, clientY: e.clientY });
     setMovingUnderlayRect(true);
     setMoveStartPos({ x: e.clientX, y: e.clientY });
     setMoveStartRect({ ...underlayRect });
     
     document.addEventListener('mousemove', handleMoveRect);
     document.addEventListener('mouseup', handleMoveEnd);
-  };
+  }, [underlayRect, resizingUnderlayRect]);
   
-  // Handle rectangle movement
-  const handleMoveRect = (e: MouseEvent) => {
-    if (!movingUnderlayRect || !moveStartPos || !moveStartRect) return;
+  // Handle rectangle movement - with useCallback for stable reference
+  const handleMoveRect = useCallback((e: MouseEvent) => {
+    if (!movingUnderlayRect || !moveStartPos || !moveStartRect) {
+      console.log("Missing state for move", { 
+        movingUnderlayRect, 
+        hasMoveStartPos: !!moveStartPos, 
+        hasMoveStartRect: !!moveStartRect
+      });
+      return;
+    }
     
     const deltaX = e.clientX - moveStartPos.x;
     const deltaY = e.clientY - moveStartPos.y;
+    
+    console.log("Move rect:", { deltaX, deltaY });
     
     // Create new position
     const newRect = {
@@ -250,17 +283,21 @@ const Canvas: React.FC = () => {
       newRect.y = canvasSize.height - newRect.height;
     }
     
+    console.log("New rect after move:", newRect);
+    
     // Update rectangle position
     setUnderlayRect(newRect);
-  };
+  }, [movingUnderlayRect, moveStartPos, moveStartRect, canvasSize.width, canvasSize.height]);
   
-  const handleMoveEnd = () => {
+  // Handle move end - with useCallback for stable reference
+  const handleMoveEnd = useCallback(() => {
+    console.log("Move ended");
     setMovingUnderlayRect(false);
     setMoveStartPos(null);
     setMoveStartRect(null);
     document.removeEventListener('mousemove', handleMoveRect);
     document.removeEventListener('mouseup', handleMoveEnd);
-  };
+  }, [handleMoveRect]);
   
   // Calculate the appropriate scale factor based on container size
   useEffect(() => {
@@ -287,7 +324,7 @@ const Canvas: React.FC = () => {
     updateCanvasSize(orientation);
   }, [scaleFactor]);
 
-  // Clean up event listeners
+  // Clean up event listeners - updated with proper dependencies
   useEffect(() => {
     return () => {
       document.removeEventListener('mousemove', handleResizeMove);
@@ -295,7 +332,7 @@ const Canvas: React.FC = () => {
       document.removeEventListener('mousemove', handleMoveRect);
       document.removeEventListener('mouseup', handleMoveEnd);
     };
-  }, []);
+  }, [handleResizeMove, handleResizeEnd, handleMoveRect, handleMoveEnd]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -309,6 +346,23 @@ const Canvas: React.FC = () => {
       }
     }
   }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions, canvasRef, setActiveTool]);
+
+  // Debug monitor for state changes
+  useEffect(() => {
+    console.log("State changed:", { 
+      resizingUnderlayRect, 
+      movingUnderlayRect, 
+      hasImage: !!underlayImage,
+      resizeCorner,
+      hasResizeStartPos: !!resizeStartPos,
+      hasMoveStartPos: !!moveStartPos
+    });
+  }, [resizingUnderlayRect, movingUnderlayRect, underlayImage, resizeCorner, resizeStartPos, moveStartPos]);
+
+  // Debug output of underlayRect whenever it changes
+  useEffect(() => {
+    console.log("UnderlayRect updated:", underlayRect);
+  }, [underlayRect]);
 
   return (
     <div className="flex flex-col h-full">

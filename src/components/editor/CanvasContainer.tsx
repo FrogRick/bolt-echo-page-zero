@@ -67,6 +67,13 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       ]
     : [];
 
+  console.log("CanvasContainer render:", { 
+    underlayRect, 
+    resizingUnderlayRect, 
+    movingUnderlayRect,
+    resizeHandles: resizeHandles.length
+  });
+
   return (
     <div 
       ref={containerRef} 
@@ -99,10 +106,12 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             }}
             onClick={handleUnderlayRectClick}
             onMouseDown={(e) => {
+              console.log("Placeholder onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
               e.stopPropagation();
               e.preventDefault();
               // Only handle movement if it's not a resize operation
               if (!resizingUnderlayRect) {
+                console.log("Starting to move placeholder");
                 startMovingUnderlayRect(e);
               }
             }}
@@ -126,10 +135,12 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               cursor: movingUnderlayRect ? 'grabbing' : 'grab'
             }}
             onMouseDown={(e) => {
+              console.log("Image container onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
               e.stopPropagation();
               e.preventDefault();
               // Only handle movement if it's not a resize operation
               if (!resizingUnderlayRect) {
+                console.log("Starting to move image container");
                 startMovingUnderlayRect(e);
               }
             }}
@@ -150,7 +161,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
         )}
         
         {/* Resize Handles - show for both placeholder and image */}
-        {underlayRect && !resizingUnderlayRect && resizeHandles.map((handle) => (
+        {underlayRect && resizeHandles.map((handle) => (
           <div
             key={handle.position}
             className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full hover:bg-blue-200"
@@ -163,8 +174,10 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               zIndex: 10
             }}
             onMouseDown={(e) => {
+              console.log(`Resize handle ${handle.position} onMouseDown triggered`, { clientX: e.clientX, clientY: e.clientY });
               e.stopPropagation();
               e.preventDefault();
+              console.log(`Starting resize from ${handle.position} corner`);
               startResizingUnderlayRect(handle.position, e);
             }}
           />
