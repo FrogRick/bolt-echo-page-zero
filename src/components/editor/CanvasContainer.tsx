@@ -9,7 +9,7 @@ interface CanvasContainerProps {
   draw: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   endDrawing: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   activeTool: Tool;
-  underlayImage: boolean;
+  underlayImage: HTMLImageElement | null; // Updated this from boolean to HTMLImageElement | null
   containerRef: React.RefObject<HTMLDivElement>;
 }
 

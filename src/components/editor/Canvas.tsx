@@ -121,7 +121,7 @@ const Canvas: React.FC = () => {
         toggleSnapToExtensions={toggleSnapToExtensions}
         handleUploadClick={handleUploadClick}
         fileInputRef={fileInputRef}
-        underlayImage={underlayImage}
+        underlayImage={underlayImage !== null}
         removeUnderlayImage={removeUnderlayImage}
         underlayOpacity={underlayOpacity}
         adjustUnderlayOpacity={adjustUnderlayOpacity}

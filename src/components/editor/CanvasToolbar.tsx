@@ -24,7 +24,7 @@ interface CanvasToolbarProps {
   toggleSnapToExtensions: () => void;
   handleUploadClick: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  underlayImage: boolean;
+  underlayImage: boolean; // This is correct, it's a boolean in CanvasToolbar
   removeUnderlayImage: () => void;
   underlayOpacity: number;
   adjustUnderlayOpacity: (opacity: number) => void;
