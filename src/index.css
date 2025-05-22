@@ -57,7 +57,7 @@
   body {
     @apply bg-gradient-to-b from-slate-50 to-slate-100 text-foreground min-h-screen;
     font-feature-settings: "rlig" 1, "calt" 1;
-    overflow: hidden; /* Prevent body scrolling */
+    overflow: auto; /* Allow body scrolling by default */
   }
 }
 
@@ -107,4 +107,16 @@
   cursor: move;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* Additional styles for editor pages that need scroll lock */
+.editor-page-container {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Style for scrollable containers */
+.scrollable-container {
+  overflow-y: auto;
+  max-height: 100%;
 }
