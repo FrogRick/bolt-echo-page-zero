@@ -82,135 +82,136 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       style={{ height: "calc(100% - 120px)" }}
     >
       <div className="flex items-center justify-center relative">
-        {/* Underlay Rectangle Placeholder - Positioned underneath canvas */}
-        {underlayRect && !underlayImage && (
-          <div 
-            className="absolute border-2 border-dashed border-blue-400 flex items-center justify-center bg-blue-50 bg-opacity-30 group"
-            style={{
-              left: underlayRect.x,
-              top: underlayRect.y,
-              width: underlayRect.width,
-              height: underlayRect.height,
-              cursor: movingUnderlayRect ? 'grabbing' : 'grab',
-              zIndex: 0, // Lower z-index to place below canvas
-              position: "absolute"
-            }}
-            onClick={(e) => {
-              if (!resizingUnderlayRect && !movingUnderlayRect) {
-                handleUnderlayRectClick();
-              }
-            }}
-            onMouseDown={(e) => {
-              console.log("Placeholder onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
-              e.stopPropagation();
-              e.preventDefault();
-              // Only handle movement if it's not a resize operation
-              if (!resizingUnderlayRect) {
-                console.log("Starting to move placeholder");
-                startMovingUnderlayRect(e);
-              }
-            }}
-          >
-            <div className="flex flex-col items-center justify-center opacity-70 group-hover:opacity-100">
-              <Upload size={32} className="text-blue-500 mb-2" />
-              <span className="text-blue-600 font-medium text-sm">Upload Underlay</span>
-            </div>
-          </div>
-        )}
-        
-        {/* If image is uploaded, place it in the underlay rect and make it movable/resizable */}
-        {underlayRect && underlayImage && (
-          <div 
-            className="absolute border-2 border-blue-400 flex items-center justify-center overflow-hidden group"
-            style={{
-              left: underlayRect.x,
-              top: underlayRect.y,
-              width: underlayRect.width,
-              height: underlayRect.height,
-              cursor: movingUnderlayRect ? 'grabbing' : 'grab',
-              zIndex: 0, // Lower z-index to place below canvas
-              position: "absolute"
-            }}
-            onMouseDown={(e) => {
-              console.log("Image container onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
-              e.stopPropagation();
-              e.preventDefault();
-              // Only handle movement if it's not a resize operation
-              if (!resizingUnderlayRect) {
-                console.log("Starting to move image container");
-                startMovingUnderlayRect(e);
-              }
-            }}
-          >
-            <img 
-              src={underlayImage.src}
-              alt="Underlay"
-              className="object-contain w-full h-full"
+        {/* Stack all elements in the correct order by z-index */}
+        <div className="relative w-full h-full">
+          {/* Layer 1: Underlay Rectangle or Image - Lowest z-index */}
+          {underlayRect && !underlayImage && (
+            <div 
+              className="absolute border-2 border-dashed border-blue-400 flex items-center justify-center bg-blue-50 bg-opacity-30 group"
               style={{
-                opacity: 0.5, // Use the opacity setting
-                pointerEvents: 'none',
-                // Apply cropping if imageCrop exists
-                clipPath: imageCrop ? `inset(
-                  ${(imageCrop.y - underlayRect.y) / underlayRect.height * 100}% 
-                  ${(underlayRect.x + underlayRect.width - imageCrop.x - imageCrop.width) / underlayRect.width * 100}% 
-                  ${(underlayRect.y + underlayRect.height - imageCrop.y - imageCrop.height) / underlayRect.height * 100}% 
-                  ${(imageCrop.x - underlayRect.x) / underlayRect.width * 100}%
-                )` : 'none'
+                left: underlayRect.x,
+                top: underlayRect.y,
+                width: underlayRect.width,
+                height: underlayRect.height,
+                cursor: movingUnderlayRect ? 'grabbing' : 'grab',
+                zIndex: 0, // Lower z-index to place below canvas
+              }}
+              onClick={(e) => {
+                if (!resizingUnderlayRect && !movingUnderlayRect) {
+                  handleUnderlayRectClick();
+                }
+              }}
+              onMouseDown={(e) => {
+                console.log("Placeholder onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
+                e.stopPropagation();
+                e.preventDefault();
+                // Only handle movement if it's not a resize operation
+                if (!resizingUnderlayRect) {
+                  console.log("Starting to move placeholder");
+                  startMovingUnderlayRect(e);
+                }
+              }}
+            >
+              <div className="flex flex-col items-center justify-center opacity-70 group-hover:opacity-100">
+                <Upload size={32} className="text-blue-500 mb-2" />
+                <span className="text-blue-600 font-medium text-sm">Upload Underlay</span>
+              </div>
+            </div>
+          )}
+          
+          {/* If image is uploaded, place it in the underlay rect and make it movable */}
+          {underlayRect && underlayImage && (
+            <div 
+              className="absolute border-2 border-blue-400 flex items-center justify-center overflow-hidden group"
+              style={{
+                left: underlayRect.x,
+                top: underlayRect.y,
+                width: underlayRect.width,
+                height: underlayRect.height,
+                cursor: movingUnderlayRect ? 'grabbing' : 'grab',
+                zIndex: 0, // Lower z-index to place below canvas
+              }}
+              onMouseDown={(e) => {
+                console.log("Image container onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
+                e.stopPropagation();
+                e.preventDefault();
+                // Only handle movement if it's not a resize operation
+                if (!resizingUnderlayRect) {
+                  console.log("Starting to move image container");
+                  startMovingUnderlayRect(e);
+                }
+              }}
+            >
+              <img 
+                src={underlayImage.src}
+                alt="Underlay"
+                className="object-contain w-full h-full"
+                style={{
+                  opacity: 0.5, // Use the opacity setting
+                  pointerEvents: 'none',
+                  // Apply cropping if imageCrop exists
+                  clipPath: imageCrop ? `inset(
+                    ${(imageCrop.y - underlayRect.y) / underlayRect.height * 100}% 
+                    ${(underlayRect.x + underlayRect.width - imageCrop.x - imageCrop.width) / underlayRect.width * 100}% 
+                    ${(underlayRect.y + underlayRect.height - imageCrop.y - imageCrop.height) / underlayRect.height * 100}% 
+                    ${(imageCrop.x - underlayRect.x) / underlayRect.width * 100}%
+                  )` : 'none'
+                }}
+              />
+              <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Move size={20} className="text-blue-600" />
+              </div>
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-1">
+                <Crop size={16} className="text-blue-600" />
+              </div>
+            </div>
+          )}
+
+          {/* Layer 2: Canvas - Middle z-index */}
+          <canvas
+            ref={canvasRef}
+            width={canvasSize.width}
+            height={canvasSize.height}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={endDrawing}
+            onMouseLeave={endDrawing}
+            className={`absolute bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+            style={{ left: 0, top: 0, zIndex: 1 }}
+          />
+          
+          {/* Layer 3: Resize and Crop Handles - Highest z-index */}
+          {underlayRect && resizeHandles.map((handle) => (
+            <div
+              key={handle.position}
+              className={`absolute ${handle.type === "crop" ? "crop-handle" : "resize-handle"}`}
+              style={{
+                left: handle.x - (handle.type === "crop" ? 8 : 10),
+                top: handle.y - (handle.type === "crop" ? 8 : 10),
+                cursor: getHandleCursor(handle.position),
+                zIndex: 50, // Highest z-index to ensure handles are always accessible
+                pointerEvents: "auto", // Ensure handles receive mouse events
+                ...(handle.type === "crop" 
+                  ? getCropHandleStyles(handle.position) 
+                  : {
+                      width: '20px',
+                      height: '20px',
+                      backgroundColor: 'white',
+                      border: '2px solid #3b82f6',
+                      borderRadius: '50%'
+                    }
+                )
+              }}
+              onMouseDown={(e) => {
+                console.log(`${handle.type === "crop" ? "Crop" : "Resize"} handle ${handle.position} onMouseDown triggered`, { clientX: e.clientX, clientY: e.clientY });
+                e.stopPropagation();
+                e.preventDefault();
+                console.log(`Starting ${handle.type === "crop" ? "crop" : "resize"} from ${handle.position} ${handle.type === "crop" ? "side" : "corner"}`);
+                startResizingUnderlayRect(handle.position, e);
               }}
             />
-            <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Move size={20} className="text-blue-600" />
-            </div>
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-1">
-              <Crop size={16} className="text-blue-600" />
-            </div>
-          </div>
-        )}
-        
-        {/* Canvas - Positioned above underlay */}
-        <canvas
-          ref={canvasRef}
-          width={canvasSize.width}
-          height={canvasSize.height}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={endDrawing}
-          onMouseLeave={endDrawing}
-          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
-          style={{ position: "relative", zIndex: 1 }}
-        />
-        
-        {/* Resize and Crop Handles - Always render on top with highest z-index */}
-        {underlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
-          <div
-            key={handle.position}
-            className={`absolute ${handle.type === "crop" ? "crop-handle" : "resize-handle"} flex items-center justify-center`}
-            style={{
-              left: handle.x - (handle.type === "crop" ? 8 : 10),
-              top: handle.y - (handle.type === "crop" ? 8 : 10),
-              cursor: getHandleCursor(handle.position),
-              zIndex: 20, // Higher z-index to ensure handles are always accessible
-              pointerEvents: "auto", // Ensure handles receive mouse events
-              ...(handle.type === "crop" 
-                ? getCropHandleStyles(handle.position) 
-                : {
-                    width: '20px',
-                    height: '20px',
-                    backgroundColor: 'white',
-                    border: '2px solid #3b82f6',
-                    borderRadius: '50%'
-                  }
-              )
-            }}
-            onMouseDown={(e) => {
-              console.log(`${handle.type === "crop" ? "Crop" : "Resize"} handle ${handle.position} onMouseDown triggered`, { clientX: e.clientX, clientY: e.clientY });
-              e.stopPropagation();
-              e.preventDefault();
-              console.log(`Starting ${handle.type === "crop" ? "crop" : "resize"} from ${handle.position} ${handle.type === "crop" ? "side" : "corner"}`);
-              startResizingUnderlayRect(handle.position, e);
-            }}
-          />
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -241,8 +242,6 @@ function getCropHandleStyles(position: string): React.CSSProperties {
   const baseStyles: React.CSSProperties = {
     backgroundColor: "#3b82f6",
     border: "none",
-    position: "absolute",
-    zIndex: 20
   };
   
   // Style the crop handles as thick lines based on their position
@@ -253,7 +252,6 @@ function getCropHandleStyles(position: string): React.CSSProperties {
         ...baseStyles,
         width: "32px",
         height: "6px",
-        transform: "translateX(-16px) translateY(-3px)" // Center the line
       };
     case "e":
     case "w":
@@ -261,7 +259,6 @@ function getCropHandleStyles(position: string): React.CSSProperties {
         ...baseStyles,
         width: "6px",
         height: "32px",
-        transform: "translateX(-3px) translateY(-16px)" // Center the line
       };
     default:
       return baseStyles;
