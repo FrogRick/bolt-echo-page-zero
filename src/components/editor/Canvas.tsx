@@ -13,6 +13,23 @@ const Canvas: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
+  // Underlay rectangle state
+  const [underlayRect, setUnderlayRect] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [resizingUnderlayRect, setResizingUnderlayRect] = useState(false);
+  const [resizeCorner, setResizeCorner] = useState<string | null>(null);
+  const [resizeStartPos, setResizeStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [resizeStartRect, setResizeStartRect] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  
   const {
     canvasRef,
     activeTool,
@@ -47,14 +64,149 @@ const Canvas: React.FC = () => {
     adjustUnderlayOpacity
   } = useCanvasEditor();
 
+  // Initialize default underlay rectangle
+  useEffect(() => {
+    if (canvasSize.width && canvasSize.height && underlayRect === null) {
+      // Set default rectangle to 50% of canvas size, centered
+      const width = canvasSize.width * 0.5;
+      const height = canvasSize.height * 0.5;
+      const x = (canvasSize.width - width) / 2;
+      const y = (canvasSize.height - height) / 2;
+      
+      setUnderlayRect({ x, y, width, height });
+    }
+  }, [canvasSize, underlayRect]);
+  
+  // Reset underlay rectangle if image is removed
+  useEffect(() => {
+    if (!underlayImage && !underlayRect) {
+      // Reinitialize the rectangle
+      const width = canvasSize.width * 0.5;
+      const height = canvasSize.height * 0.5;
+      const x = (canvasSize.width - width) / 2;
+      const y = (canvasSize.height - height) / 2;
+      
+      setUnderlayRect({ x, y, width, height });
+    }
+  }, [underlayImage, underlayRect, canvasSize]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      addUnderlayImage(e.target.files[0]);
+      const file = e.target.files[0];
+      const img = new Image();
+      img.onload = () => {
+        if (underlayRect) {
+          // Calculate aspect ratio
+          const imgRatio = img.width / img.height;
+          const rectRatio = underlayRect.width / underlayRect.height;
+          
+          // Adjust image scale based on container
+          let scaledWidth, scaledHeight;
+          if (imgRatio > rectRatio) {
+            // Image is wider than container
+            scaledWidth = underlayRect.width;
+            scaledHeight = underlayRect.width / imgRatio;
+          } else {
+            // Image is taller than container
+            scaledHeight = underlayRect.height;
+            scaledWidth = underlayRect.height * imgRatio;
+          }
+          
+          // Pass original image to addUnderlayImage, positioning will happen in the hook
+          addUnderlayImage(file, {
+            x: underlayRect.x + (underlayRect.width - scaledWidth) / 2,
+            y: underlayRect.y + (underlayRect.height - scaledHeight) / 2,
+            width: scaledWidth,
+            height: scaledHeight
+          });
+        } else {
+          // Fallback to regular image upload
+          addUnderlayImage(file);
+        }
+      };
+      img.src = URL.createObjectURL(file);
     }
   };
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
+  };
+  
+  const handleUnderlayRectClick = () => {
+    handleUploadClick();
+  };
+  
+  const startResizingUnderlayRect = (corner: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!underlayRect) return;
+    
+    setResizingUnderlayRect(true);
+    setResizeCorner(corner);
+    setResizeStartPos({ x: e.clientX, y: e.clientY });
+    setResizeStartRect({ ...underlayRect });
+    
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+  };
+  
+  const handleResizeMove = (e: MouseEvent) => {
+    if (!resizingUnderlayRect || !resizeStartPos || !resizeStartRect || !resizeCorner) return;
+    
+    const deltaX = e.clientX - resizeStartPos.x;
+    const deltaY = e.clientY - resizeStartPos.y;
+    
+    const newRect = { ...resizeStartRect };
+    
+    switch (resizeCorner) {
+      case 'nw':
+        newRect.x = resizeStartRect.x + deltaX;
+        newRect.y = resizeStartRect.y + deltaY;
+        newRect.width = resizeStartRect.width - deltaX;
+        newRect.height = resizeStartRect.height - deltaY;
+        break;
+      case 'ne':
+        newRect.y = resizeStartRect.y + deltaY;
+        newRect.width = resizeStartRect.width + deltaX;
+        newRect.height = resizeStartRect.height - deltaY;
+        break;
+      case 'se':
+        newRect.width = resizeStartRect.width + deltaX;
+        newRect.height = resizeStartRect.height + deltaY;
+        break;
+      case 'sw':
+        newRect.x = resizeStartRect.x + deltaX;
+        newRect.width = resizeStartRect.width - deltaX;
+        newRect.height = resizeStartRect.height + deltaY;
+        break;
+    }
+    
+    // Ensure minimum dimensions
+    const minSize = 50;
+    if (newRect.width < minSize) {
+      if (['nw', 'sw'].includes(resizeCorner)) {
+        newRect.x = resizeStartRect.x + resizeStartRect.width - minSize;
+      }
+      newRect.width = minSize;
+    }
+    
+    if (newRect.height < minSize) {
+      if (['nw', 'ne'].includes(resizeCorner)) {
+        newRect.y = resizeStartRect.y + resizeStartRect.height - minSize;
+      }
+      newRect.height = minSize;
+    }
+    
+    // Update rectangle
+    setUnderlayRect(newRect);
+  };
+  
+  const handleResizeEnd = () => {
+    setResizingUnderlayRect(false);
+    setResizeCorner(null);
+    setResizeStartPos(null);
+    setResizeStartRect(null);
+    document.removeEventListener('mousemove', handleResizeMove);
+    document.removeEventListener('mouseup', handleResizeEnd);
   };
   
   // Calculate the appropriate scale factor based on container size
@@ -81,6 +233,14 @@ const Canvas: React.FC = () => {
   useEffect(() => {
     updateCanvasSize(orientation);
   }, [scaleFactor]);
+
+  // Clean up event listeners
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -122,7 +282,10 @@ const Canvas: React.FC = () => {
         handleUploadClick={handleUploadClick}
         fileInputRef={fileInputRef}
         underlayImage={underlayImage !== null}
-        removeUnderlayImage={removeUnderlayImage}
+        removeUnderlayImage={() => {
+          removeUnderlayImage();
+          // Don't reset underlayRect here, it will be recreated by the effect
+        }}
         underlayOpacity={underlayOpacity}
         adjustUnderlayOpacity={adjustUnderlayOpacity}
         underlayScale={underlayScale}
@@ -146,6 +309,10 @@ const Canvas: React.FC = () => {
         activeTool={activeTool}
         underlayImage={underlayImage}
         containerRef={containerRef}
+        underlayRect={underlayRect}
+        handleUnderlayRectClick={handleUnderlayRectClick}
+        resizingUnderlayRect={resizingUnderlayRect}
+        startResizingUnderlayRect={startResizingUnderlayRect}
       />
     </div>
   );
