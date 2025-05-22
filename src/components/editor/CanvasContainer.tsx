@@ -82,20 +82,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       style={{ height: "calc(100% - 120px)" }}
     >
       <div className="flex items-center justify-center relative">
-        {/* Canvas */}
-        <canvas
-          ref={canvasRef}
-          width={canvasSize.width}
-          height={canvasSize.height}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={endDrawing}
-          onMouseLeave={endDrawing}
-          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
-          style={{ position: "relative", zIndex: 1 }}
-        />
-        
-        {/* Underlay Rectangle Placeholder */}
+        {/* Underlay Rectangle Placeholder - Positioned underneath canvas */}
         {underlayRect && !underlayImage && (
           <div 
             className="absolute border-2 border-dashed border-blue-400 flex items-center justify-center bg-blue-50 bg-opacity-30 group"
@@ -105,7 +92,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               width: underlayRect.width,
               height: underlayRect.height,
               cursor: movingUnderlayRect ? 'grabbing' : 'grab',
-              zIndex: 10,
+              zIndex: 0, // Lower z-index to place below canvas
               position: "absolute"
             }}
             onClick={(e) => {
@@ -141,7 +128,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               width: underlayRect.width,
               height: underlayRect.height,
               cursor: movingUnderlayRect ? 'grabbing' : 'grab',
-              zIndex: 10,
+              zIndex: 0, // Lower z-index to place below canvas
               position: "absolute"
             }}
             onMouseDown={(e) => {
@@ -180,8 +167,21 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           </div>
         )}
         
-        {/* Resize and Crop Handles - show for both placeholder and image */}
-        {underlayRect && !resizingUnderlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
+        {/* Canvas - Positioned above underlay */}
+        <canvas
+          ref={canvasRef}
+          width={canvasSize.width}
+          height={canvasSize.height}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={endDrawing}
+          onMouseLeave={endDrawing}
+          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+          style={{ position: "relative", zIndex: 1 }}
+        />
+        
+        {/* Resize and Crop Handles - Always render on top with highest z-index */}
+        {underlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
           <div
             key={handle.position}
             className={`absolute ${handle.type === "crop" ? "crop-handle" : "resize-handle"} flex items-center justify-center`}
@@ -189,7 +189,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               left: handle.x - (handle.type === "crop" ? 8 : 10),
               top: handle.y - (handle.type === "crop" ? 8 : 10),
               cursor: getHandleCursor(handle.position),
-              zIndex: 20,
+              zIndex: 20, // Higher z-index to ensure handles are always accessible
+              pointerEvents: "auto", // Ensure handles receive mouse events
               ...(handle.type === "crop" 
                 ? getCropHandleStyles(handle.position) 
                 : {

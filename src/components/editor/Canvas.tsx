@@ -278,11 +278,14 @@ const Canvas: React.FC = () => {
     setResizingUnderlayRect(true);
     setResizeCorner(corner);
     setResizeStartPos({ x: e.clientX, y: e.clientY });
+    
+    // Save initial state - important for comparing before/after
     setResizeStartRect({ ...underlayRect });
     
     // Save the current crop state too if it exists
-    if (imageCrop) {
-      setResizeStartRect({ ...underlayRect });
+    if (!imageCrop) {
+      // If no crop defined yet, initialize it to match the full underlay rect
+      setImageCrop({ ...underlayRect });
     }
     
     document.addEventListener('mousemove', handleResizeMove);
@@ -327,7 +330,7 @@ const Canvas: React.FC = () => {
     // Update rectangle position and adjust crop accordingly
     setUnderlayRect(newRect);
     
-    // Also move the crop with the same delta
+    // Also move the crop with the same delta if it exists
     if (imageCrop) {
       const newCrop = {
         x: imageCrop.x + deltaX,
