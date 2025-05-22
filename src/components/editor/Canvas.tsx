@@ -102,33 +102,7 @@ const Canvas: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const img = new Image();
-      img.onload = () => {
-        if (underlayRect) {
-          // Calculate aspect ratio
-          const imgRatio = img.width / img.height;
-          const rectRatio = underlayRect.width / underlayRect.height;
-          
-          // Adjust image scale based on container
-          let scaledWidth, scaledHeight;
-          if (imgRatio > rectRatio) {
-            // Image is wider than container
-            scaledWidth = underlayRect.width;
-            scaledHeight = underlayRect.width / imgRatio;
-          } else {
-            // Image is taller than container
-            scaledHeight = underlayRect.height;
-            scaledWidth = underlayRect.height * imgRatio;
-          }
-          
-          // Here's the fix - Only pass the file to addUnderlayImage
-          // The function should handle any positioning internally
-          addUnderlayImage(file);
-        } else {
-          addUnderlayImage(file);
-        }
-      };
-      img.src = URL.createObjectURL(file);
+      addUnderlayImage(file);
     }
   };
 
@@ -200,6 +174,26 @@ const Canvas: React.FC = () => {
         newRect.y = resizeStartRect.y + resizeStartRect.height - minSize;
       }
       newRect.height = minSize;
+    }
+    
+    // Constrain to canvas boundaries
+    if (newRect.x < 0) {
+      if (['nw', 'sw'].includes(resizeCorner)) {
+        newRect.width += newRect.x;
+        newRect.x = 0;
+      }
+    }
+    if (newRect.y < 0) {
+      if (['nw', 'ne'].includes(resizeCorner)) {
+        newRect.height += newRect.y;
+        newRect.y = 0;
+      }
+    }
+    if (newRect.x + newRect.width > canvasSize.width) {
+      newRect.width = canvasSize.width - newRect.x;
+    }
+    if (newRect.y + newRect.height > canvasSize.height) {
+      newRect.height = canvasSize.height - newRect.y;
     }
     
     // Update rectangle

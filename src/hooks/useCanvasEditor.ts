@@ -54,12 +54,12 @@ export const useCanvasEditor = () => {
   // Import shape detection functions
   const { findShapeAtPoint } = useShapeDetection();
 
-  // Function to add an underlay image with auto-sizing
+  // Function to add an underlay image but not render it directly on the canvas
   const addUnderlayImage = (file: File) => {
     const img = new Image();
     img.onload = () => {
       // Don't modify canvas size when loading an image
-      // Instead, use the current underlayRect to position and scale the image
+      // Don't render the image directly on the canvas - it will be rendered in the CanvasContainer component
       setUnderlayImage(img);
       redrawCanvas();
     };
@@ -133,18 +133,7 @@ export const useCanvasEditor = () => {
     ctx.save();
     ctx.translate(canvasOffset.x, canvasOffset.y);
 
-    // Draw underlay image if available
-    if (underlayImage) {
-      ctx.globalAlpha = underlayOpacity;
-      ctx.drawImage(
-        underlayImage, 
-        underlayPosition.x, 
-        underlayPosition.y, 
-        underlayImage.width * underlayScale, 
-        underlayImage.height * underlayScale
-      );
-      ctx.globalAlpha = 1.0;
-    }
+    // No longer render the underlay image directly on canvas - this is now handled by CanvasContainer
 
     // Draw all saved shapes
     drawShapes(ctx, shapes, selectedShape?.id || null, fillColor);
@@ -1253,17 +1242,11 @@ export const useCanvasEditor = () => {
     underlayOpacity
   ]);
   
-  // Update the underlayImage effect to handle window resizing
+  // Update the underlayImage effect to not automatically resize the canvas
   useEffect(() => {
     const handleResize = () => {
-      if (underlayImage) {
-        // Maintain the same aspect ratio when window is resized
-        const aspectRatio = underlayImage.height / underlayImage.width;
-        const newScale = canvasSize.width / underlayImage.width;
-        
-        setUnderlayScale(newScale);
-        setCanvasSize(prev => ({ width: prev.width, height: Math.round(prev.width * aspectRatio) }));
-      }
+      // We no longer resize the canvas based on the image
+      // The image will be contained within the underlayRect
     };
 
     window.addEventListener('resize', handleResize);
