@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -23,11 +24,12 @@ import {
 // Use only A3 size in mm (ISO A series)
 const A3_SIZE = { width: 297, height: 420 };
 
-// Scaling factor to convert mm to pixels at a reasonable size
-const SCALE_FACTOR = 2.5;
+// Dynamic scaling factor that will be adjusted based on viewport
+const INITIAL_SCALE_FACTOR = 2.5;
 
 const Canvas: React.FC = () => {
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
+  const [scaleFactor, setScaleFactor] = useState(INITIAL_SCALE_FACTOR);
   
   const {
     canvasRef,
@@ -84,17 +86,58 @@ const Canvas: React.FC = () => {
     updateCanvasSize(value as "portrait" | "landscape");
   };
   
-  // Update canvas size based on orientation
-  const updateCanvasSize = (orient: "portrait" | "landscape") => {
+  // Calculate the appropriate scale factor based on container size
+  const calculateScaleFactor = () => {
+    if (!containerRef.current) return INITIAL_SCALE_FACTOR;
+    
+    const containerWidth = containerRef.current.clientWidth - 32; // Subtract padding
+    const containerHeight = containerRef.current.clientHeight - 32;
+    
+    let width = A3_SIZE.width;
+    let height = A3_SIZE.height;
+    
+    if (orientation === "landscape") {
+      width = A3_SIZE.height;
+      height = A3_SIZE.width;
+    }
+    
+    // Calculate scaling factors for width and height
+    const widthScale = containerWidth / width;
+    const heightScale = containerHeight / height;
+    
+    // Use the smaller scale to ensure the canvas fits within container
+    const newScaleFactor = Math.min(widthScale, heightScale) * 0.9; // 90% of available space
+    
+    return Math.max(1, Math.min(newScaleFactor, 4)); // Limit between 1 and 4
+  };
+  
+  // Update container size on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const newScaleFactor = calculateScaleFactor();
+      setScaleFactor(newScaleFactor);
+      updateCanvasSize(orientation, newScaleFactor);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Calculate on mount
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [orientation, containerRef.current]);
+  
+  // Update canvas size based on orientation and scale factor
+  const updateCanvasSize = (orient: "portrait" | "landscape", scale = scaleFactor) => {
     if (orient === "portrait") {
       adjustCanvasSize(
-        Math.round(A3_SIZE.width * SCALE_FACTOR),
-        Math.round(A3_SIZE.height * SCALE_FACTOR)
+        Math.round(A3_SIZE.width * scale),
+        Math.round(A3_SIZE.height * scale)
       );
     } else {
       adjustCanvasSize(
-        Math.round(A3_SIZE.height * SCALE_FACTOR),
-        Math.round(A3_SIZE.width * SCALE_FACTOR)
+        Math.round(A3_SIZE.height * scale),
+        Math.round(A3_SIZE.width * scale)
       );
     }
   };
@@ -102,7 +145,7 @@ const Canvas: React.FC = () => {
   // Initialize canvas size
   useEffect(() => {
     updateCanvasSize(orientation);
-  }, []);
+  }, [scaleFactor]);
 
   // Force canvas redraw when tool or styling changes
   useEffect(() => {
@@ -278,13 +321,10 @@ const Canvas: React.FC = () => {
       
       <div 
         ref={containerRef} 
-        className="flex-grow flex items-center justify-center bg-gray-50 p-4 overflow-auto"
-        style={{ 
-          height: "calc(100vh - 170px)", // Account for header and toolbar height
-          minHeight: "500px"
-        }}
+        className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto"
+        style={{ height: "100%" }}
       >
-        <div className={`flex items-center justify-center ${orientation === "portrait" ? "pt-16 pb-16" : "pt-8 pb-8"}`}>
+        <div className="flex items-center justify-center">
           <canvas
             ref={canvasRef}
             width={canvasSize.width}
