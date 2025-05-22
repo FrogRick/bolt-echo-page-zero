@@ -14,7 +14,7 @@ const Layout = () => {
   return (
     <div className={`min-h-screen flex flex-col bg-gradient-to-b from-slate-50 to-slate-100 ${isEditorPage ? 'overflow-hidden' : ''}`}>
       <Header />
-      <main className={`flex-1 container mx-auto ${isEditorPage ? '' : 'px-4 py-8 overflow-auto'}`}>
+      <main className={`flex-1 ${isEditorPage ? 'w-full' : 'container mx-auto px-4 py-8 overflow-auto'}`}>
         <Outlet />
       </main>
       <footer className="py-6 border-t border-slate-200 bg-white/50 backdrop-blur-sm">
