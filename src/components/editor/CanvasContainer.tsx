@@ -96,6 +96,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           onMouseUp={endDrawing}
           onMouseLeave={endDrawing}
           className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+          style={{ position: "relative", zIndex: 5 }}
         />
         
         {/* Underlay Rectangle Placeholder */}
@@ -108,7 +109,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               width: underlayRect.width,
               height: underlayRect.height,
               cursor: movingUnderlayRect ? 'grabbing' : 'grab',
-              zIndex: activeTool === "select" ? 10 : 0 // Lower z-index for drawing tools
+              zIndex: 1
             }}
             onClick={(e) => {
               if (!resizingUnderlayRect && !movingUnderlayRect) {
@@ -145,7 +146,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               width: underlayRect.width,
               height: underlayRect.height,
               cursor: isImageSelected && activeTool === "select" ? (movingUnderlayRect ? 'grabbing' : 'grab') : 'default',
-              zIndex: activeTool === "select" ? 10 : 0 // Lower z-index for drawing tools
+              zIndex: 1
             }}
             onClick={(e) => {
               if (activeTool === "select") {
@@ -196,7 +197,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
         {/* Resize Handles - show for placeholder or when image is selected and using select tool */}
         {underlayRect && (isImageSelected || !underlayImage) && 
           (!resizingUnderlayRect && !movingUnderlayRect) && 
-          (activeTool === "select" || !underlayImage) && 
+          ((activeTool === "select" && isImageSelected) || !underlayImage) && 
           resizeHandles.map((handle) => (
           <div
             key={handle.position}
