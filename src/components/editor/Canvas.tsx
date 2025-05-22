@@ -13,9 +13,6 @@ const Canvas: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Image selection state
-  const [isImageSelected, setIsImageSelected] = useState(false);
-  
   // Underlay rectangle state
   const [underlayRect, setUnderlayRect] = useState<{
     x: number;
@@ -42,6 +39,99 @@ const Canvas: React.FC = () => {
     width: number;
     height: number;
   } | null>(null);
+  
+  // Image selection state
+  const [isImageSelected, setIsImageSelected] = useState(false);
+  
+  // Crop functionality
+  const [cropMode, setCropMode] = useState(false);
+  const [cropRect, setCropRect] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  
+  const toggleCropMode = useCallback(() => {
+    const newCropMode = !cropMode;
+    setCropMode(newCropMode);
+    
+    if (newCropMode && underlayRect) {
+      // Initialize crop rect to full image dimensions
+      setCropRect({...underlayRect});
+      toast({
+        title: "Crop mode activated",
+        description: "Drag the handles to crop your image",
+      });
+    } else {
+      if (cropRect && underlayRect) {
+        // Apply the crop by updating the underlayRect and adjusting the image
+        handleApplyCrop();
+      }
+      setCropRect(null);
+    }
+  }, [cropMode, underlayRect, cropRect]);
+  
+  // Function to apply the crop
+  const handleApplyCrop = () => {
+    if (!cropRect || !underlayRect || !underlayImage) return;
+    
+    // Create a temporary canvas to crop the image
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return;
+    
+    // Calculate the relative coordinates within the image
+    const scaleX = underlayImage.naturalWidth / underlayRect.width;
+    const scaleY = underlayImage.naturalHeight / underlayRect.height;
+    
+    const sourceX = (cropRect.x - underlayRect.x) * scaleX;
+    const sourceY = (cropRect.y - underlayRect.y) * scaleY;
+    const sourceWidth = cropRect.width * scaleX;
+    const sourceHeight = cropRect.height * scaleY;
+    
+    // Set canvas dimensions to the crop size
+    tempCanvas.width = sourceWidth;
+    tempCanvas.height = sourceHeight;
+    
+    // Draw the cropped portion
+    tempCtx.drawImage(
+      underlayImage,
+      sourceX, sourceY, sourceWidth, sourceHeight,
+      0, 0, sourceWidth, sourceHeight
+    );
+    
+    // Convert the canvas to a data URL and create a new image
+    tempCanvas.toBlob((blob) => {
+      if (blob) {
+        // Convert the blob to a File object by adding the required properties
+        const fileName = "cropped-image.png";
+        const currentDate = new Date();
+        
+        // Create a File object from the Blob
+        const croppedFile = new File([blob], fileName, {
+          type: blob.type,
+          lastModified: currentDate.getTime()
+        });
+        
+        // Update the image
+        removeUnderlayImage();
+        addUnderlayImage(croppedFile);
+        
+        // Update the rectangle to match the crop area
+        setUnderlayRect(cropRect);
+        
+        // Exit crop mode
+        setCropMode(false);
+        setCropRect(null);
+        
+        toast({
+          title: "Image cropped",
+          description: "The image has been cropped successfully",
+        });
+      }
+    });
+  };
   
   const {
     canvasRef,
@@ -103,14 +193,27 @@ const Canvas: React.FC = () => {
       setUnderlayRect({ x, y, width, height });
       console.log("Reinitializing underlayRect after image removal:", { x, y, width, height });
     }
-  }, [underlayImage, underlayRect, canvasSize]);
+    
+    // Reset crop mode when image is removed
+    if (!underlayImage && cropMode) {
+      setCropMode(false);
+      setCropRect(null);
+    }
+  }, [underlayImage, underlayRect, canvasSize, cropMode]);
+
+  // Reset image selection when tool changes
+  useEffect(() => {
+    if (activeTool !== "select" && isImageSelected) {
+      setIsImageSelected(false);
+    }
+  }, [activeTool, isImageSelected]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       console.log("File selected:", file.name);
       addUnderlayImage(file);
-      setIsImageSelected(true); // Auto-select image after upload
+      setIsImageSelected(true); // Automatically select the image after upload
       toast({
         title: "Image uploaded",
         description: "You can now resize and move the image",
@@ -127,8 +230,6 @@ const Canvas: React.FC = () => {
     console.log("Underlay rect clicked, have image:", !!underlayImage);
     if (!underlayImage) {
       handleUploadClick();
-    } else if (activeTool === "select") {
-      setIsImageSelected(true);
     }
   };
   
@@ -149,75 +250,106 @@ const Canvas: React.FC = () => {
     
     console.log("Resize move:", { deltaX, deltaY, corner: resizeCorner });
     
-    const newRect = { ...resizeStartRect };
+    // Determine if we're resizing the crop rect or the main underlay rect
+    const targetRect = cropMode && cropRect ? { ...cropRect } : { ...resizeStartRect };
     
     switch (resizeCorner) {
       case 'nw':
-        newRect.x = resizeStartRect.x + deltaX;
-        newRect.y = resizeStartRect.y + deltaY;
-        newRect.width = resizeStartRect.width - deltaX;
-        newRect.height = resizeStartRect.height - deltaY;
+        targetRect.x = resizeStartRect.x + deltaX;
+        targetRect.y = resizeStartRect.y + deltaY;
+        targetRect.width = resizeStartRect.width - deltaX;
+        targetRect.height = resizeStartRect.height - deltaY;
         break;
       case 'ne':
-        newRect.y = resizeStartRect.y + deltaY;
-        newRect.width = resizeStartRect.width + deltaX;
-        newRect.height = resizeStartRect.height - deltaY;
+        targetRect.y = resizeStartRect.y + deltaY;
+        targetRect.width = resizeStartRect.width + deltaX;
+        targetRect.height = resizeStartRect.height - deltaY;
         break;
       case 'se':
-        newRect.width = resizeStartRect.width + deltaX;
-        newRect.height = resizeStartRect.height + deltaY;
+        targetRect.width = resizeStartRect.width + deltaX;
+        targetRect.height = resizeStartRect.height + deltaY;
         break;
       case 'sw':
-        newRect.x = resizeStartRect.x + deltaX;
-        newRect.width = resizeStartRect.width - deltaX;
-        newRect.height = resizeStartRect.height + deltaY;
+        targetRect.x = resizeStartRect.x + deltaX;
+        targetRect.width = resizeStartRect.width - deltaX;
+        targetRect.height = resizeStartRect.height + deltaY;
         break;
     }
     
     // Ensure minimum dimensions
     const minSize = 50;
-    if (newRect.width < minSize) {
+    if (targetRect.width < minSize) {
       if (['nw', 'sw'].includes(resizeCorner)) {
-        newRect.x = resizeStartRect.x + resizeStartRect.width - minSize;
+        targetRect.x = resizeStartRect.x + resizeStartRect.width - minSize;
       }
-      newRect.width = minSize;
+      targetRect.width = minSize;
     }
     
-    if (newRect.height < minSize) {
+    if (targetRect.height < minSize) {
       if (['nw', 'ne'].includes(resizeCorner)) {
-        newRect.y = resizeStartRect.y + resizeStartRect.height - minSize;
+        targetRect.y = resizeStartRect.y + resizeStartRect.height - minSize;
       }
-      newRect.height = minSize;
+      targetRect.height = minSize;
     }
     
-    // Constrain to canvas boundaries
-    if (newRect.x < 0) {
-      if (['nw', 'sw'].includes(resizeCorner)) {
-        newRect.width += newRect.x;
-        newRect.x = 0;
+    // Apply constraints based on what we're resizing
+    if (cropMode && cropRect && underlayRect) {
+      // Constrain crop rect to stay within image boundaries
+      if (targetRect.x < underlayRect.x) {
+        if (['nw', 'sw'].includes(resizeCorner)) {
+          targetRect.width -= (underlayRect.x - targetRect.x);
+        }
+        targetRect.x = underlayRect.x;
       }
-    }
-    if (newRect.y < 0) {
-      if (['nw', 'ne'].includes(resizeCorner)) {
-        newRect.height += newRect.y;
-        newRect.y = 0;
+      
+      if (targetRect.y < underlayRect.y) {
+        if (['nw', 'ne'].includes(resizeCorner)) {
+          targetRect.height -= (underlayRect.y - targetRect.y);
+        }
+        targetRect.y = underlayRect.y;
       }
+      
+      if (targetRect.x + targetRect.width > underlayRect.x + underlayRect.width) {
+        targetRect.width = underlayRect.x + underlayRect.width - targetRect.x;
+      }
+      
+      if (targetRect.y + targetRect.height > underlayRect.y + underlayRect.height) {
+        targetRect.height = underlayRect.y + underlayRect.height - targetRect.y;
+      }
+      
+      // Update crop rect
+      setCropRect(targetRect);
+    } else {
+      // Constrain underlay rect to canvas boundaries
+      if (targetRect.x < 0) {
+        if (['nw', 'sw'].includes(resizeCorner)) {
+          targetRect.width += targetRect.x;
+          targetRect.x = 0;
+        }
+      }
+      
+      if (targetRect.y < 0) {
+        if (['nw', 'ne'].includes(resizeCorner)) {
+          targetRect.height += targetRect.y;
+          targetRect.y = 0;
+        }
+      }
+      
+      if (targetRect.x + targetRect.width > canvasSize.width) {
+        targetRect.width = canvasSize.width - targetRect.x;
+      }
+      
+      if (targetRect.y + targetRect.height > canvasSize.height) {
+        targetRect.height = canvasSize.height - targetRect.y;
+      }
+      
+      // Update underlay rect
+      setUnderlayRect(targetRect);
     }
-    if (newRect.x + newRect.width > canvasSize.width) {
-      newRect.width = canvasSize.width - newRect.x;
-    }
-    if (newRect.y + newRect.height > canvasSize.height) {
-      newRect.height = canvasSize.height - newRect.y;
-    }
-    
-    console.log("New rect after resize:", newRect);
-    
-    // Update rectangle
-    setUnderlayRect(newRect);
-  }, [resizingUnderlayRect, resizeStartPos, resizeStartRect, resizeCorner, canvasSize.width, canvasSize.height]);
+  }, [resizingUnderlayRect, resizeStartPos, resizeStartRect, resizeCorner, cropMode, cropRect, underlayRect, canvasSize]);
   
   // Handle resize end
-  const handleResizeEnd = useCallback((e: MouseEvent) => {
+  const handleResizeEnd = useCallback(() => {
     console.log("Resize ended");
     setResizingUnderlayRect(false);
     setResizeCorner(null);
@@ -232,110 +364,21 @@ const Canvas: React.FC = () => {
   const startResizingUnderlayRect = useCallback((corner: string, e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!underlayRect || !isImageSelected) return;
+    
+    // Determine which rect we're resizing
+    const rectToResize = cropMode && cropRect ? cropRect : underlayRect;
+    if (!rectToResize) return;
     
     console.log("Starting resize:", { corner, clientX: e.clientX, clientY: e.clientY });
     
-    // Important: Set state synchronously to ensure it's available in the move handler
-    const newResizeStartPos = { x: e.clientX, y: e.clientY };
-    const newResizeStartRect = { ...underlayRect };
-    
     setResizingUnderlayRect(true);
     setResizeCorner(corner);
-    setResizeStartPos(newResizeStartPos);
-    setResizeStartRect(newResizeStartRect);
+    setResizeStartPos({ x: e.clientX, y: e.clientY });
+    setResizeStartRect({ ...rectToResize });
     
-    // Use local variables for the event handlers to ensure they have the correct values
-    const moveHandler = (moveEvent: MouseEvent) => {
-      if (!newResizeStartPos || !newResizeStartRect) return;
-      
-      const deltaX = moveEvent.clientX - newResizeStartPos.x;
-      const deltaY = moveEvent.clientY - newResizeStartPos.y;
-      
-      console.log("Resize move (direct):", { deltaX, deltaY, corner });
-      
-      const newRect = { ...newResizeStartRect };
-      
-      switch (corner) {
-        case 'nw':
-          newRect.x = newResizeStartRect.x + deltaX;
-          newRect.y = newResizeStartRect.y + deltaY;
-          newRect.width = newResizeStartRect.width - deltaX;
-          newRect.height = newResizeStartRect.height - deltaY;
-          break;
-        case 'ne':
-          newRect.y = newResizeStartRect.y + deltaY;
-          newRect.width = newResizeStartRect.width + deltaX;
-          newRect.height = newResizeStartRect.height - deltaY;
-          break;
-        case 'se':
-          newRect.width = newResizeStartRect.width + deltaX;
-          newRect.height = newResizeStartRect.height + deltaY;
-          break;
-        case 'sw':
-          newRect.x = newResizeStartRect.x + deltaX;
-          newRect.width = newResizeStartRect.width - deltaX;
-          newRect.height = newResizeStartRect.height + deltaY;
-          break;
-      }
-      
-      // Ensure minimum dimensions
-      const minSize = 50;
-      if (newRect.width < minSize) {
-        if (['nw', 'sw'].includes(corner)) {
-          newRect.x = newResizeStartRect.x + newResizeStartRect.width - minSize;
-        }
-        newRect.width = minSize;
-      }
-      
-      if (newRect.height < minSize) {
-        if (['nw', 'ne'].includes(corner)) {
-          newRect.y = newResizeStartRect.y + newResizeStartRect.height - minSize;
-        }
-        newRect.height = minSize;
-      }
-      
-      // Constrain to canvas boundaries
-      if (newRect.x < 0) {
-        if (['nw', 'sw'].includes(corner)) {
-          newRect.width += newRect.x;
-          newRect.x = 0;
-        }
-      }
-      if (newRect.y < 0) {
-        if (['nw', 'ne'].includes(corner)) {
-          newRect.height += newRect.y;
-          newRect.y = 0;
-        }
-      }
-      if (newRect.x + newRect.width > canvasSize.width) {
-        newRect.width = canvasSize.width - newRect.x;
-      }
-      if (newRect.y + newRect.height > canvasSize.height) {
-        newRect.height = canvasSize.height - newRect.y;
-      }
-      
-      console.log("New rect after resize (direct):", newRect);
-      
-      // Update rectangle
-      setUnderlayRect(newRect);
-    };
-    
-    const endHandler = () => {
-      console.log("Resize ended (direct handler)");
-      setResizingUnderlayRect(false);
-      setResizeCorner(null);
-      setResizeStartPos(null);
-      setResizeStartRect(null);
-      
-      document.removeEventListener('mousemove', moveHandler);
-      document.removeEventListener('mouseup', endHandler);
-    };
-    
-    // Attach these handlers directly
-    document.addEventListener('mousemove', moveHandler);
-    document.addEventListener('mouseup', endHandler);
-  }, [underlayRect, isImageSelected, canvasSize.width, canvasSize.height]);
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+  }, [cropMode, cropRect, underlayRect, handleResizeMove, handleResizeEnd]);
   
   // Handle rectangle movement
   const handleMoveRect = useCallback((e: MouseEvent) => {
@@ -360,24 +403,44 @@ const Canvas: React.FC = () => {
       y: moveStartRect.y + deltaY
     };
     
-    // Boundary checks to keep rectangle within canvas
-    if (newRect.x < 0) newRect.x = 0;
-    if (newRect.y < 0) newRect.y = 0;
-    if (newRect.x + newRect.width > canvasSize.width) {
-      newRect.x = canvasSize.width - newRect.width;
+    // Handle crop rect movement or main rect movement
+    if (cropMode && cropRect && underlayRect) {
+      // Crop rect movement - constrain to image boundaries
+      if (newRect.x < underlayRect.x) {
+        newRect.x = underlayRect.x;
+      }
+      
+      if (newRect.y < underlayRect.y) {
+        newRect.y = underlayRect.y;
+      }
+      
+      if (newRect.x + newRect.width > underlayRect.x + underlayRect.width) {
+        newRect.x = underlayRect.x + underlayRect.width - newRect.width;
+      }
+      
+      if (newRect.y + newRect.height > underlayRect.y + underlayRect.height) {
+        newRect.y = underlayRect.y + underlayRect.height - newRect.height;
+      }
+      
+      setCropRect(newRect);
+    } else {
+      // Boundary checks to keep rectangle within canvas
+      if (newRect.x < 0) newRect.x = 0;
+      if (newRect.y < 0) newRect.y = 0;
+      if (newRect.x + newRect.width > canvasSize.width) {
+        newRect.x = canvasSize.width - newRect.width;
+      }
+      if (newRect.y + newRect.height > canvasSize.height) {
+        newRect.y = canvasSize.height - newRect.height;
+      }
+      
+      // Update rectangle position
+      setUnderlayRect(newRect);
     }
-    if (newRect.y + newRect.height > canvasSize.height) {
-      newRect.y = canvasSize.height - newRect.height;
-    }
-    
-    console.log("New rect after move:", newRect);
-    
-    // Update rectangle position
-    setUnderlayRect(newRect);
-  }, [movingUnderlayRect, moveStartPos, moveStartRect, canvasSize.width, canvasSize.height]);
+  }, [movingUnderlayRect, moveStartPos, moveStartRect, cropMode, cropRect, underlayRect, canvasSize]);
   
   // Handle move end
-  const handleMoveEnd = useCallback((e: MouseEvent) => {
+  const handleMoveEnd = useCallback(() => {
     console.log("Move ended");
     setMovingUnderlayRect(false);
     setMoveStartPos(null);
@@ -391,67 +454,23 @@ const Canvas: React.FC = () => {
   const startMovingUnderlayRect = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!underlayRect || resizingUnderlayRect || !isImageSelected) {
-      console.log("Cannot start moving:", { hasUnderlayRect: !!underlayRect, isResizing: resizingUnderlayRect, isSelected: isImageSelected });
+    
+    // Determine which rect we're moving
+    const rectToMove = cropMode && cropRect ? cropRect : underlayRect;
+    if (!rectToMove || resizingUnderlayRect) {
+      console.log("Cannot start moving:", { hasRect: !!rectToMove, isResizing: resizingUnderlayRect });
       return;
     }
     
     console.log("Starting to move rect:", { clientX: e.clientX, clientY: e.clientY });
     
-    // Important: Set state synchronously to ensure it's available in the move handler
-    const newMoveStartPos = { x: e.clientX, y: e.clientY };
-    const newMoveStartRect = { ...underlayRect };
-    
     setMovingUnderlayRect(true);
-    setMoveStartPos(newMoveStartPos);
-    setMoveStartRect(newMoveStartRect);
+    setMoveStartPos({ x: e.clientX, y: e.clientY });
+    setMoveStartRect({ ...rectToMove });
     
-    // Use local variables for the event handlers to ensure they have the correct values
-    const moveHandler = (moveEvent: MouseEvent) => {
-      if (!newMoveStartPos || !newMoveStartRect) return;
-      
-      const deltaX = moveEvent.clientX - newMoveStartPos.x;
-      const deltaY = moveEvent.clientY - newMoveStartPos.y;
-      
-      console.log("Move rect (direct):", { deltaX, deltaY });
-      
-      // Create new position
-      const newRect = {
-        ...newMoveStartRect,
-        x: newMoveStartRect.x + deltaX,
-        y: newMoveStartRect.y + deltaY
-      };
-      
-      // Boundary checks to keep rectangle within canvas
-      if (newRect.x < 0) newRect.x = 0;
-      if (newRect.y < 0) newRect.y = 0;
-      if (newRect.x + newRect.width > canvasSize.width) {
-        newRect.x = canvasSize.width - newRect.width;
-      }
-      if (newRect.y + newRect.height > canvasSize.height) {
-        newRect.y = canvasSize.height - newRect.height;
-      }
-      
-      console.log("New rect after move (direct):", newRect);
-      
-      // Update rectangle position
-      setUnderlayRect(newRect);
-    };
-    
-    const endHandler = () => {
-      console.log("Move ended (direct handler)");
-      setMovingUnderlayRect(false);
-      setMoveStartPos(null);
-      setMoveStartRect(null);
-      
-      document.removeEventListener('mousemove', moveHandler);
-      document.removeEventListener('mouseup', endHandler);
-    };
-    
-    // Attach these handlers directly
-    document.addEventListener('mousemove', moveHandler);
-    document.addEventListener('mouseup', endHandler);
-  }, [underlayRect, resizingUnderlayRect, isImageSelected, canvasSize.width, canvasSize.height]);
+    document.addEventListener('mousemove', handleMoveRect);
+    document.addEventListener('mouseup', handleMoveEnd);
+  }, [cropMode, cropRect, underlayRect, resizingUnderlayRect, handleMoveRect, handleMoveEnd]);
   
   // Calculate the appropriate scale factor based on container size
   useEffect(() => {
@@ -488,6 +507,7 @@ const Canvas: React.FC = () => {
     };
   }, [handleResizeMove, handleResizeEnd, handleMoveRect, handleMoveEnd]);
 
+  // Force canvas redraw when certain parameters change
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -501,93 +521,18 @@ const Canvas: React.FC = () => {
     }
   }, [activeTool, currentColor, fillColor, snapToAngle, snapToEndpoints, snapToLines, snapToExtensions, canvasRef, setActiveTool]);
 
-  // Debug monitor for state changes
-  useEffect(() => {
-    console.log("State changed:", { 
-      resizingUnderlayRect, 
-      movingUnderlayRect, 
-      hasImage: !!underlayImage,
-      resizeCorner,
-      hasResizeStartPos: !!resizeStartPos,
-      hasMoveStartPos: !!moveStartPos,
-      isImageSelected
-    });
-  }, [resizingUnderlayRect, movingUnderlayRect, underlayImage, resizeCorner, resizeStartPos, moveStartPos, isImageSelected]);
-
-  // Debug output of underlayRect whenever it changes
-  useEffect(() => {
-    console.log("UnderlayRect updated:", underlayRect);
-  }, [underlayRect]);
-  
-  // Handle canvas click to deselect image if clicking outside
-  const handleCanvasClick = (e: React.MouseEvent) => {
-    // Only deselect if we're not clicking on the image and we're using the select tool
-    if (isImageSelected && activeTool === "select") {
-      const canvasRect = canvasRef.current?.getBoundingClientRect();
-      if (!canvasRect) return;
-      
-      // Calculate click position relative to canvas
-      const x = e.clientX - canvasRect.left;
-      const y = e.clientY - canvasRect.top;
-      
-      // Check if click is inside underlay rect
-      const isInsideUnderlayRect = underlayRect && 
-        x >= underlayRect.x && 
-        x <= underlayRect.x + underlayRect.width && 
-        y >= underlayRect.y && 
-        y <= underlayRect.y + underlayRect.height;
-      
-      // If clicked outside the underlay rect, deselect it
-      if (!isInsideUnderlayRect) {
-        console.log("Clicked outside image, deselecting");
-        setIsImageSelected(false);
-      }
-    }
-  };
-  
-  // Modified startDrawing to only handle drawing when not clicking on selected image
-  const handleStartDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    // Always handle canvas clicks for selection/deselection
-    handleCanvasClick(e);
-    
-    // If we're using select tool and clicked on the image, don't start drawing
-    if (activeTool === "select" && isImageSelected) {
-      const canvasRect = canvasRef.current?.getBoundingClientRect();
-      if (!canvasRect) return;
-      
-      // Calculate click position relative to canvas
-      const x = e.clientX - canvasRect.left;
-      const y = e.clientY - canvasRect.top;
-      
-      // Check if click is inside underlay rect
-      const isInsideUnderlayRect = underlayRect && 
-        x >= underlayRect.x && 
-        x <= underlayRect.x + underlayRect.width && 
-        y >= underlayRect.y && 
-        y <= underlayRect.y + underlayRect.height;
-      
-      // If clicked inside the underlay rect and it's selected, don't start drawing
-      if (isInsideUnderlayRect) {
-        return;
-      }
-    }
-    
-    // Otherwise proceed with drawing
-    startDrawing(e);
-  };
-  
-  // Deselect image when changing tools
-  useEffect(() => {
-    if (activeTool !== "select" && isImageSelected) {
-      setIsImageSelected(false);
-    }
-  }, [activeTool, isImageSelected]);
-
   return (
     <div className="flex flex-col h-full">
       <Toolbar 
         activeTool={activeTool}
-        onToolChange={setActiveTool}
+        onToolChange={(tool) => {
+          setActiveTool(tool);
+          // Exit crop mode if switching tools
+          if (tool !== "select" && cropMode) {
+            setCropMode(false);
+            setCropRect(null);
+          }
+        }}
         onDelete={deleteSelected}
         onClear={clearCanvas}
       />
@@ -613,7 +558,8 @@ const Canvas: React.FC = () => {
         removeUnderlayImage={() => {
           removeUnderlayImage();
           setIsImageSelected(false);
-          // Don't reset underlayRect here, it will be recreated by the effect
+          setCropMode(false);
+          setCropRect(null);
         }}
         underlayOpacity={underlayOpacity}
         adjustUnderlayOpacity={adjustUnderlayOpacity}
@@ -632,7 +578,7 @@ const Canvas: React.FC = () => {
       <CanvasContainer
         canvasRef={canvasRef}
         canvasSize={canvasSize}
-        startDrawing={handleStartDrawing}
+        startDrawing={startDrawing}
         draw={draw}
         endDrawing={endDrawing}
         activeTool={activeTool}
@@ -645,6 +591,10 @@ const Canvas: React.FC = () => {
         movingUnderlayRect={movingUnderlayRect}
         startMovingUnderlayRect={startMovingUnderlayRect}
         isImageSelected={isImageSelected}
+        setIsImageSelected={setIsImageSelected}
+        cropMode={cropMode}
+        toggleCropMode={toggleCropMode}
+        cropRect={cropRect}
       />
     </div>
   );
