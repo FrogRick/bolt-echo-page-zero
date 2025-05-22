@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Tool } from "@/types/canvas";
-import { Upload, GripHorizontal } from "lucide-react";
+import { Upload, Move } from "lucide-react";
 
 interface CanvasContainerProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -67,13 +67,6 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       ]
     : [];
 
-  console.log("CanvasContainer render:", { 
-    underlayRect, 
-    resizingUnderlayRect, 
-    movingUnderlayRect,
-    resizeHandles: resizeHandles.length
-  });
-
   return (
     <div 
       ref={containerRef} 
@@ -101,10 +94,13 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              cursor: movingUnderlayRect ? 'grabbing' : 'grab',
-              pointerEvents: resizingUnderlayRect ? 'none' : 'auto'
+              cursor: movingUnderlayRect ? 'grabbing' : 'grab'
             }}
-            onClick={handleUnderlayRectClick}
+            onClick={(e) => {
+              if (!resizingUnderlayRect && !movingUnderlayRect) {
+                handleUnderlayRectClick();
+              }
+            }}
             onMouseDown={(e) => {
               console.log("Placeholder onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
               e.stopPropagation();
@@ -155,19 +151,19 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               }}
             />
             <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <GripHorizontal size={20} className="text-blue-600" />
+              <Move size={20} className="text-blue-600" />
             </div>
           </div>
         )}
         
         {/* Resize Handles - show for both placeholder and image */}
-        {underlayRect && resizeHandles.map((handle) => (
+        {underlayRect && !resizingUnderlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
           <div
             key={handle.position}
-            className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full hover:bg-blue-200"
+            className="absolute w-5 h-5 bg-white border-2 border-blue-500 rounded-full hover:bg-blue-200 flex items-center justify-center"
             style={{
-              left: handle.x - 8, // Center the handle (half of width/height)
-              top: handle.y - 8,
+              left: handle.x - 10, // Center the handle (half of width/height)
+              top: handle.y - 10,
               cursor: handle.position === "nw" || handle.position === "se" 
                 ? "nwse-resize" 
                 : "nesw-resize",
