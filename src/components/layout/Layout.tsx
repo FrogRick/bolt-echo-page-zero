@@ -12,9 +12,9 @@ const Layout = () => {
   const isEditorPage = location.pathname.includes('/editor/');
   
   return (
-    <div className={`min-h-screen flex flex-col bg-gradient-to-b from-slate-50 to-slate-100 ${isEditorPage ? 'overflow-hidden' : ''}`}>
+    <div className={`min-h-screen flex flex-col bg-gradient-to-b from-slate-50 to-slate-100 ${isEditorPage ? 'h-screen overflow-hidden' : ''}`}>
       <Header />
-      <main className={`flex-1 ${isEditorPage ? 'w-full' : 'container mx-auto px-4 py-8 overflow-auto'}`}>
+      <main className={`flex-1 ${isEditorPage ? 'w-full overflow-hidden' : 'container mx-auto px-4 py-8 overflow-auto'}`}>
         <Outlet />
       </main>
       {!isEditorPage && (

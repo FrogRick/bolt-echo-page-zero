@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -87,7 +88,7 @@ const Canvas: React.FC = () => {
     if (!containerRef.current) return INITIAL_SCALE_FACTOR;
     
     const containerWidth = containerRef.current.clientWidth - 32; // Subtract padding
-    const containerHeight = containerRef.current.clientHeight - 20; // Reduced padding from 40 to 20
+    const containerHeight = containerRef.current.clientHeight - 20; // Reduced padding
     
     let width = A3_SIZE.width;
     let height = A3_SIZE.height;
@@ -309,11 +310,11 @@ const Canvas: React.FC = () => {
         </div>
       </div>
       
-      {/* Canvas container - updated to take full available height */}
+      {/* Canvas container - updated with proper height calculation */}
       <div 
         ref={containerRef} 
         className="flex-1 flex items-center justify-center bg-gray-50 overflow-auto"
-        style={{ height: "calc(100% - 84px)" }} // Fixed height calculation: subtracting header and toolbar heights
+        style={{ height: "calc(100% - 120px)" }} // Adjusted height calculation
       >
         <div className="flex items-center justify-center">
           <canvas
