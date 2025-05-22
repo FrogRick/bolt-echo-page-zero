@@ -1,7 +1,7 @@
 
-import React, { useEffect } from "react";
+import React from "react";
 import { Tool } from "@/types/canvas";
-import { Upload, Move, Crop } from "lucide-react";
+import { Upload, Move } from "lucide-react";
 
 interface CanvasContainerProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -23,16 +23,6 @@ interface CanvasContainerProps {
   startResizingUnderlayRect: (corner: string, e: React.MouseEvent) => void;
   movingUnderlayRect: boolean;
   startMovingUnderlayRect: (e: React.MouseEvent) => void;
-  isImageSelected: boolean;
-  setIsImageSelected: (selected: boolean) => void;
-  cropMode: boolean;
-  toggleCropMode: () => void;
-  cropRect: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null;
 }
 
 const CanvasContainer: React.FC<CanvasContainerProps> = ({
@@ -50,11 +40,6 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   startResizingUnderlayRect,
   movingUnderlayRect,
   startMovingUnderlayRect,
-  isImageSelected,
-  setIsImageSelected,
-  cropMode,
-  toggleCropMode,
-  cropRect
 }) => {
   // Determine cursor style based on the active tool
   const getCursorStyle = () => {
@@ -73,7 +58,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   };
 
   // Calculate resize handle positions if underlayRect exists
-  const resizeHandles = underlayRect && isImageSelected
+  const resizeHandles = underlayRect
     ? [
         { position: "nw", x: underlayRect.x, y: underlayRect.y },
         { position: "ne", x: underlayRect.x + underlayRect.width, y: underlayRect.y },
@@ -81,62 +66,19 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
         { position: "sw", x: underlayRect.x, y: underlayRect.y + underlayRect.height },
       ]
     : [];
-    
-  // Handle canvas click to deselect image when clicking outside
-  const handleCanvasClick = (e: React.MouseEvent) => {
-    // Only handle deselection if we have an image and it's selected
-    if (underlayImage && isImageSelected && underlayRect) {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      // Check if click is outside the image area
-      if (
-        x < underlayRect.x ||
-        x > underlayRect.x + underlayRect.width ||
-        y < underlayRect.y ||
-        y > underlayRect.y + underlayRect.height
-      ) {
-        // Deselect the image
-        setIsImageSelected(false);
-      }
-    }
-  };
-  
-  // Automatically select the image when it's uploaded
-  useEffect(() => {
-    if (underlayImage) {
-      setIsImageSelected(true);
-    }
-  }, [underlayImage, setIsImageSelected]);
-  
-  // Deselect image when changing to another tool
-  useEffect(() => {
-    if (activeTool !== "select" && isImageSelected) {
-      setIsImageSelected(false);
-    }
-  }, [activeTool, isImageSelected, setIsImageSelected]);
 
   return (
     <div 
       ref={containerRef} 
       className="flex-1 flex items-center justify-center bg-gray-50 overflow-auto"
       style={{ height: "calc(100% - 120px)" }}
-      onClick={handleCanvasClick}
     >
       <div className="flex items-center justify-center relative">
         <canvas
           ref={canvasRef}
           width={canvasSize.width}
           height={canvasSize.height}
-          onMouseDown={(e) => {
-            // Only start drawing if not interacting with the image
-            if (!isImageSelected || activeTool !== "select") {
-              startDrawing(e);
-            }
-          }}
+          onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={endDrawing}
           onMouseLeave={endDrawing}
@@ -155,10 +97,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               cursor: movingUnderlayRect ? 'grabbing' : 'grab'
             }}
             onClick={(e) => {
-              e.stopPropagation();
               if (!resizingUnderlayRect && !movingUnderlayRect) {
                 handleUnderlayRectClick();
-                setIsImageSelected(true);
               }
             }}
             onMouseDown={(e) => {
@@ -169,7 +109,6 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               if (!resizingUnderlayRect) {
                 console.log("Starting to move placeholder");
                 startMovingUnderlayRect(e);
-                setIsImageSelected(true);
               }
             }}
           >
@@ -183,32 +122,22 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
         {/* If image is uploaded, place it in the underlay rect and make it movable/resizable */}
         {underlayRect && underlayImage && (
           <div 
-            className={`absolute flex items-center justify-center overflow-hidden group
-              ${isImageSelected ? 'border-2 border-blue-400' : 'border border-gray-200'}`}
+            className="absolute border-2 border-blue-400 flex items-center justify-center overflow-hidden group"
             style={{
               left: underlayRect.x,
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              cursor: movingUnderlayRect ? 'grabbing' : (isImageSelected ? 'grab' : 'default')
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (activeTool === "select") {
-                setIsImageSelected(true);
-              }
+              cursor: movingUnderlayRect ? 'grabbing' : 'grab'
             }}
             onMouseDown={(e) => {
-              if (activeTool !== "select") return;
-              
               console.log("Image container onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
               e.stopPropagation();
               e.preventDefault();
-              // Only handle movement if it's not a resize operation and the tool is select
-              if (!resizingUnderlayRect && activeTool === "select") {
+              // Only handle movement if it's not a resize operation
+              if (!resizingUnderlayRect) {
                 console.log("Starting to move image container");
                 startMovingUnderlayRect(e);
-                setIsImageSelected(true);
               }
             }}
           >
@@ -221,38 +150,14 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
                 pointerEvents: 'none'
               }}
             />
-            
-            {isImageSelected && (
-              <div className="absolute top-2 left-2 bg-white bg-opacity-70 p-1 rounded-md flex items-center space-x-2">
-                <Move size={20} className="text-blue-600" />
-                <Crop 
-                  size={20} 
-                  className={`cursor-pointer ${cropMode ? 'text-green-600' : 'text-blue-600'}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleCropMode();
-                  }}
-                />
-              </div>
-            )}
-            
-            {/* Crop overlay */}
-            {cropMode && cropRect && (
-              <div
-                className="absolute border-2 border-dashed border-green-500 bg-green-200 bg-opacity-20"
-                style={{
-                  left: cropRect.x - underlayRect.x,
-                  top: cropRect.y - underlayRect.y,
-                  width: cropRect.width,
-                  height: cropRect.height
-                }}
-              />
-            )}
+            <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Move size={20} className="text-blue-600" />
+            </div>
           </div>
         )}
         
-        {/* Resize Handles - show for both placeholder and image when selected */}
-        {underlayRect && isImageSelected && !resizingUnderlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
+        {/* Resize Handles - show for both placeholder and image */}
+        {underlayRect && !resizingUnderlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
           <div
             key={handle.position}
             className="absolute w-5 h-5 bg-white border-2 border-blue-500 rounded-full hover:bg-blue-200 flex items-center justify-center"
