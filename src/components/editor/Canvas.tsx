@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -91,7 +90,7 @@ const Canvas: React.FC = () => {
     if (!containerRef.current) return INITIAL_SCALE_FACTOR;
     
     const containerWidth = containerRef.current.clientWidth - 32; // Subtract padding
-    const containerHeight = containerRef.current.clientHeight - 32;
+    const containerHeight = containerRef.current.clientHeight - 100; // Adjusted to account for top/bottom margins
     
     let width = A3_SIZE.width;
     let height = A3_SIZE.height;
@@ -106,7 +105,7 @@ const Canvas: React.FC = () => {
     const heightScale = containerHeight / height;
     
     // Use the smaller scale to ensure the canvas fits within container
-    const newScaleFactor = Math.min(widthScale, heightScale) * 0.9; // 90% of available space
+    const newScaleFactor = Math.min(widthScale, heightScale) * 0.95; // 95% of available space
     
     return Math.max(1, Math.min(newScaleFactor, 4)); // Limit between 1 and 4
   };
@@ -322,7 +321,11 @@ const Canvas: React.FC = () => {
       <div 
         ref={containerRef} 
         className="flex-grow flex items-center justify-center bg-gray-50 overflow-auto"
-        style={{ height: "100%" }}
+        style={{ 
+          height: "100%",
+          paddingTop: "20px", // Less margin at the top
+          paddingBottom: "60px" // More margin at the bottom
+        }}
       >
         <div className="flex items-center justify-center">
           <canvas
