@@ -29,6 +29,16 @@ const Canvas: React.FC = () => {
     height: number;
   } | null>(null);
   
+  // Moving underlay rectangle state
+  const [movingUnderlayRect, setMovingUnderlayRect] = useState(false);
+  const [moveStartPos, setMoveStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [moveStartRect, setMoveStartRect] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  
   const {
     canvasRef,
     activeTool,
@@ -130,6 +140,7 @@ const Canvas: React.FC = () => {
     handleUploadClick();
   };
   
+  // Handle starting rectangle resize
   const startResizingUnderlayRect = (corner: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!underlayRect) return;
@@ -143,6 +154,7 @@ const Canvas: React.FC = () => {
     document.addEventListener('mouseup', handleResizeEnd);
   };
   
+  // Handle resize movement
   const handleResizeMove = (e: MouseEvent) => {
     if (!resizingUnderlayRect || !resizeStartPos || !resizeStartRect || !resizeCorner) return;
     
@@ -203,6 +215,55 @@ const Canvas: React.FC = () => {
     document.removeEventListener('mouseup', handleResizeEnd);
   };
   
+  // Handle starting rectangle movement
+  const startMovingUnderlayRect = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!underlayRect || resizingUnderlayRect) return;
+    
+    setMovingUnderlayRect(true);
+    setMoveStartPos({ x: e.clientX, y: e.clientY });
+    setMoveStartRect({ ...underlayRect });
+    
+    document.addEventListener('mousemove', handleMoveRect);
+    document.addEventListener('mouseup', handleMoveEnd);
+  };
+  
+  // Handle rectangle movement
+  const handleMoveRect = (e: MouseEvent) => {
+    if (!movingUnderlayRect || !moveStartPos || !moveStartRect) return;
+    
+    const deltaX = e.clientX - moveStartPos.x;
+    const deltaY = e.clientY - moveStartPos.y;
+    
+    // Create new position
+    const newRect = {
+      ...moveStartRect,
+      x: moveStartRect.x + deltaX,
+      y: moveStartRect.y + deltaY
+    };
+    
+    // Boundary checks to keep rectangle within canvas
+    if (newRect.x < 0) newRect.x = 0;
+    if (newRect.y < 0) newRect.y = 0;
+    if (newRect.x + newRect.width > canvasSize.width) {
+      newRect.x = canvasSize.width - newRect.width;
+    }
+    if (newRect.y + newRect.height > canvasSize.height) {
+      newRect.y = canvasSize.height - newRect.height;
+    }
+    
+    // Update rectangle position
+    setUnderlayRect(newRect);
+  };
+  
+  const handleMoveEnd = () => {
+    setMovingUnderlayRect(false);
+    setMoveStartPos(null);
+    setMoveStartRect(null);
+    document.removeEventListener('mousemove', handleMoveRect);
+    document.removeEventListener('mouseup', handleMoveEnd);
+  };
+  
   // Calculate the appropriate scale factor based on container size
   useEffect(() => {
     const handleResize = () => {
@@ -233,6 +294,8 @@ const Canvas: React.FC = () => {
     return () => {
       document.removeEventListener('mousemove', handleResizeMove);
       document.removeEventListener('mouseup', handleResizeEnd);
+      document.removeEventListener('mousemove', handleMoveRect);
+      document.removeEventListener('mouseup', handleMoveEnd);
     };
   }, []);
 
@@ -307,6 +370,8 @@ const Canvas: React.FC = () => {
         handleUnderlayRectClick={handleUnderlayRectClick}
         resizingUnderlayRect={resizingUnderlayRect}
         startResizingUnderlayRect={startResizingUnderlayRect}
+        movingUnderlayRect={movingUnderlayRect}
+        startMovingUnderlayRect={startMovingUnderlayRect}
       />
     </div>
   );

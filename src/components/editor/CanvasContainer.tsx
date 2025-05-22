@@ -10,7 +10,7 @@ interface CanvasContainerProps {
   draw: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   endDrawing: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   activeTool: Tool;
-  underlayImage: HTMLImageElement | null; // Updated this from boolean to HTMLImageElement | null
+  underlayImage: HTMLImageElement | null;
   containerRef: React.RefObject<HTMLDivElement>;
   underlayRect: {
     x: number;
@@ -21,6 +21,8 @@ interface CanvasContainerProps {
   handleUnderlayRectClick: () => void;
   resizingUnderlayRect: boolean;
   startResizingUnderlayRect: (corner: string, e: React.MouseEvent) => void;
+  movingUnderlayRect: boolean;
+  startMovingUnderlayRect: (e: React.MouseEvent) => void;
 }
 
 const CanvasContainer: React.FC<CanvasContainerProps> = ({
@@ -36,6 +38,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   handleUnderlayRectClick,
   resizingUnderlayRect,
   startResizingUnderlayRect,
+  movingUnderlayRect,
+  startMovingUnderlayRect,
 }) => {
   // Determine cursor style based on the active tool
   const getCursorStyle = () => {
@@ -84,7 +88,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
         {/* Underlay Rectangle Placeholder */}
         {underlayRect && !underlayImage && (
           <div 
-            className="absolute border-2 border-dashed border-blue-400 flex items-center justify-center bg-blue-50 bg-opacity-30 cursor-pointer group"
+            className={`absolute border-2 border-dashed border-blue-400 flex items-center justify-center bg-blue-50 bg-opacity-30 cursor-${movingUnderlayRect ? 'grabbing' : 'grab'} group`}
             style={{
               left: underlayRect.x,
               top: underlayRect.y,
@@ -93,6 +97,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               pointerEvents: resizingUnderlayRect ? 'none' : 'auto'
             }}
             onClick={handleUnderlayRectClick}
+            onMouseDown={(e) => startMovingUnderlayRect(e)}
           >
             <div className="flex flex-col items-center justify-center opacity-70 group-hover:opacity-100">
               <Upload size={32} className="text-blue-500 mb-2" />
