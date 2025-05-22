@@ -60,7 +60,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   };
 
   // Calculate resize handle positions if underlayRect exists
-  const resizeHandles = underlayRect && isImageSelected
+  const resizeHandles = underlayRect && (isImageSelected || !underlayImage)
     ? [
         { position: "nw", x: underlayRect.x, y: underlayRect.y },
         { position: "ne", x: underlayRect.x + underlayRect.width, y: underlayRect.y },
@@ -76,7 +76,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
     movingUnderlayRect,
     resizeHandles: resizeHandles.length,
     isImageSelected,
-    activeTool
+    activeTool,
+    hasImage: !!underlayImage
   });
 
   return (
@@ -106,7 +107,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              cursor: movingUnderlayRect ? 'grabbing' : 'grab'
+              cursor: movingUnderlayRect ? 'grabbing' : 'grab',
+              zIndex: activeTool === "select" ? 10 : 0 // Lower z-index for drawing tools
             }}
             onClick={(e) => {
               if (!resizingUnderlayRect && !movingUnderlayRect) {
@@ -116,8 +118,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             onMouseDown={(e) => {
               console.log("Placeholder onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
               e.stopPropagation();
-              e.preventDefault();
-              // Only handle movement if it's not a resize operation
+              
+              // Always handle movement for placeholder (even without select tool)
               if (!resizingUnderlayRect) {
                 console.log("Starting to move placeholder");
                 startMovingUnderlayRect(e);
@@ -142,7 +144,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              cursor: isImageSelected && activeTool === "select" ? (movingUnderlayRect ? 'grabbing' : 'grab') : 'default'
+              cursor: isImageSelected && activeTool === "select" ? (movingUnderlayRect ? 'grabbing' : 'grab') : 'default',
+              zIndex: activeTool === "select" ? 10 : 0 // Lower z-index for drawing tools
             }}
             onClick={(e) => {
               if (activeTool === "select") {
@@ -190,8 +193,11 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           </div>
         )}
         
-        {/* Resize Handles - show only when image is selected and using select tool */}
-        {underlayRect && isImageSelected && activeTool === "select" && !resizingUnderlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
+        {/* Resize Handles - show for placeholder or when image is selected and using select tool */}
+        {underlayRect && (isImageSelected || !underlayImage) && 
+          (!resizingUnderlayRect && !movingUnderlayRect) && 
+          (activeTool === "select" || !underlayImage) && 
+          resizeHandles.map((handle) => (
           <div
             key={handle.position}
             className="absolute w-5 h-5 bg-white border-2 border-blue-500 rounded-full hover:bg-blue-200 flex items-center justify-center"
@@ -201,7 +207,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               cursor: handle.position === "nw" || handle.position === "se" 
                 ? "nwse-resize" 
                 : "nesw-resize",
-              zIndex: 10
+              zIndex: 15
             }}
             onMouseDown={(e) => {
               console.log(`Resize handle ${handle.position} onMouseDown triggered`, { clientX: e.clientX, clientY: e.clientY });

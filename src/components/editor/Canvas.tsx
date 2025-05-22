@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -546,6 +545,37 @@ const Canvas: React.FC = () => {
     }
   };
   
+  // Modified startDrawing to only handle drawing when not clicking on selected image
+  const handleStartDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Always handle canvas clicks for selection/deselection
+    handleCanvasClick(e);
+    
+    // If we're using select tool and clicked on the image, don't start drawing
+    if (activeTool === "select" && isImageSelected) {
+      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      if (!canvasRect) return;
+      
+      // Calculate click position relative to canvas
+      const x = e.clientX - canvasRect.left;
+      const y = e.clientY - canvasRect.top;
+      
+      // Check if click is inside underlay rect
+      const isInsideUnderlayRect = underlayRect && 
+        x >= underlayRect.x && 
+        x <= underlayRect.x + underlayRect.width && 
+        y >= underlayRect.y && 
+        y <= underlayRect.y + underlayRect.height;
+      
+      // If clicked inside the underlay rect and it's selected, don't start drawing
+      if (isInsideUnderlayRect) {
+        return;
+      }
+    }
+    
+    // Otherwise proceed with drawing
+    startDrawing(e);
+  };
+  
   // Deselect image when changing tools
   useEffect(() => {
     if (activeTool !== "select" && isImageSelected) {
@@ -602,10 +632,7 @@ const Canvas: React.FC = () => {
       <CanvasContainer
         canvasRef={canvasRef}
         canvasSize={canvasSize}
-        startDrawing={(e) => {
-          handleCanvasClick(e);
-          startDrawing(e);
-        }}
+        startDrawing={handleStartDrawing}
         draw={draw}
         endDrawing={endDrawing}
         activeTool={activeTool}
