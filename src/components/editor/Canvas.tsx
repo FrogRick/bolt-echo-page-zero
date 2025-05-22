@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -111,12 +112,15 @@ const Canvas: React.FC = () => {
   };
   
   const handleUnderlayRectClick = () => {
-    handleUploadClick();
+    if (!underlayImage) {
+      handleUploadClick();
+    }
   };
   
   // Handle starting rectangle resize
   const startResizingUnderlayRect = (corner: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     if (!underlayRect) return;
     
     setResizingUnderlayRect(true);
@@ -212,6 +216,7 @@ const Canvas: React.FC = () => {
   // Handle starting rectangle movement
   const startMovingUnderlayRect = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     if (!underlayRect || resizingUnderlayRect) return;
     
     setMovingUnderlayRect(true);

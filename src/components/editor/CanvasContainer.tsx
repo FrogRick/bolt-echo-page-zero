@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Tool } from "@/types/canvas";
-import { Upload } from "lucide-react";
+import { Upload, GripHorizontal } from "lucide-react";
 
 interface CanvasContainerProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -44,7 +44,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   // Determine cursor style based on the active tool
   const getCursorStyle = () => {
     if (activeTool === "select") {
-      return underlayImage ? "cursor-move" : "cursor-default";
+      return "cursor-default";
     } else if (
       activeTool === "wall" ||
       activeTool === "wall-polygon" ||
@@ -99,9 +99,10 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             }}
             onClick={handleUnderlayRectClick}
             onMouseDown={(e) => {
-              // Stop propagation to prevent canvas drawing
-              e.stopPropagation();
-              startMovingUnderlayRect(e);
+              // Only handle movement if it's not a resize operation
+              if (!resizingUnderlayRect) {
+                startMovingUnderlayRect(e);
+              }
             }}
           >
             <div className="flex flex-col items-center justify-center opacity-70 group-hover:opacity-100">
@@ -111,8 +112,41 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           </div>
         )}
         
-        {/* Resize Handles for Underlay Rectangle */}
-        {underlayRect && !resizingUnderlayRect && !underlayImage && resizeHandles.map((handle) => (
+        {/* If image is uploaded, place it in the underlay rect and make it movable/resizable */}
+        {underlayRect && underlayImage && (
+          <div 
+            className="absolute border-2 border-blue-400 flex items-center justify-center overflow-hidden group"
+            style={{
+              left: underlayRect.x,
+              top: underlayRect.y,
+              width: underlayRect.width,
+              height: underlayRect.height,
+              cursor: movingUnderlayRect ? 'grabbing' : 'grab'
+            }}
+            onMouseDown={(e) => {
+              // Only handle movement if it's not a resize operation
+              if (!resizingUnderlayRect) {
+                startMovingUnderlayRect(e);
+              }
+            }}
+          >
+            <img 
+              src={underlayImage.src}
+              alt="Underlay"
+              className="object-contain w-full h-full"
+              style={{
+                opacity: 0.5, // Use the opacity setting
+                pointerEvents: 'none'
+              }}
+            />
+            <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <GripHorizontal size={20} className="text-blue-600" />
+            </div>
+          </div>
+        )}
+        
+        {/* Resize Handles - show for both placeholder and image */}
+        {underlayRect && !resizingUnderlayRect && resizeHandles.map((handle) => (
           <div
             key={handle.position}
             className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full hover:bg-blue-200"
@@ -130,30 +164,6 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             }}
           />
         ))}
-        
-        {/* Render the underlayImage constrained to the underlayRect if both exist */}
-        {underlayImage && underlayRect && (
-          <div 
-            className="absolute overflow-hidden"
-            style={{
-              left: underlayRect.x,
-              top: underlayRect.y,
-              width: underlayRect.width,
-              height: underlayRect.height,
-              pointerEvents: 'none' // Let events pass through to canvas
-            }}
-          >
-            <img 
-              src={underlayImage.src}
-              alt="Underlay"
-              className="object-contain w-full h-full"
-              style={{
-                opacity: 0.5, // Use the opacity setting
-                pointerEvents: 'none'
-              }}
-            />
-          </div>
-        )}
       </div>
     </div>
   );
