@@ -1,7 +1,8 @@
 
 import React from "react";
 import { Tool } from "@/types/canvas";
-import { Upload, Move } from "lucide-react";
+import { Upload, Move, Check, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface CanvasContainerProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -23,6 +24,8 @@ interface CanvasContainerProps {
   startResizingUnderlayRect: (corner: string, e: React.MouseEvent) => void;
   movingUnderlayRect: boolean;
   startMovingUnderlayRect: (e: React.MouseEvent) => void;
+  confirmUnderlayImage?: () => void;
+  removeUnderlayImage?: () => void;
 }
 
 const CanvasContainer: React.FC<CanvasContainerProps> = ({
@@ -40,6 +43,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   startResizingUnderlayRect,
   movingUnderlayRect,
   startMovingUnderlayRect,
+  confirmUnderlayImage,
+  removeUnderlayImage,
 }) => {
   // Determine cursor style based on the active tool
   const getCursorStyle = () => {
@@ -83,6 +88,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           onMouseUp={endDrawing}
           onMouseLeave={endDrawing}
           className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+          style={{ position: "relative", zIndex: 10 }}
         />
         
         {/* Underlay Rectangle Placeholder */}
@@ -94,7 +100,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              cursor: movingUnderlayRect ? 'grabbing' : 'grab'
+              cursor: movingUnderlayRect ? 'grabbing' : 'grab',
+              zIndex: 5
             }}
             onClick={(e) => {
               if (!resizingUnderlayRect && !movingUnderlayRect) {
@@ -128,7 +135,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              cursor: movingUnderlayRect ? 'grabbing' : 'grab'
+              cursor: movingUnderlayRect ? 'grabbing' : 'grab',
+              zIndex: 5
             }}
             onMouseDown={(e) => {
               console.log("Image container onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
@@ -153,6 +161,37 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <Move size={20} className="text-blue-600" />
             </div>
+            
+            {/* Image Action Buttons */}
+            <div className="absolute top-2 right-2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {confirmUnderlayImage && (
+                <Button 
+                  size="icon" 
+                  variant="outline" 
+                  className="bg-white h-8 w-8 rounded-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    confirmUnderlayImage();
+                  }}
+                >
+                  <Check className="text-green-600" size={16} />
+                </Button>
+              )}
+              
+              {removeUnderlayImage && (
+                <Button 
+                  size="icon" 
+                  variant="outline" 
+                  className="bg-white h-8 w-8 rounded-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeUnderlayImage();
+                  }}
+                >
+                  <X className="text-red-600" size={16} />
+                </Button>
+              )}
+            </div>
           </div>
         )}
         
@@ -160,14 +199,15 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
         {underlayRect && !resizingUnderlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
           <div
             key={handle.position}
-            className="absolute w-5 h-5 bg-white border-2 border-blue-500 rounded-full hover:bg-blue-200 flex items-center justify-center"
+            className="absolute w-8 h-2 bg-blue-500 hover:bg-blue-700 flex items-center justify-center"
             style={{
-              left: handle.x - 10, // Center the handle (half of width/height)
-              top: handle.y - 10,
+              left: handle.position.includes("w") ? handle.x - 12 : handle.position.includes("e") ? handle.x - 20 : handle.x - 16,
+              top: handle.position.includes("n") ? handle.y - 1 : handle.position.includes("s") ? handle.y - 1 : handle.y - 1,
               cursor: handle.position === "nw" || handle.position === "se" 
                 ? "nwse-resize" 
                 : "nesw-resize",
-              zIndex: 10
+              zIndex: 15,
+              borderRadius: "2px"
             }}
             onMouseDown={(e) => {
               console.log(`Resize handle ${handle.position} onMouseDown triggered`, { clientX: e.clientX, clientY: e.clientY });
