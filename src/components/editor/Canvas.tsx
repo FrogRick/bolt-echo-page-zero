@@ -40,9 +40,6 @@ const Canvas: React.FC = () => {
     height: number;
   } | null>(null);
   
-  // Flag to track if the underlay is confirmed (set as background)
-  const [underlayConfirmed, setUnderlayConfirmed] = useState(false);
-
   const {
     canvasRef,
     activeTool,
@@ -110,10 +107,9 @@ const Canvas: React.FC = () => {
       const file = e.target.files[0];
       console.log("File selected:", file.name);
       addUnderlayImage(file);
-      setUnderlayConfirmed(false); // Reset confirmation state when new image is added
       toast({
         title: "Image uploaded",
-        description: "You can resize, move, or confirm the image as underlay",
+        description: "You can now resize and move the image",
       });
     }
   };
@@ -128,25 +124,6 @@ const Canvas: React.FC = () => {
     if (!underlayImage) {
       handleUploadClick();
     }
-  };
-  
-  // Handle confirming the image as underlay
-  const confirmUnderlayImage = () => {
-    setUnderlayConfirmed(true);
-    toast({
-      title: "Image confirmed",
-      description: "The image is now set as an underlay. You can draw on top of it.",
-    });
-  };
-  
-  // Handle removing the image
-  const handleRemoveUnderlayImage = () => {
-    removeUnderlayImage();
-    setUnderlayConfirmed(false);
-    toast({
-      title: "Image removed",
-      description: "The underlay image has been removed",
-    });
   };
   
   // Handle mouse move during resize
@@ -562,7 +539,10 @@ const Canvas: React.FC = () => {
         handleUploadClick={handleUploadClick}
         fileInputRef={fileInputRef}
         underlayImage={underlayImage !== null}
-        removeUnderlayImage={handleRemoveUnderlayImage}
+        removeUnderlayImage={() => {
+          removeUnderlayImage();
+          // Don't reset underlayRect here, it will be recreated by the effect
+        }}
         underlayOpacity={underlayOpacity}
         adjustUnderlayOpacity={adjustUnderlayOpacity}
         underlayScale={underlayScale}
@@ -592,8 +572,6 @@ const Canvas: React.FC = () => {
         startResizingUnderlayRect={startResizingUnderlayRect}
         movingUnderlayRect={movingUnderlayRect}
         startMovingUnderlayRect={startMovingUnderlayRect}
-        confirmUnderlayImage={confirmUnderlayImage}
-        removeUnderlayImage={handleRemoveUnderlayImage}
       />
     </div>
   );
