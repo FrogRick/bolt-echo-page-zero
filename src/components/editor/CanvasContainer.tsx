@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Upload, Move, Check, X } from "lucide-react";
@@ -124,9 +123,9 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
         {/* Confirmed Underlay Image - Middle layer (z-index 2) */}
         {underlayRect && underlayImage && imageConfirmed && (
           <div 
-            className={`absolute transition-all ${
+            className={`absolute ${
               activeTool === "select" 
-                ? "cursor-pointer hover:ring-2 hover:ring-blue-400 hover:shadow-lg" 
+                ? "cursor-pointer" 
                 : ""
             }`}
             style={{
@@ -153,10 +152,10 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
                 opacity: underlayOpacity
               }}
             />
-            {/* Selection indicator when hovering with select tool */}
+            {/* Selection indicator when hovering with select tool - Only show on active click */}
             {activeTool === "select" && (
-              <div className="absolute inset-0 border-2 border-dashed border-blue-400 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 py-0.5 rounded">
+              <div className="absolute inset-0 border-2 border-dashed border-blue-400 opacity-0 focus:opacity-100 active:opacity-100 pointer-events-none">
+                <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 py-0.5 rounded opacity-0 focus:opacity-100 active:opacity-100">
                   Click to edit
                 </div>
               </div>
