@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Upload, Move, Check, X } from "lucide-react";
@@ -27,6 +26,7 @@ interface CanvasContainerProps {
   removeUnderlayImage: () => void;
   imageConfirmed: boolean;
   reactivateImagePositioning: () => void;
+  underlayOpacity: number;
 }
 
 const CanvasContainer: React.FC<CanvasContainerProps> = ({
@@ -48,6 +48,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   removeUnderlayImage,
   imageConfirmed,
   reactivateImagePositioning,
+  underlayOpacity,
 }) => {
   // Determine cursor style based on the active tool
   const getCursorStyle = () => {
@@ -75,11 +76,36 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       ]
     : [];
 
+  // Handle clicks outside the image during positioning
+  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only confirm if we're in positioning mode (not confirmed) and not currently resizing/moving
+    if (underlayRect && underlayImage && !imageConfirmed && !resizingUnderlayRect && !movingUnderlayRect) {
+      // Check if the click was outside the image area
+      const containerRect = containerRef.current?.getBoundingClientRect();
+      if (!containerRect) return;
+      
+      const clickX = e.clientX - containerRect.left;
+      const clickY = e.clientY - containerRect.top;
+      
+      const isOutsideImage = (
+        clickX < underlayRect.x ||
+        clickX > underlayRect.x + underlayRect.width ||
+        clickY < underlayRect.y ||
+        clickY > underlayRect.y + underlayRect.height
+      );
+      
+      if (isOutsideImage) {
+        confirmImagePlacement();
+      }
+    }
+  };
+
   return (
     <div 
       ref={containerRef} 
       className="flex-1 flex items-center justify-center bg-gray-50 overflow-auto"
       style={{ height: "calc(100% - 120px)" }}
+      onClick={handleContainerClick}
     >
       <div className="flex items-center justify-center relative">
         {/* Canvas - Bottom layer (z-index 1) */}
@@ -124,7 +150,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               alt="Underlay"
               className="object-contain w-full h-full"
               style={{
-                opacity: 0.5
+                opacity: underlayOpacity
               }}
             />
           </div>
@@ -159,7 +185,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               alt="Underlay"
               className="object-contain w-full h-full"
               style={{
-                opacity: 0.5,
+                opacity: underlayOpacity,
                 pointerEvents: 'none'
               }}
             />

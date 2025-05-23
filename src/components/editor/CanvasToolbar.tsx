@@ -23,7 +23,7 @@ interface CanvasToolbarProps {
   toggleSnapToExtensions: () => void;
   handleUploadClick: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  underlayImage: boolean; // This is correct, it's a boolean in CanvasToolbar
+  underlayImage: boolean;
   removeUnderlayImage: () => void;
   underlayOpacity: number;
   adjustUnderlayOpacity: (opacity: number) => void;
@@ -55,8 +55,6 @@ const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   removeUnderlayImage,
   underlayOpacity,
   adjustUnderlayOpacity,
-  underlayScale,
-  adjustUnderlayScale,
   confirmImagePlacement,
   imageConfirmed,
   reactivateImagePositioning
@@ -186,20 +184,6 @@ const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
                 />
               </div>
               <span className="text-xs text-gray-500">{Math.round(underlayOpacity * 100)}%</span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">Scale:</span>
-              <div className="w-24">
-                <Slider 
-                  value={[underlayScale * 100]} 
-                  min={10} 
-                  max={200} 
-                  step={5}
-                  onValueChange={(value) => adjustUnderlayScale(value[0] / 100)}
-                />
-              </div>
-              <span className="text-xs text-gray-500">{Math.round(underlayScale * 100)}%</span>
             </div>
           </>
         )}
