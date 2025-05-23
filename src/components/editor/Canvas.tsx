@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -39,6 +40,10 @@ const Canvas: React.FC = () => {
     width: number;
     height: number;
   } | null>(null);
+  
+  // Track if mouse has moved during click (to detect drag vs click)
+  const [mouseDownPosition, setMouseDownPosition] = useState<{ x: number; y: number } | null>(null);
+  const [hasMoved, setHasMoved] = useState(false);
 
   const {
     canvasRef,
@@ -124,8 +129,9 @@ const Canvas: React.FC = () => {
   };
   
   const handleUnderlayRectClick = () => {
-    console.log("Underlay rect clicked, have image:", !!underlayImage);
-    if (!underlayImage) {
+    // Only trigger upload if we haven't moved (i.e., not dragging)
+    if (!underlayImage && !hasMoved) {
+      console.log("Underlay rect clicked without dragging, have image:", !!underlayImage);
       handleUploadClick();
     }
   };
@@ -395,6 +401,11 @@ const Canvas: React.FC = () => {
     
     // Update rectangle position
     setUnderlayRect(newRect);
+    
+    // Set hasMoved to true when mouse has moved significantly
+    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+      setHasMoved(true);
+    }
   }, [movingUnderlayRect, moveStartPos, moveStartRect, canvasSize.width, canvasSize.height]);
   
   // Handle move end
@@ -403,6 +414,11 @@ const Canvas: React.FC = () => {
     setMovingUnderlayRect(false);
     setMoveStartPos(null);
     setMoveStartRect(null);
+    
+    // Reset hasMoved state on move end
+    setTimeout(() => {
+      setHasMoved(false);
+    }, 10);
     
     document.removeEventListener('mousemove', handleMoveRect);
     document.removeEventListener('mouseup', handleMoveEnd);
@@ -418,6 +434,10 @@ const Canvas: React.FC = () => {
     }
     
     console.log("Starting to move rect:", { clientX: e.clientX, clientY: e.clientY });
+    
+    // Initialize mouse down position for tracking movement
+    setMouseDownPosition({ x: e.clientX, y: e.clientY });
+    setHasMoved(false);
     
     // Important: Set state synchronously to ensure it's available in the move handler
     const newMoveStartPos = { x: e.clientX, y: e.clientY };
@@ -457,6 +477,11 @@ const Canvas: React.FC = () => {
       
       // Update rectangle position
       setUnderlayRect(newRect);
+      
+      // Set hasMoved to true when mouse has moved significantly
+      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+        setHasMoved(true);
+      }
     };
     
     const endHandler = () => {
@@ -464,6 +489,11 @@ const Canvas: React.FC = () => {
       setMovingUnderlayRect(false);
       setMoveStartPos(null);
       setMoveStartRect(null);
+      
+      // Reset hasMoved state on move end with slight delay to allow click event processing
+      setTimeout(() => {
+        setHasMoved(false);
+      }, 10);
       
       document.removeEventListener('mousemove', moveHandler);
       document.removeEventListener('mouseup', endHandler);
@@ -602,6 +632,7 @@ const Canvas: React.FC = () => {
         imageConfirmed={underlayImageConfirmed}
         reactivateImagePositioning={reactivateImagePositioning}
         underlayOpacity={underlayOpacity}
+        hasMoved={hasMoved}
       />
     </div>
   );

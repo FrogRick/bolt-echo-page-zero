@@ -28,6 +28,7 @@ interface CanvasContainerProps {
   imageConfirmed: boolean;
   reactivateImagePositioning: () => void;
   underlayOpacity: number;
+  hasMoved?: boolean;
 }
 
 const CanvasContainer: React.FC<CanvasContainerProps> = ({
@@ -50,6 +51,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   imageConfirmed,
   reactivateImagePositioning,
   underlayOpacity,
+  hasMoved = false,
 }) => {
   // Determine cursor style based on the active tool
   const getCursorStyle = () => {
@@ -80,7 +82,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   // Handle clicks outside the image during positioning
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Only confirm if we're in positioning mode (not confirmed) and not currently resizing/moving
-    if (underlayRect && underlayImage && !imageConfirmed && !resizingUnderlayRect && !movingUnderlayRect) {
+    // Also make sure the click wasn't a drag operation
+    if (underlayRect && underlayImage && !imageConfirmed && !resizingUnderlayRect && !movingUnderlayRect && !hasMoved) {
       // Check if the click was outside the image area
       const containerRect = containerRef.current?.getBoundingClientRect();
       if (!containerRect) return;
@@ -139,7 +142,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               backgroundColor: 'transparent' // Invisible overlay just for selection
             }}
             onClick={(e) => {
-              if (activeTool === "select") {
+              if (activeTool === "select" && !hasMoved) {
                 e.stopPropagation();
                 console.log("Confirmed image clicked, reactivating positioning");
                 reactivateImagePositioning();
@@ -222,7 +225,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               zIndex: 10
             }}
             onClick={(e) => {
-              if (!resizingUnderlayRect && !movingUnderlayRect) {
+              if (!resizingUnderlayRect && !movingUnderlayRect && !hasMoved) {
                 handleUnderlayRectClick();
               }
             }}

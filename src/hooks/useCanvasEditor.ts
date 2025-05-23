@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Tool } from "@/types/canvas";
 
@@ -210,6 +209,44 @@ export const useCanvasEditor = () => {
 
   const adjustCanvasSize = (width: number, height: number) => {
     setCanvasSize({ width, height });
+    
+    // Ensure underlay rect stays within canvas bounds when canvas size changes
+    if (underlayImageState.rect) {
+      const rect = { ...underlayImageState.rect };
+      let needsUpdate = false;
+      
+      // Check if rectangle extends beyond new canvas size
+      if (rect.x + rect.width > width) {
+        if (rect.width > width) {
+          // If rect is wider than canvas, resize it
+          rect.width = width;
+          rect.x = 0;
+        } else {
+          // Otherwise just move it to stay within bounds
+          rect.x = width - rect.width;
+        }
+        needsUpdate = true;
+      }
+      
+      if (rect.y + rect.height > height) {
+        if (rect.height > height) {
+          // If rect is taller than canvas, resize it
+          rect.height = height;
+          rect.y = 0;
+        } else {
+          // Otherwise just move it to stay within bounds
+          rect.y = height - rect.height;
+        }
+        needsUpdate = true;
+      }
+      
+      if (needsUpdate) {
+        setUnderlayImageState(prev => ({
+          ...prev,
+          rect
+        }));
+      }
+    }
   };
 
   const toggleSnapToAngle = () => setSnapToAngle(!snapToAngle);
@@ -221,9 +258,25 @@ export const useCanvasEditor = () => {
   const addUnderlayImage = (file: File) => {
     const img = new Image();
     img.onload = () => {
+      // When adding a new image, ensure the rect is within canvas boundaries
+      let rect = underlayImageState.rect;
+      
+      if (rect) {
+        // Constrain the existing rect to canvas boundaries
+        if (rect.x < 0) rect.x = 0;
+        if (rect.y < 0) rect.y = 0;
+        if (rect.x + rect.width > canvasSize.width) {
+          rect.x = Math.max(0, canvasSize.width - rect.width);
+        }
+        if (rect.y + rect.height > canvasSize.height) {
+          rect.y = Math.max(0, canvasSize.height - rect.height);
+        }
+      }
+      
       setUnderlayImageState(prev => ({
         ...prev,
         image: img,
+        rect: rect,
         confirmed: false
       }));
     };
@@ -240,9 +293,17 @@ export const useCanvasEditor = () => {
   };
 
   const confirmUnderlayImagePlacement = (rect: { x: number; y: number; width: number; height: number }) => {
+    // Ensure the rect is within canvas boundaries before confirming
+    const constrainedRect = {
+      x: Math.max(0, Math.min(rect.x, canvasSize.width - rect.width)),
+      y: Math.max(0, Math.min(rect.y, canvasSize.height - rect.height)),
+      width: Math.min(rect.width, canvasSize.width),
+      height: Math.min(rect.height, canvasSize.height)
+    };
+    
     setUnderlayImageState(prev => ({
       ...prev,
-      rect,
+      rect: constrainedRect,
       confirmed: true
     }));
   };
