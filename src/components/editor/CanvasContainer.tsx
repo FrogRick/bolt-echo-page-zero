@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Upload, Move, Check, X } from "lucide-react";
@@ -122,8 +121,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              zIndex: 0, // Behind canvas and drawings
-              pointerEvents: activeTool === "select" ? "auto" : "none", // Only clickable with select tool
+              zIndex: activeTool === "select" ? 10 : 0, // Bring to front when select tool is active
+              pointerEvents: activeTool === "select" ? "auto" : "none",
             }}
             onClick={(e) => {
               if (activeTool === "select") {
@@ -136,9 +135,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             <img 
               src={underlayImage.src}
               alt="Underlay"
-              className={`object-contain w-full h-full ${
-                activeTool === "select" ? "" : "pointer-events-none"
-              }`}
+              className="object-contain w-full h-full"
               style={{
                 opacity: underlayOpacity
               }}
@@ -166,8 +163,9 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           className={`border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
           style={{ 
             position: "relative", 
-            zIndex: 1, // Above underlay image
-            backgroundColor: 'transparent' // Transparent so underlay shows through
+            zIndex: activeTool === "select" && imageConfirmed ? 5 : 1, // Lower z-index when select tool is active with confirmed image
+            backgroundColor: 'transparent',
+            pointerEvents: activeTool === "select" && imageConfirmed ? "none" : "auto" // Disable canvas interaction when selecting confirmed image
           }}
         />
 
