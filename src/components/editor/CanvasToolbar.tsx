@@ -31,6 +31,7 @@ interface CanvasToolbarProps {
   adjustUnderlayScale: (scale: number) => void;
   confirmImagePlacement: () => void;
   imageConfirmed: boolean;
+  reactivateImagePositioning: () => void;
 }
 
 const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
@@ -57,7 +58,8 @@ const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   underlayScale,
   adjustUnderlayScale,
   confirmImagePlacement,
-  imageConfirmed
+  imageConfirmed,
+  reactivateImagePositioning
 }) => {
   const handleOrientationChange = (value: string) => {
     setOrientation(value as "portrait" | "landscape");
