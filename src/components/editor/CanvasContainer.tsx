@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Upload, Move, Check, X } from "lucide-react";
@@ -115,7 +114,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             className={`absolute transition-all ${
               activeTool === "select" 
                 ? "cursor-pointer hover:ring-2 hover:ring-blue-400 hover:shadow-lg" 
-                : "pointer-events-none"
+                : ""
             }`}
             style={{
               left: underlayRect.x,
