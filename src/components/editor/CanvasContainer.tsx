@@ -1,6 +1,7 @@
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Upload, Move, Check, X } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 
 interface CanvasContainerProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -27,6 +28,7 @@ interface CanvasContainerProps {
   imageConfirmed: boolean;
   reactivateImagePositioning: () => void;
   underlayOpacity: number;
+  adjustUnderlayOpacity: (opacity: number) => void;
 }
 
 const CanvasContainer: React.FC<CanvasContainerProps> = ({
@@ -49,6 +51,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   imageConfirmed,
   reactivateImagePositioning,
   underlayOpacity,
+  adjustUnderlayOpacity,
 }) => {
   // Determine cursor style based on the active tool
   const getCursorStyle = () => {
@@ -182,64 +185,93 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
 
         {/* Positioning Image Layer - Top layer when not confirmed (z-index 10) */}
         {underlayRect && underlayImage && !imageConfirmed && (
-          <div 
-            className="absolute border-2 border-blue-400 overflow-hidden"
-            style={{
-              left: underlayRect.x,
-              top: underlayRect.y,
-              width: underlayRect.width,
-              height: underlayRect.height,
-              zIndex: 10, // Top layer when positioning
-              pointerEvents: "auto",
-              cursor: !resizingUnderlayRect ? 'grab' : 'default'
-            }}
-            onMouseDown={(e) => {
-              console.log("Image container onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
-              e.stopPropagation();
-              e.preventDefault();
-              // Only handle movement if it's not a resize operation
-              if (!resizingUnderlayRect) {
-                console.log("Starting to move image container");
-                startMovingUnderlayRect(e);
-              }
-            }}
-          >
-            <img 
-              src={underlayImage.src}
-              alt="Underlay"
-              className="object-contain w-full h-full"
+          <>
+            {/* Control buttons - centered above the image */}
+            <div 
+              className="absolute flex space-x-2"
               style={{
-                opacity: underlayOpacity,
-                pointerEvents: 'none'
+                left: underlayRect.x + underlayRect.width / 2,
+                top: underlayRect.y - 40,
+                transform: 'translateX(-50%)',
+                zIndex: 15
               }}
-            />
-            
-            {/* Control buttons - only shown when positioning */}
-            <div className="absolute top-2 right-2 flex space-x-2">
+            >
               <button
-                className="bg-red-500 hover:bg-red-600 text-white p-1 rounded-full"
+                className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg"
                 onClick={(e) => {
                   e.stopPropagation();
                   removeUnderlayImage();
                 }}
               >
-                <X size={16} />
+                <X size={20} />
               </button>
               <button
-                className="bg-green-500 hover:bg-green-600 text-white p-1 rounded-full"
+                className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full shadow-lg"
                 onClick={(e) => {
                   e.stopPropagation();
                   confirmImagePlacement();
                 }}
               >
-                <Check size={16} />
+                <Check size={20} />
               </button>
             </div>
-            
-            <div className="absolute top-2 left-2 opacity-70">
-              <Move size={20} className="text-blue-600" />
+
+            {/* Image container */}
+            <div 
+              className="absolute border-2 border-blue-400 overflow-hidden"
+              style={{
+                left: underlayRect.x,
+                top: underlayRect.y,
+                width: underlayRect.width,
+                height: underlayRect.height,
+                zIndex: 10,
+                pointerEvents: "auto",
+                cursor: !resizingUnderlayRect ? 'grab' : 'default'
+              }}
+              onMouseDown={(e) => {
+                console.log("Image container onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
+                e.stopPropagation();
+                e.preventDefault();
+                if (!resizingUnderlayRect) {
+                  console.log("Starting to move image container");
+                  startMovingUnderlayRect(e);
+                }
+              }}
+            >
+              <img 
+                src={underlayImage.src}
+                alt="Underlay"
+                className="object-contain w-full h-full"
+                style={{
+                  opacity: underlayOpacity,
+                  pointerEvents: 'none'
+                }}
+              />
             </div>
-          </div>
+
+            {/* Opacity slider - centered below the image */}
+            <div 
+              className="absolute bg-white p-3 rounded-lg shadow-lg border"
+              style={{
+                left: underlayRect.x + underlayRect.width / 2,
+                top: underlayRect.y + underlayRect.height + 10,
+                transform: 'translateX(-50%)',
+                zIndex: 15,
+                minWidth: '200px'
+              }}
+            >
+              <div className="text-xs text-gray-600 mb-2 text-center">Opacity</div>
+              <Slider
+                value={[underlayOpacity * 100]}
+                onValueChange={(value) => adjustUnderlayOpacity(value[0] / 100)}
+                max={100}
+                min={0}
+                step={1}
+                className="w-full"
+              />
+              <div className="text-xs text-gray-500 mt-1 text-center">{Math.round(underlayOpacity * 100)}%</div>
+            </div>
+          </>
         )}
         
         {/* Underlay Rectangle Placeholder - Only visible when no image (z-index 10) */}
