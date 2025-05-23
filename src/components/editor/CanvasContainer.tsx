@@ -82,7 +82,24 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       style={{ height: "calc(100% - 120px)" }}
     >
       <div className="flex items-center justify-center relative">
-        {/* Confirmed Underlay Image - Above canvas when select tool is active */}
+        {/* Canvas - Bottom layer (z-index 1) */}
+        <canvas
+          ref={canvasRef}
+          width={canvasSize.width}
+          height={canvasSize.height}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={endDrawing}
+          onMouseLeave={endDrawing}
+          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+          style={{ 
+            position: "relative", 
+            zIndex: 1, // Bottom layer
+            backgroundColor: 'white' // Always white background
+          }}
+        />
+
+        {/* Confirmed Underlay Image - Middle layer (z-index 2) */}
         {underlayRect && underlayImage && imageConfirmed && (
           <div 
             className="absolute cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
@@ -91,7 +108,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              zIndex: activeTool === "select" ? 10 : 1, // Above canvas when select tool is active
+              zIndex: 2, // Middle layer - above canvas, below positioning elements
               pointerEvents: activeTool === "select" ? "auto" : "none", // Only clickable with select tool
             }}
             onClick={(e) => {
@@ -113,7 +130,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           </div>
         )}
 
-        {/* Positioning Image Layer - Above canvas when not confirmed */}
+        {/* Positioning Image Layer - Top layer when not confirmed (z-index 10) */}
         {underlayRect && underlayImage && !imageConfirmed && (
           <div 
             className="absolute border-2 border-blue-400 overflow-hidden"
@@ -122,7 +139,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              zIndex: 10, // Above canvas when positioning
+              zIndex: 10, // Top layer when positioning
               pointerEvents: "auto",
               cursor: !resizingUnderlayRect ? 'grab' : 'default'
             }}
@@ -175,24 +192,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           </div>
         )}
         
-        {/* Canvas - Always maintains drawing functionality */}
-        <canvas
-          ref={canvasRef}
-          width={canvasSize.width}
-          height={canvasSize.height}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={endDrawing}
-          onMouseLeave={endDrawing}
-          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
-          style={{ 
-            position: "relative", 
-            zIndex: 5, // Middle layer
-            backgroundColor: 'white' // Always white background
-          }}
-        />
-        
-        {/* Underlay Rectangle Placeholder - Only visible when no image */}
+        {/* Underlay Rectangle Placeholder - Only visible when no image (z-index 10) */}
         {underlayRect && !underlayImage && (
           <div 
             className="absolute border-2 border-dashed border-blue-400 flex items-center justify-center bg-blue-50 bg-opacity-30 group"
@@ -227,7 +227,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           </div>
         )}
         
-        {/* Resize Handles - only show for positioning (not when confirmed) */}
+        {/* Resize Handles - only show for positioning (not when confirmed) (z-index 15) */}
         {!imageConfirmed && underlayRect && !resizingUnderlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
           <div
             key={handle.position}
