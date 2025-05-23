@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Upload, Move, Check, X } from "lucide-react";
@@ -108,10 +109,14 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       onClick={handleContainerClick}
     >
       <div className="flex items-center justify-center relative">
-        {/* Confirmed Underlay Image - Bottom layer (z-index 0) */}
+        {/* Confirmed Underlay Image - Bottom layer (z-index 0) with select tool interaction */}
         {underlayRect && underlayImage && imageConfirmed && (
           <div 
-            className="absolute cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
+            className={`absolute transition-all ${
+              activeTool === "select" 
+                ? "cursor-pointer hover:ring-2 hover:ring-blue-400 hover:shadow-lg" 
+                : "pointer-events-none"
+            }`}
             style={{
               left: underlayRect.x,
               top: underlayRect.y,
@@ -136,6 +141,14 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
                 opacity: underlayOpacity
               }}
             />
+            {/* Selection indicator when hovering with select tool */}
+            {activeTool === "select" && (
+              <div className="absolute inset-0 border-2 border-dashed border-blue-400 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 py-0.5 rounded">
+                  Click to edit
+                </div>
+              </div>
+            )}
           </div>
         )}
 
