@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Toggle } from "@/components/ui/toggle";
@@ -30,6 +29,8 @@ interface CanvasToolbarProps {
   adjustUnderlayOpacity: (opacity: number) => void;
   underlayScale: number;
   adjustUnderlayScale: (scale: number) => void;
+  confirmImagePlacement: () => void;
+  imageConfirmed: boolean;
 }
 
 const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
@@ -54,7 +55,9 @@ const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   underlayOpacity,
   adjustUnderlayOpacity,
   underlayScale,
-  adjustUnderlayScale
+  adjustUnderlayScale,
+  confirmImagePlacement,
+  imageConfirmed
 }) => {
   const handleOrientationChange = (value: string) => {
     setOrientation(value as "portrait" | "landscape");
