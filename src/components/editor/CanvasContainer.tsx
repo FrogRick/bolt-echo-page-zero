@@ -26,6 +26,7 @@ interface CanvasContainerProps {
   confirmImagePlacement: () => void;
   removeUnderlayImage: () => void;
   imageConfirmed: boolean;
+  reactivateImagePositioning: () => void;
 }
 
 const CanvasContainer: React.FC<CanvasContainerProps> = ({
@@ -46,6 +47,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   confirmImagePlacement,
   removeUnderlayImage,
   imageConfirmed,
+  reactivateImagePositioning,
 }) => {
   // Determine cursor style based on the active tool
   const getCursorStyle = () => {
@@ -83,14 +85,18 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
         {/* Confirmed Underlay Image - Behind canvas */}
         {underlayRect && underlayImage && imageConfirmed && (
           <div 
-            className="absolute"
+            className="absolute cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
             style={{
               left: underlayRect.x,
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
               zIndex: 1, // Behind canvas
-              pointerEvents: "none" // Don't interfere with drawing
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log("Confirmed image clicked, reactivating positioning");
+              reactivateImagePositioning();
             }}
           >
             <img 

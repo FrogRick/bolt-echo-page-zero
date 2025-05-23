@@ -144,6 +144,12 @@ const Canvas: React.FC = () => {
     });
   };
   
+  // New function to reactivate image positioning
+  const reactivateImagePositioning = () => {
+    setImageConfirmed(false);
+    console.log("Image positioning reactivated");
+  };
+  
   // Wrap the removeUnderlayImage function to also reset our state
   const handleRemoveUnderlayImage = () => {
     hookRemoveUnderlayImage();
@@ -570,6 +576,7 @@ const Canvas: React.FC = () => {
         adjustUnderlayScale={adjustUnderlayScale}
         confirmImagePlacement={confirmImagePlacement}
         imageConfirmed={imageConfirmed}
+        reactivateImagePositioning={reactivateImagePositioning}
       />
       
       <input 
@@ -598,6 +605,7 @@ const Canvas: React.FC = () => {
         confirmImagePlacement={confirmImagePlacement}
         removeUnderlayImage={handleRemoveUnderlayImage}
         imageConfirmed={imageConfirmed}
+        reactivateImagePositioning={reactivateImagePositioning}
       />
     </div>
   );
