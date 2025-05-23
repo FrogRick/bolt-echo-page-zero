@@ -80,22 +80,44 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       style={{ height: "calc(100% - 120px)" }}
     >
       <div className="flex items-center justify-center relative">
-        {/* Underlay Image Layer - Only visible when confirmed or positioning */}
-        {underlayRect && underlayImage && (
+        {/* Confirmed Underlay Image - Behind canvas */}
+        {underlayRect && underlayImage && imageConfirmed && (
           <div 
-            className={`absolute ${imageConfirmed ? "" : "border-2 border-blue-400"} overflow-hidden`}
+            className="absolute"
             style={{
               left: underlayRect.x,
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              zIndex: imageConfirmed ? 0 : 10, // Behind canvas when confirmed, above when positioning
-              pointerEvents: imageConfirmed ? "none" : "auto",
-              cursor: !imageConfirmed && !resizingUnderlayRect ? 'grab' : 'default'
+              zIndex: 1, // Behind canvas
+              pointerEvents: "none" // Don't interfere with drawing
+            }}
+          >
+            <img 
+              src={underlayImage.src}
+              alt="Underlay"
+              className="object-contain w-full h-full"
+              style={{
+                opacity: 0.5
+              }}
+            />
+          </div>
+        )}
+
+        {/* Positioning Image Layer - Above canvas when not confirmed */}
+        {underlayRect && underlayImage && !imageConfirmed && (
+          <div 
+            className="absolute border-2 border-blue-400 overflow-hidden"
+            style={{
+              left: underlayRect.x,
+              top: underlayRect.y,
+              width: underlayRect.width,
+              height: underlayRect.height,
+              zIndex: 10, // Above canvas when positioning
+              pointerEvents: "auto",
+              cursor: !resizingUnderlayRect ? 'grab' : 'default'
             }}
             onMouseDown={(e) => {
-              if (imageConfirmed) return; // No interaction when confirmed
-              
               console.log("Image container onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
               e.stopPropagation();
               e.preventDefault();
@@ -111,44 +133,40 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               alt="Underlay"
               className="object-contain w-full h-full"
               style={{
-                opacity: 0.5, // Use the opacity setting
+                opacity: 0.5,
                 pointerEvents: 'none'
               }}
             />
             
             {/* Control buttons - only shown when positioning */}
-            {!imageConfirmed && (
-              <div className="absolute top-2 right-2 flex space-x-2">
-                <button
-                  className="bg-red-500 hover:bg-red-600 text-white p-1 rounded-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeUnderlayImage();
-                  }}
-                >
-                  <X size={16} />
-                </button>
-                <button
-                  className="bg-green-500 hover:bg-green-600 text-white p-1 rounded-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    confirmImagePlacement();
-                  }}
-                >
-                  <Check size={16} />
-                </button>
-              </div>
-            )}
+            <div className="absolute top-2 right-2 flex space-x-2">
+              <button
+                className="bg-red-500 hover:bg-red-600 text-white p-1 rounded-full"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeUnderlayImage();
+                }}
+              >
+                <X size={16} />
+              </button>
+              <button
+                className="bg-green-500 hover:bg-green-600 text-white p-1 rounded-full"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  confirmImagePlacement();
+                }}
+              >
+                <Check size={16} />
+              </button>
+            </div>
             
-            {!imageConfirmed && (
-              <div className="absolute top-2 left-2 opacity-70">
-                <Move size={20} className="text-blue-600" />
-              </div>
-            )}
+            <div className="absolute top-2 left-2 opacity-70">
+              <Move size={20} className="text-blue-600" />
+            </div>
           </div>
         )}
         
-        {/* Canvas - Always on top for drawing when image is confirmed */}
+        {/* Canvas - Always on top for drawing */}
         <canvas
           ref={canvasRef}
           width={canvasSize.width}
@@ -160,7 +178,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
           style={{ 
             position: "relative", 
-            zIndex: 5 // Always above the confirmed underlay image
+            zIndex: 5, // Above confirmed underlay, below positioning overlay
+            backgroundColor: imageConfirmed ? 'transparent' : 'white' // Make transparent when image is confirmed
           }}
         />
         
