@@ -82,7 +82,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       style={{ height: "calc(100% - 120px)" }}
     >
       <div className="flex items-center justify-center relative">
-        {/* Confirmed Underlay Image - Behind canvas */}
+        {/* Confirmed Underlay Image - Above canvas when select tool is active */}
         {underlayRect && underlayImage && imageConfirmed && (
           <div 
             className="absolute cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
@@ -91,12 +91,15 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              zIndex: 1, // Behind canvas
+              zIndex: activeTool === "select" ? 10 : 1, // Above canvas when select tool is active
+              pointerEvents: activeTool === "select" ? "auto" : "none", // Only clickable with select tool
             }}
             onClick={(e) => {
-              e.stopPropagation();
-              console.log("Confirmed image clicked, reactivating positioning");
-              reactivateImagePositioning();
+              if (activeTool === "select") {
+                e.stopPropagation();
+                console.log("Confirmed image clicked, reactivating positioning");
+                reactivateImagePositioning();
+              }
             }}
           >
             <img 
@@ -172,7 +175,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           </div>
         )}
         
-        {/* Canvas - Always on top for drawing */}
+        {/* Canvas - Always maintains drawing functionality */}
         <canvas
           ref={canvasRef}
           width={canvasSize.width}
@@ -184,8 +187,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
           style={{ 
             position: "relative", 
-            zIndex: 5, // Above confirmed underlay, below positioning overlay
-            backgroundColor: imageConfirmed ? 'transparent' : 'white' // Make transparent when image is confirmed
+            zIndex: 5, // Middle layer
+            backgroundColor: 'white' // Always white background
           }}
         />
         
