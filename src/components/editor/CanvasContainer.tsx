@@ -56,6 +56,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
 }) => {
   // Track if we just finished a drag operation
   const [justFinishedDrag, setJustFinishedDrag] = React.useState(false);
+  // Track if we're starting a drag from a confirmed image
+  const [startingDragFromConfirmed, setStartingDragFromConfirmed] = React.useState(false);
 
   // Reset the drag flag when drag operations end
   React.useEffect(() => {
@@ -71,6 +73,13 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       setJustFinishedDrag(true);
     }
   }, [movingUnderlayRect, resizingUnderlayRect, justFinishedDrag]);
+
+  // Reset starting drag flag when moving ends
+  React.useEffect(() => {
+    if (!movingUnderlayRect) {
+      setStartingDragFromConfirmed(false);
+    }
+  }, [movingUnderlayRect]);
 
   // Determine cursor style based on the active tool
   const getCursorStyle = () => {
@@ -100,8 +109,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
 
   // Handle clicks outside the image during positioning
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Don't confirm if we just finished a drag operation
-    if (justFinishedDrag) {
+    // Don't confirm if we just finished a drag operation or starting a drag from confirmed
+    if (justFinishedDrag || startingDragFromConfirmed) {
       return;
     }
 
@@ -124,6 +133,26 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       if (isOutsideImage) {
         confirmImagePlacement();
       }
+    }
+  };
+
+  // Handle mousedown on confirmed image for click-and-drag activation
+  const handleConfirmedImageMouseDown = (e: React.MouseEvent) => {
+    if (activeTool === "select" && imageConfirmed) {
+      e.stopPropagation();
+      console.log("Starting drag from confirmed image");
+      
+      // Set flag to indicate we're starting a drag from confirmed state
+      setStartingDragFromConfirmed(true);
+      
+      // Reactivate positioning mode
+      reactivateImagePositioning();
+      
+      // Start moving immediately
+      // We need to use a timeout to ensure the state update has taken effect
+      setTimeout(() => {
+        startMovingUnderlayRect(e);
+      }, 0);
     }
   };
 
@@ -163,13 +192,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               zIndex: 2, // Above canvas but below drawing overlay
               pointerEvents: activeTool === "select" ? "auto" : "none",
             }}
-            onClick={(e) => {
-              if (activeTool === "select") {
-                e.stopPropagation();
-                console.log("Confirmed image clicked, reactivating positioning");
-                reactivateImagePositioning();
-              }
-            }}
+            onMouseDown={handleConfirmedImageMouseDown}
           >
             <img 
               src={underlayImage.src}
