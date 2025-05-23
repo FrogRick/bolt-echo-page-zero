@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Upload, Move, Check, X } from "lucide-react";
@@ -108,50 +109,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       onClick={handleContainerClick}
     >
       <div className="flex items-center justify-center relative">
-        {/* Confirmed Underlay Image - Bottom layer (z-index 0) with select tool interaction */}
-        {underlayRect && underlayImage && imageConfirmed && (
-          <div 
-            className={`absolute transition-all ${
-              activeTool === "select" 
-                ? "cursor-pointer hover:ring-2 hover:ring-blue-400 hover:shadow-lg" 
-                : ""
-            }`}
-            style={{
-              left: underlayRect.x,
-              top: underlayRect.y,
-              width: underlayRect.width,
-              height: underlayRect.height,
-              zIndex: activeTool === "select" ? 10 : 0, // Bring to front when select tool is active
-              pointerEvents: activeTool === "select" ? "auto" : "none",
-            }}
-            onClick={(e) => {
-              if (activeTool === "select") {
-                e.stopPropagation();
-                console.log("Confirmed image clicked, reactivating positioning");
-                reactivateImagePositioning();
-              }
-            }}
-          >
-            <img 
-              src={underlayImage.src}
-              alt="Underlay"
-              className="object-contain w-full h-full"
-              style={{
-                opacity: underlayOpacity
-              }}
-            />
-            {/* Selection indicator when hovering with select tool */}
-            {activeTool === "select" && (
-              <div className="absolute inset-0 border-2 border-dashed border-blue-400 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 py-0.5 rounded">
-                  Click to edit
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Canvas - Top layer (z-index 1) with drawings rendered on context */}
+        {/* Canvas - Main layer (z-index 1) */}
         <canvas
           ref={canvasRef}
           width={canvasSize.width}
@@ -160,14 +118,35 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           onMouseMove={draw}
           onMouseUp={endDrawing}
           onMouseLeave={endDrawing}
-          className={`border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
           style={{ 
             position: "relative", 
-            zIndex: activeTool === "select" && imageConfirmed ? 5 : 1, // Lower z-index when select tool is active with confirmed image
-            backgroundColor: 'transparent',
-            pointerEvents: activeTool === "select" && imageConfirmed ? "none" : "auto" // Disable canvas interaction when selecting confirmed image
+            zIndex: 1
           }}
         />
+
+        {/* Confirmed Image Overlay - For selection only (z-index 2) */}
+        {underlayRect && underlayImage && imageConfirmed && (
+          <div 
+            className="absolute cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
+            style={{
+              left: underlayRect.x,
+              top: underlayRect.y,
+              width: underlayRect.width,
+              height: underlayRect.height,
+              zIndex: 2,
+              pointerEvents: activeTool === "select" ? "auto" : "none",
+              backgroundColor: 'transparent' // Invisible overlay just for selection
+            }}
+            onClick={(e) => {
+              if (activeTool === "select") {
+                e.stopPropagation();
+                console.log("Confirmed image clicked, reactivating positioning");
+                reactivateImagePositioning();
+              }
+            }}
+          />
+        )}
 
         {/* Positioning Image Layer - Top layer when not confirmed (z-index 10) */}
         {underlayRect && underlayImage && !imageConfirmed && (
@@ -178,7 +157,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              zIndex: 10, // Top layer when positioning
+              zIndex: 10,
               pointerEvents: "auto",
               cursor: !resizingUnderlayRect ? 'grab' : 'default'
             }}
@@ -186,7 +165,6 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               console.log("Image container onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
               e.stopPropagation();
               e.preventDefault();
-              // Only handle movement if it's not a resize operation
               if (!resizingUnderlayRect) {
                 console.log("Starting to move image container");
                 startMovingUnderlayRect(e);
@@ -252,7 +230,6 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               console.log("Placeholder onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
               e.stopPropagation();
               e.preventDefault();
-              // Only handle movement if it's not a resize operation
               if (!resizingUnderlayRect) {
                 console.log("Starting to move placeholder");
                 startMovingUnderlayRect(e);
@@ -272,12 +249,12 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             key={handle.position}
             className="absolute w-5 h-5 bg-white border-2 border-blue-500 rounded-full hover:bg-blue-200 flex items-center justify-center"
             style={{
-              left: handle.x - 10, // Center the handle (half of width/height)
+              left: handle.x - 10,
               top: handle.y - 10,
               cursor: handle.position === "nw" || handle.position === "se" 
                 ? "nwse-resize" 
                 : "nesw-resize",
-              zIndex: 15 // Always on top
+              zIndex: 15
             }}
             onMouseDown={(e) => {
               console.log(`Resize handle ${handle.position} onMouseDown triggered`, { clientX: e.clientX, clientY: e.clientY });
