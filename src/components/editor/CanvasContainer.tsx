@@ -109,7 +109,24 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       onClick={handleContainerClick}
     >
       <div className="flex items-center justify-center relative">
-        {/* Confirmed Underlay Image - Bottom layer (z-index 1) */}
+        {/* Canvas - Bottom layer (z-index 1) */}
+        <canvas
+          ref={canvasRef}
+          width={canvasSize.width}
+          height={canvasSize.height}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={endDrawing}
+          onMouseLeave={endDrawing}
+          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+          style={{ 
+            position: "relative", 
+            zIndex: 1, // Bottom layer
+            backgroundColor: 'white' // Always white background
+          }}
+        />
+
+        {/* Confirmed Underlay Image - Middle layer (z-index 2) */}
         {underlayRect && underlayImage && imageConfirmed && (
           <div 
             className="absolute cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
@@ -118,7 +135,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              zIndex: 1, // Bottom layer - below canvas
+              zIndex: 2, // Middle layer - above canvas, below positioning elements
               pointerEvents: activeTool === "select" ? "auto" : "none", // Only clickable with select tool
             }}
             onClick={(e) => {
@@ -139,23 +156,6 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             />
           </div>
         )}
-
-        {/* Canvas - Middle layer (z-index 2) */}
-        <canvas
-          ref={canvasRef}
-          width={canvasSize.width}
-          height={canvasSize.height}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={endDrawing}
-          onMouseLeave={endDrawing}
-          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
-          style={{ 
-            position: "relative", 
-            zIndex: 2, // Middle layer - above underlay image, below positioning elements
-            backgroundColor: 'white' // Always white background
-          }}
-        />
 
         {/* Positioning Image Layer - Top layer when not confirmed (z-index 10) */}
         {underlayRect && underlayImage && !imageConfirmed && (
