@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -41,10 +40,9 @@ const Canvas: React.FC = () => {
     height: number;
   } | null>(null);
   
-  // Track if mouse has moved during click (to detect drag vs click)
-  const [mouseDownPosition, setMouseDownPosition] = useState<{ x: number; y: number } | null>(null);
-  const [hasMoved, setHasMoved] = useState(false);
-
+  // Add state for tracking if image is confirmed
+  const [imageConfirmed, setImageConfirmed] = useState(false);
+  
   const {
     canvasRef,
     activeTool,
@@ -73,16 +71,16 @@ const Canvas: React.FC = () => {
     underlayImage,
     addUnderlayImage,
     removeUnderlayImage: hookRemoveUnderlayImage,
-    confirmUnderlayImagePlacement,
+    underlayScale,
+    adjustUnderlayScale,
     underlayOpacity,
-    adjustUnderlayOpacity,
-    underlayImageConfirmed,
-    setUnderlayImageConfirmed
+    adjustUnderlayOpacity
   } = useCanvasEditor();
 
   // Initialize default underlay rectangle
   useEffect(() => {
     if (canvasSize.width && canvasSize.height && underlayRect === null) {
+      // Set default rectangle to 50% of canvas size, centered
       const width = canvasSize.width * 0.5;
       const height = canvasSize.height * 0.5;
       const x = (canvasSize.width - width) / 2;
@@ -93,12 +91,14 @@ const Canvas: React.FC = () => {
     }
   }, [canvasSize, underlayRect]);
   
-  // Reset underlay rectangle if image is removed
+  // Reset underlay rectangle and confirmed state if image is removed
   useEffect(() => {
     if (!underlayImage) {
-      setUnderlayImageConfirmed(false);
+      // Reset confirmed state
+      setImageConfirmed(false);
       
       if (!underlayRect) {
+        // Reinitialize the rectangle
         const width = canvasSize.width * 0.5;
         const height = canvasSize.height * 0.5;
         const x = (canvasSize.width - width) / 2;
@@ -108,14 +108,14 @@ const Canvas: React.FC = () => {
         console.log("Reinitializing underlayRect after image removal:", { x, y, width, height });
       }
     }
-  }, [underlayImage, underlayRect, canvasSize, setUnderlayImageConfirmed]);
+  }, [underlayImage, underlayRect, canvasSize]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       console.log("File selected:", file.name);
       addUnderlayImage(file);
-      setUnderlayImageConfirmed(false);
+      setImageConfirmed(false); // Reset confirmed state for new image
       toast({
         title: "Image uploaded",
         description: "Position and resize the image, then click the green checkmark to confirm.",
@@ -129,36 +129,33 @@ const Canvas: React.FC = () => {
   };
   
   const handleUnderlayRectClick = () => {
-    // Only trigger upload if we haven't moved (i.e., not dragging)
-    if (!underlayImage && !hasMoved) {
-      console.log("Underlay rect clicked without dragging, have image:", !!underlayImage);
+    console.log("Underlay rect clicked, have image:", !!underlayImage);
+    if (!underlayImage) {
       handleUploadClick();
     }
   };
   
-  // Function to confirm image placement
+  // New function to confirm image placement
   const confirmImagePlacement = () => {
-    if (underlayRect) {
-      confirmUnderlayImagePlacement(underlayRect);
-      toast({
-        title: "Image placement confirmed",
-        description: "The image is now rendered directly on the canvas. You can draw on top of it.",
-      });
-    }
+    setImageConfirmed(true);
+    toast({
+      title: "Image placement confirmed",
+      description: "You can now draw on top of the image.",
+    });
   };
   
-  // Function to reactivate image positioning
+  // New function to reactivate image positioning
   const reactivateImagePositioning = () => {
-    setUnderlayImageConfirmed(false);
+    setImageConfirmed(false);
     console.log("Image positioning reactivated");
   };
   
   // Wrap the removeUnderlayImage function to also reset our state
   const handleRemoveUnderlayImage = () => {
     hookRemoveUnderlayImage();
-    setUnderlayImageConfirmed(false);
+    setImageConfirmed(false);
   };
-
+  
   // Handle mouse move during resize
   const handleResizeMove = useCallback((e: MouseEvent) => {
     if (!resizingUnderlayRect || !resizeStartPos || !resizeStartRect || !resizeCorner) {
@@ -401,11 +398,6 @@ const Canvas: React.FC = () => {
     
     // Update rectangle position
     setUnderlayRect(newRect);
-    
-    // Set hasMoved to true when mouse has moved significantly
-    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-      setHasMoved(true);
-    }
   }, [movingUnderlayRect, moveStartPos, moveStartRect, canvasSize.width, canvasSize.height]);
   
   // Handle move end
@@ -414,11 +406,6 @@ const Canvas: React.FC = () => {
     setMovingUnderlayRect(false);
     setMoveStartPos(null);
     setMoveStartRect(null);
-    
-    // Reset hasMoved state on move end
-    setTimeout(() => {
-      setHasMoved(false);
-    }, 10);
     
     document.removeEventListener('mousemove', handleMoveRect);
     document.removeEventListener('mouseup', handleMoveEnd);
@@ -434,10 +421,6 @@ const Canvas: React.FC = () => {
     }
     
     console.log("Starting to move rect:", { clientX: e.clientX, clientY: e.clientY });
-    
-    // Initialize mouse down position for tracking movement
-    setMouseDownPosition({ x: e.clientX, y: e.clientY });
-    setHasMoved(false);
     
     // Important: Set state synchronously to ensure it's available in the move handler
     const newMoveStartPos = { x: e.clientX, y: e.clientY };
@@ -477,11 +460,6 @@ const Canvas: React.FC = () => {
       
       // Update rectangle position
       setUnderlayRect(newRect);
-      
-      // Set hasMoved to true when mouse has moved significantly
-      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-        setHasMoved(true);
-      }
     };
     
     const endHandler = () => {
@@ -489,11 +467,6 @@ const Canvas: React.FC = () => {
       setMovingUnderlayRect(false);
       setMoveStartPos(null);
       setMoveStartRect(null);
-      
-      // Reset hasMoved state on move end with slight delay to allow click event processing
-      setTimeout(() => {
-        setHasMoved(false);
-      }, 10);
       
       document.removeEventListener('mousemove', moveHandler);
       document.removeEventListener('mouseup', endHandler);
@@ -600,7 +573,7 @@ const Canvas: React.FC = () => {
         underlayOpacity={underlayOpacity}
         adjustUnderlayOpacity={adjustUnderlayOpacity}
         confirmImagePlacement={confirmImagePlacement}
-        imageConfirmed={underlayImageConfirmed}
+        imageConfirmed={imageConfirmed}
         reactivateImagePositioning={reactivateImagePositioning}
       />
       
@@ -629,10 +602,9 @@ const Canvas: React.FC = () => {
         startMovingUnderlayRect={startMovingUnderlayRect}
         confirmImagePlacement={confirmImagePlacement}
         removeUnderlayImage={handleRemoveUnderlayImage}
-        imageConfirmed={underlayImageConfirmed}
+        imageConfirmed={imageConfirmed}
         reactivateImagePositioning={reactivateImagePositioning}
         underlayOpacity={underlayOpacity}
-        hasMoved={hasMoved}
       />
     </div>
   );
