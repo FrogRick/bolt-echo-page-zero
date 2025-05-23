@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Upload, Move, Check, X } from "lucide-react";
@@ -135,7 +136,9 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             <img 
               src={underlayImage.src}
               alt="Underlay"
-              className="object-contain w-full h-full"
+              className={`object-contain w-full h-full ${
+                activeTool === "select" ? "" : "pointer-events-none"
+              }`}
               style={{
                 opacity: underlayOpacity
               }}
