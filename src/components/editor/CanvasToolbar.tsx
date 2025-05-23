@@ -27,8 +27,6 @@ interface CanvasToolbarProps {
   removeUnderlayImage: () => void;
   underlayOpacity: number;
   adjustUnderlayOpacity: (opacity: number) => void;
-  underlayScale: number;
-  adjustUnderlayScale: (scale: number) => void;
   confirmImagePlacement: () => void;
   imageConfirmed: boolean;
   reactivateImagePositioning: () => void;
