@@ -1,6 +1,6 @@
 import React from "react";
 import { Tool } from "@/types/canvas";
-import { Upload, Move, Check, X } from "lucide-react";
+import { Upload, Move, Check, X, Image } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
 interface CanvasContainerProps {
@@ -155,14 +155,6 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
                 opacity: underlayOpacity
               }}
             />
-            {/* Selection indicator when hovering with select tool - Only show on active click */}
-            {activeTool === "select" && (
-              <div className="absolute inset-0 border-2 border-dashed border-blue-400 opacity-0 focus:opacity-100 active:opacity-100 pointer-events-none">
-                <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 py-0.5 rounded opacity-0 focus:opacity-100 active:opacity-100">
-                  Click to edit
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -251,7 +243,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
 
             {/* Opacity slider - centered below the image */}
             <div 
-              className="absolute bg-white p-3 rounded-lg shadow-lg border"
+              className="absolute flex items-center space-x-2"
               style={{
                 left: underlayRect.x + underlayRect.width / 2,
                 top: underlayRect.y + underlayRect.height + 10,
@@ -260,16 +252,16 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
                 minWidth: '200px'
               }}
             >
-              <div className="text-xs text-gray-600 mb-2 text-center">Opacity</div>
+              <Image size={16} className="text-gray-600" />
               <Slider
                 value={[underlayOpacity * 100]}
                 onValueChange={(value) => adjustUnderlayOpacity(value[0] / 100)}
                 max={100}
                 min={0}
                 step={1}
-                className="w-full"
+                className="flex-1"
               />
-              <div className="text-xs text-gray-500 mt-1 text-center">{Math.round(underlayOpacity * 100)}%</div>
+              <span className="text-xs text-gray-600 min-w-[30px]">{Math.round(underlayOpacity * 100)}%</span>
             </div>
           </>
         )}

@@ -1,10 +1,16 @@
+
 import React from "react";
-import { Tool } from "@/types/canvas";
-import { Toggle } from "@/components/ui/toggle";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ImageIcon, ImageOff, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Monitor, 
+  Smartphone, 
+  Upload, 
+  Image, 
+  Trash2,
+  Check,
+  Edit3
+} from "lucide-react";
 
 interface CanvasToolbarProps {
   currentColor: string;
@@ -25,14 +31,12 @@ interface CanvasToolbarProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
   underlayImage: boolean;
   removeUnderlayImage: () => void;
-  underlayOpacity: number;
-  adjustUnderlayOpacity: (opacity: number) => void;
   confirmImagePlacement: () => void;
   imageConfirmed: boolean;
   reactivateImagePositioning: () => void;
 }
 
-const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
+export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   currentColor,
   setCurrentColor,
   fillColor,
@@ -51,139 +55,161 @@ const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   fileInputRef,
   underlayImage,
   removeUnderlayImage,
-  underlayOpacity,
-  adjustUnderlayOpacity,
   confirmImagePlacement,
   imageConfirmed,
-  reactivateImagePositioning
+  reactivateImagePositioning,
 }) => {
-  const handleOrientationChange = (value: string) => {
-    setOrientation(value as "portrait" | "landscape");
-  };
+  const predefinedColors = [
+    "#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", 
+    "#FF00FF", "#00FFFF", "#FFA500", "#800080", "#FFC0CB"
+  ];
 
   return (
-    <div className="p-2 bg-white border-b flex items-center gap-4 flex-wrap">
+    <div className="p-3 bg-white border-b flex flex-wrap items-center gap-3">
+      {/* Drawing Colors */}
       <div className="flex items-center gap-2">
-        <label htmlFor="colorPicker" className="text-sm font-medium">Stroke:</label>
+        <span className="text-sm font-medium">Stroke:</span>
         <input
-          id="colorPicker"
           type="color"
           value={currentColor}
           onChange={(e) => setCurrentColor(e.target.value)}
-          className="w-8 h-8 rounded cursor-pointer"
+          className="w-8 h-8 border border-gray-300 rounded cursor-pointer"
         />
       </div>
 
+      {/* Fill Colors */}
       <div className="flex items-center gap-2">
-        <label htmlFor="fillColorPicker" className="text-sm font-medium">Fill:</label>
+        <span className="text-sm font-medium">Fill:</span>
         <input
-          id="fillColorPicker"
           type="color"
           value={fillColor}
           onChange={(e) => setFillColor(e.target.value)}
-          className="w-8 h-8 rounded cursor-pointer"
+          className="w-8 h-8 border border-gray-300 rounded cursor-pointer"
         />
       </div>
-      
-      <div className="border-l pl-4 flex items-center gap-3">
-        <div className="flex items-center gap-1">
-          <span className="text-sm font-medium">Orientation:</span>
-          <Select
-            value={orientation}
-            onValueChange={handleOrientationChange}
-          >
-            <SelectTrigger className="w-28 h-8 text-xs">
-              <SelectValue placeholder="Portrait" />
-            </SelectTrigger>
-            <SelectContent className="bg-white">
-              <SelectItem value="portrait">Portrait</SelectItem>
-              <SelectItem value="landscape">Landscape</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      
-      <div className="border-l pl-4 flex items-center gap-3">
-        <Toggle 
-          pressed={snapToEndpoints} 
-          onPressedChange={toggleSnapToEndpoints}
-          aria-label="Toggle snap to endpoints"
-          className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
-        >
-          <span className="text-sm">Snap</span>
-        </Toggle>
-        
-        <Toggle 
-          pressed={snapToLines} 
-          onPressedChange={toggleSnapToLines}
-          aria-label="Toggle snap to lines"
-          className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
-        >
-          <span className="text-sm">Lines</span>
-        </Toggle>
-        
-        <Toggle 
-          pressed={snapToAngle} 
-          onPressedChange={toggleSnapToAngle}
-          aria-label="Toggle snap to 45 degree angles"
-          className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
-        >
-          <span className="text-sm">45°</span>
-        </Toggle>
 
-        <Toggle 
-          pressed={snapToExtensions} 
-          onPressedChange={toggleSnapToExtensions}
-          aria-label="Toggle snap to extensions"
-          className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
-        >
-          <span className="text-sm">Extension</span>
-        </Toggle>
+      {/* Predefined Colors */}
+      <div className="flex items-center gap-1">
+        {predefinedColors.map((color) => (
+          <button
+            key={color}
+            className="w-6 h-6 border border-gray-300 rounded cursor-pointer"
+            style={{ backgroundColor: color }}
+            onClick={() => setCurrentColor(color)}
+          />
+        ))}
       </div>
-      
-      <div className="border-l pl-4 flex items-center gap-3">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleUploadClick}
+
+      <Separator orientation="vertical" className="h-8" />
+
+      {/* Canvas Orientation */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">Orientation:</span>
+        <Button
+          variant={orientation === "portrait" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setOrientation("portrait")}
           className="flex items-center gap-1"
         >
-          <Upload size={16} />
-          <span>Underlay</span>
+          <Smartphone className="h-4 w-4" />
+          Portrait
         </Button>
-        <input 
-          ref={fileInputRef}
-          type="file" 
-          accept="image/*" 
-          className="hidden"
-        />
+        <Button
+          variant={orientation === "landscape" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setOrientation("landscape")}
+          className="flex items-center gap-1"
+        >
+          <Monitor className="h-4 w-4" />
+          Landscape
+        </Button>
+      </div>
+
+      <Separator orientation="vertical" className="h-8" />
+
+      {/* Snap Controls */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">Snap:</span>
+        <Button
+          variant={snapToEndpoints ? "default" : "outline"}
+          size="sm"
+          onClick={toggleSnapToEndpoints}
+        >
+          Endpoints
+        </Button>
+        <Button
+          variant={snapToLines ? "default" : "outline"}
+          size="sm"
+          onClick={toggleSnapToLines}
+        >
+          Lines
+        </Button>
+        <Button
+          variant={snapToAngle ? "default" : "outline"}
+          size="sm"
+          onClick={toggleSnapToAngle}
+        >
+          Angle
+        </Button>
+        <Button
+          variant={snapToExtensions ? "default" : "outline"}
+          size="sm"
+          onClick={toggleSnapToExtensions}
+        >
+          Extensions
+        </Button>
+      </div>
+
+      <Separator orientation="vertical" className="h-8" />
+
+      {/* Underlay Image Controls */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">Underlay:</span>
         
-        {underlayImage && (
-          <>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={removeUnderlayImage} 
-              className="flex items-center gap-1 text-red-500"
-            >
-              <ImageOff size={16} />
-              <span>Remove</span>
-            </Button>
+        {!underlayImage ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleUploadClick}
+            className="flex items-center gap-1"
+          >
+            <Upload className="h-4 w-4" />
+            Upload Image
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2">
+            {imageConfirmed ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={reactivateImagePositioning}
+                className="flex items-center gap-1"
+              >
+                <Edit3 className="h-4 w-4" />
+                Edit Position
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={confirmImagePlacement}
+                className="flex items-center gap-1 bg-green-500 hover:bg-green-600"
+              >
+                <Check className="h-4 w-4" />
+                Confirm
+              </Button>
+            )}
             
-            <div className="flex items-center gap-2">
-              <ImageIcon size={16} className="text-gray-500" />
-              <div className="w-24">
-                <Slider 
-                  value={[underlayOpacity * 100]} 
-                  min={10} 
-                  max={100} 
-                  step={5}
-                  onValueChange={(value) => adjustUnderlayOpacity(value[0] / 100)}
-                />
-              </div>
-              <span className="text-xs text-gray-500">{Math.round(underlayOpacity * 100)}%</span>
-            </div>
-          </>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={removeUnderlayImage}
+              className="flex items-center gap-1 text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+              Remove
+            </Button>
+          </div>
         )}
       </div>
     </div>

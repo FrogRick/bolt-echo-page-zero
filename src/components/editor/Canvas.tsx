@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
@@ -571,8 +570,6 @@ const Canvas: React.FC = () => {
         fileInputRef={fileInputRef}
         underlayImage={underlayImage !== null}
         removeUnderlayImage={handleRemoveUnderlayImage}
-        underlayOpacity={underlayOpacity}
-        adjustUnderlayOpacity={adjustUnderlayOpacity}
         confirmImagePlacement={confirmImagePlacement}
         imageConfirmed={imageConfirmed}
         reactivateImagePositioning={reactivateImagePositioning}
