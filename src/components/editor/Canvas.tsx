@@ -572,8 +572,6 @@ const Canvas: React.FC = () => {
         removeUnderlayImage={handleRemoveUnderlayImage}
         underlayOpacity={underlayOpacity}
         adjustUnderlayOpacity={adjustUnderlayOpacity}
-        underlayScale={underlayScale}
-        adjustUnderlayScale={adjustUnderlayScale}
         confirmImagePlacement={confirmImagePlacement}
         imageConfirmed={imageConfirmed}
         reactivateImagePositioning={reactivateImagePositioning}
@@ -606,6 +604,7 @@ const Canvas: React.FC = () => {
         removeUnderlayImage={handleRemoveUnderlayImage}
         imageConfirmed={imageConfirmed}
         reactivateImagePositioning={reactivateImagePositioning}
+        underlayOpacity={underlayOpacity}
       />
     </div>
   );
