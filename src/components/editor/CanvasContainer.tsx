@@ -75,6 +75,26 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       ]
     : [];
 
+  // Handle canvas events - prevent interaction with underlay when using drawing tools
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Only allow canvas drawing when not using select tool
+    if (activeTool !== "select") {
+      startDrawing(e);
+    }
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (activeTool !== "select") {
+      draw(e);
+    }
+  };
+
+  const handleCanvasMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (activeTool !== "select") {
+      endDrawing(e);
+    }
+  };
+
   return (
     <div 
       ref={containerRef} 
@@ -82,7 +102,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       style={{ height: "calc(100% - 120px)" }}
     >
       <div className="flex items-center justify-center relative">
-        {/* Confirmed Underlay Image - Behind canvas */}
+        {/* Confirmed Underlay Image - Above canvas for selection */}
         {underlayRect && underlayImage && imageConfirmed && (
           <div 
             className="absolute cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
@@ -91,12 +111,15 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              zIndex: 1, // Behind canvas
+              zIndex: activeTool === "select" ? 10 : 1, // Above canvas for select tool, behind for drawing tools
+              pointerEvents: activeTool === "select" ? "auto" : "none", // Only interactive with select tool
             }}
             onClick={(e) => {
-              e.stopPropagation();
-              console.log("Confirmed image clicked, reactivating positioning");
-              reactivateImagePositioning();
+              if (activeTool === "select") {
+                e.stopPropagation();
+                console.log("Confirmed image clicked, reactivating positioning");
+                reactivateImagePositioning();
+              }
             }}
           >
             <img 
@@ -172,20 +195,20 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           </div>
         )}
         
-        {/* Canvas - Always on top for drawing */}
+        {/* Canvas - Layer position depends on tool and image state */}
         <canvas
           ref={canvasRef}
           width={canvasSize.width}
           height={canvasSize.height}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={endDrawing}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleCanvasMouseMove}
+          onMouseUp={handleCanvasMouseUp}
           onMouseLeave={endDrawing}
           className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
           style={{ 
             position: "relative", 
-            zIndex: 5, // Above confirmed underlay, below positioning overlay
-            backgroundColor: imageConfirmed ? 'transparent' : 'white' // Make transparent when image is confirmed
+            zIndex: activeTool === "select" && imageConfirmed ? 5 : 15, // Behind confirmed image for select tool, above for drawing
+            backgroundColor: 'white' // Always keep white background
           }}
         />
         
