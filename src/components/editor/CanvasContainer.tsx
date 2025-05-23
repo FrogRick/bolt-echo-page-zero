@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Upload, Move, Check, X } from "lucide-react";
@@ -108,7 +109,24 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       onClick={handleContainerClick}
     >
       <div className="flex items-center justify-center relative">
-        {/* Confirmed Underlay Image - Bottom layer (z-index 0) with select tool interaction */}
+        {/* Canvas - Bottom layer (z-index 1) with white background */}
+        <canvas
+          ref={canvasRef}
+          width={canvasSize.width}
+          height={canvasSize.height}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={endDrawing}
+          onMouseLeave={endDrawing}
+          className={`border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+          style={{ 
+            position: "relative", 
+            zIndex: 1,
+            backgroundColor: 'white', // White canvas background
+          }}
+        />
+
+        {/* Confirmed Underlay Image - Middle layer (z-index 2) */}
         {underlayRect && underlayImage && imageConfirmed && (
           <div 
             className={`absolute transition-all ${
@@ -121,7 +139,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              zIndex: activeTool === "select" ? 10 : 0, // Bring to front when select tool is active
+              zIndex: 2, // Above canvas but below positioning UI
               pointerEvents: activeTool === "select" ? "auto" : "none",
             }}
             onClick={(e) => {
@@ -150,24 +168,6 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             )}
           </div>
         )}
-
-        {/* Canvas - Top layer (z-index 1) with drawings rendered on context */}
-        <canvas
-          ref={canvasRef}
-          width={canvasSize.width}
-          height={canvasSize.height}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={endDrawing}
-          onMouseLeave={endDrawing}
-          className={`border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
-          style={{ 
-            position: "relative", 
-            zIndex: activeTool === "select" && imageConfirmed ? 5 : 1, // Lower z-index when select tool is active with confirmed image
-            backgroundColor: 'transparent',
-            pointerEvents: activeTool === "select" && imageConfirmed ? "none" : "auto" // Disable canvas interaction when selecting confirmed image
-          }}
-        />
 
         {/* Positioning Image Layer - Top layer when not confirmed (z-index 10) */}
         {underlayRect && underlayImage && !imageConfirmed && (
