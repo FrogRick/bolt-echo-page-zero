@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Upload, Move, Check, X } from "lucide-react";
@@ -109,24 +108,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       onClick={handleContainerClick}
     >
       <div className="flex items-center justify-center relative">
-        {/* Canvas - Bottom layer (z-index 1) */}
-        <canvas
-          ref={canvasRef}
-          width={canvasSize.width}
-          height={canvasSize.height}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={endDrawing}
-          onMouseLeave={endDrawing}
-          className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
-          style={{ 
-            position: "relative", 
-            zIndex: 1, // Bottom layer
-            backgroundColor: 'transparent' // Make canvas transparent so underlay shows through
-          }}
-        />
-
-        {/* Confirmed Underlay Image - Middle layer (z-index 2) */}
+        {/* Confirmed Underlay Image - Bottom layer (z-index 0) */}
         {underlayRect && underlayImage && imageConfirmed && (
           <div 
             className="absolute cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
@@ -135,7 +117,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              zIndex: 2, // Middle layer - above canvas, below positioning elements
+              zIndex: 0, // Behind canvas and drawings
               pointerEvents: activeTool === "select" ? "auto" : "none", // Only clickable with select tool
             }}
             onClick={(e) => {
@@ -156,6 +138,23 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
             />
           </div>
         )}
+
+        {/* Canvas - Top layer (z-index 1) with drawings rendered on context */}
+        <canvas
+          ref={canvasRef}
+          width={canvasSize.width}
+          height={canvasSize.height}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={endDrawing}
+          onMouseLeave={endDrawing}
+          className={`border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+          style={{ 
+            position: "relative", 
+            zIndex: 1, // Above underlay image
+            backgroundColor: 'transparent' // Transparent so underlay shows through
+          }}
+        />
 
         {/* Positioning Image Layer - Top layer when not confirmed (z-index 10) */}
         {underlayRect && underlayImage && !imageConfirmed && (
