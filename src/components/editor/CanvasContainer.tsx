@@ -58,6 +58,12 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   const [justFinishedDrag, setJustFinishedDrag] = React.useState(false);
   // Track if we're starting a drag from a confirmed image
   const [startingDragFromConfirmed, setStartingDragFromConfirmed] = React.useState(false);
+  // Track mouse down state for distinguishing click vs drag
+  const [mouseDownOnConfirmed, setMouseDownOnConfirmed] = React.useState<{
+    x: number;
+    y: number;
+    timestamp: number;
+  } | null>(null);
 
   // Reset the drag flag when drag operations end
   React.useEffect(() => {
@@ -136,23 +142,74 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
     }
   };
 
-  // Handle mousedown on confirmed image for click-and-drag activation
+  // Handle mousedown on confirmed image
   const handleConfirmedImageMouseDown = (e: React.MouseEvent) => {
     if (activeTool === "select" && imageConfirmed) {
       e.stopPropagation();
-      console.log("Starting drag from confirmed image");
+      console.log("Mouse down on confirmed image");
       
-      // Set flag to indicate we're starting a drag from confirmed state
-      setStartingDragFromConfirmed(true);
+      // Record the mouse down position and time
+      setMouseDownOnConfirmed({
+        x: e.clientX,
+        y: e.clientY,
+        timestamp: Date.now()
+      });
+    }
+  };
+
+  // Handle mousemove on confirmed image
+  const handleConfirmedImageMouseMove = (e: React.MouseEvent) => {
+    if (mouseDownOnConfirmed && activeTool === "select" && imageConfirmed) {
+      const deltaX = Math.abs(e.clientX - mouseDownOnConfirmed.x);
+      const deltaY = Math.abs(e.clientY - mouseDownOnConfirmed.y);
+      const dragThreshold = 5; // pixels
       
-      // Reactivate positioning mode
-      reactivateImagePositioning();
+      // If mouse moved enough, start drag operation
+      if (deltaX > dragThreshold || deltaY > dragThreshold) {
+        console.log("Starting drag from confirmed image");
+        
+        // Set flag to indicate we're starting a drag from confirmed state
+        setStartingDragFromConfirmed(true);
+        
+        // Clear the mouse down state
+        setMouseDownOnConfirmed(null);
+        
+        // Reactivate positioning mode
+        reactivateImagePositioning();
+        
+        // Start moving immediately with the original mouse down event
+        setTimeout(() => {
+          // Create a synthetic mouse event with the original position
+          const syntheticEvent = {
+            ...e,
+            clientX: mouseDownOnConfirmed.x,
+            clientY: mouseDownOnConfirmed.y,
+            stopPropagation: () => {},
+            preventDefault: () => {}
+          } as React.MouseEvent;
+          startMovingUnderlayRect(syntheticEvent);
+        }, 0);
+      }
+    }
+  };
+
+  // Handle mouseup on confirmed image
+  const handleConfirmedImageMouseUp = (e: React.MouseEvent) => {
+    if (mouseDownOnConfirmed && activeTool === "select" && imageConfirmed) {
+      const deltaX = Math.abs(e.clientX - mouseDownOnConfirmed.x);
+      const deltaY = Math.abs(e.clientY - mouseDownOnConfirmed.y);
+      const timeDelta = Date.now() - mouseDownOnConfirmed.timestamp;
+      const dragThreshold = 5; // pixels
+      const clickTimeThreshold = 300; // milliseconds
       
-      // Start moving immediately
-      // We need to use a timeout to ensure the state update has taken effect
-      setTimeout(() => {
-        startMovingUnderlayRect(e);
-      }, 0);
+      // If it was a simple click (small movement, short time), just activate editing
+      if (deltaX <= dragThreshold && deltaY <= dragThreshold && timeDelta <= clickTimeThreshold) {
+        console.log("Simple click on confirmed image, reactivating positioning");
+        reactivateImagePositioning();
+      }
+      
+      // Clear the mouse down state
+      setMouseDownOnConfirmed(null);
     }
   };
 
@@ -193,6 +250,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               pointerEvents: activeTool === "select" ? "auto" : "none",
             }}
             onMouseDown={handleConfirmedImageMouseDown}
+            onMouseMove={handleConfirmedImageMouseMove}
+            onMouseUp={handleConfirmedImageMouseUp}
           >
             <img 
               src={underlayImage.src}
