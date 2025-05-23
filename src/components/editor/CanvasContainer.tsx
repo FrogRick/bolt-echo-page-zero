@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Upload, Move, Check, X, Image } from "lucide-react";
@@ -53,6 +54,24 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   underlayOpacity,
   adjustUnderlayOpacity,
 }) => {
+  // Track if we just finished a drag operation
+  const [justFinishedDrag, setJustFinishedDrag] = React.useState(false);
+
+  // Reset the drag flag when drag operations end
+  React.useEffect(() => {
+    if (!movingUnderlayRect && !resizingUnderlayRect) {
+      if (justFinishedDrag) {
+        // Use a small timeout to prevent immediate clicks from confirming
+        const timeout = setTimeout(() => {
+          setJustFinishedDrag(false);
+        }, 100);
+        return () => clearTimeout(timeout);
+      }
+    } else {
+      setJustFinishedDrag(true);
+    }
+  }, [movingUnderlayRect, resizingUnderlayRect, justFinishedDrag]);
+
   // Determine cursor style based on the active tool
   const getCursorStyle = () => {
     if (activeTool === "select") {
@@ -81,6 +100,11 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
 
   // Handle clicks outside the image during positioning
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Don't confirm if we just finished a drag operation
+    if (justFinishedDrag) {
+      return;
+    }
+
     // Only confirm if we're in positioning mode (not confirmed) and not currently resizing/moving
     if (underlayRect && underlayImage && !imageConfirmed && !resizingUnderlayRect && !movingUnderlayRect) {
       // Check if the click was outside the image area
@@ -251,6 +275,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
                 zIndex: 15,
                 minWidth: '200px'
               }}
+              onClick={(e) => e.stopPropagation()} // Prevent clicks on slider from confirming placement
             >
               <Image size={16} className="text-gray-600" />
               <Slider
