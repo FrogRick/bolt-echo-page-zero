@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Tool } from "@/types/canvas";
-import { Upload, Move } from "lucide-react";
+import { Upload, Move, Check, X } from "lucide-react";
 
 interface CanvasContainerProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -23,6 +23,9 @@ interface CanvasContainerProps {
   startResizingUnderlayRect: (corner: string, e: React.MouseEvent) => void;
   movingUnderlayRect: boolean;
   startMovingUnderlayRect: (e: React.MouseEvent) => void;
+  confirmImagePlacement: () => void;
+  removeUnderlayImage: () => void;
+  imageConfirmed: boolean;
 }
 
 const CanvasContainer: React.FC<CanvasContainerProps> = ({
@@ -40,6 +43,9 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   startResizingUnderlayRect,
   movingUnderlayRect,
   startMovingUnderlayRect,
+  confirmImagePlacement,
+  removeUnderlayImage,
+  imageConfirmed,
 }) => {
   // Determine cursor style based on the active tool
   const getCursorStyle = () => {
@@ -58,7 +64,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   };
 
   // Calculate resize handle positions if underlayRect exists
-  const resizeHandles = underlayRect
+  const resizeHandles = underlayRect && !imageConfirmed
     ? [
         { position: "nw", x: underlayRect.x, y: underlayRect.y },
         { position: "ne", x: underlayRect.x + underlayRect.width, y: underlayRect.y },
@@ -74,6 +80,75 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       style={{ height: "calc(100% - 120px)" }}
     >
       <div className="flex items-center justify-center relative">
+        {/* Underlay Image Layer - Only visible when confirmed or positioning */}
+        {underlayRect && underlayImage && (
+          <div 
+            className={`absolute ${imageConfirmed ? "" : "border-2 border-blue-400"} overflow-hidden`}
+            style={{
+              left: underlayRect.x,
+              top: underlayRect.y,
+              width: underlayRect.width,
+              height: underlayRect.height,
+              zIndex: imageConfirmed ? 0 : 10, // Behind canvas when confirmed, above when positioning
+              pointerEvents: imageConfirmed ? "none" : "auto",
+              cursor: !imageConfirmed && !resizingUnderlayRect ? 'grab' : 'default'
+            }}
+            onMouseDown={(e) => {
+              if (imageConfirmed) return; // No interaction when confirmed
+              
+              console.log("Image container onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
+              e.stopPropagation();
+              e.preventDefault();
+              // Only handle movement if it's not a resize operation
+              if (!resizingUnderlayRect) {
+                console.log("Starting to move image container");
+                startMovingUnderlayRect(e);
+              }
+            }}
+          >
+            <img 
+              src={underlayImage.src}
+              alt="Underlay"
+              className="object-contain w-full h-full"
+              style={{
+                opacity: 0.5, // Use the opacity setting
+                pointerEvents: 'none'
+              }}
+            />
+            
+            {/* Control buttons - only shown when positioning */}
+            {!imageConfirmed && (
+              <div className="absolute top-2 right-2 flex space-x-2">
+                <button
+                  className="bg-red-500 hover:bg-red-600 text-white p-1 rounded-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeUnderlayImage();
+                  }}
+                >
+                  <X size={16} />
+                </button>
+                <button
+                  className="bg-green-500 hover:bg-green-600 text-white p-1 rounded-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    confirmImagePlacement();
+                  }}
+                >
+                  <Check size={16} />
+                </button>
+              </div>
+            )}
+            
+            {!imageConfirmed && (
+              <div className="absolute top-2 left-2 opacity-70">
+                <Move size={20} className="text-blue-600" />
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Canvas - Always on top for drawing when image is confirmed */}
         <canvas
           ref={canvasRef}
           width={canvasSize.width}
@@ -83,9 +158,13 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           onMouseUp={endDrawing}
           onMouseLeave={endDrawing}
           className={`bg-white border border-gray-200 rounded-lg shadow-md ${getCursorStyle()}`}
+          style={{ 
+            position: "relative", 
+            zIndex: 5 // Always above the confirmed underlay image
+          }}
         />
         
-        {/* Underlay Rectangle Placeholder */}
+        {/* Underlay Rectangle Placeholder - Only visible when no image */}
         {underlayRect && !underlayImage && (
           <div 
             className="absolute border-2 border-dashed border-blue-400 flex items-center justify-center bg-blue-50 bg-opacity-30 group"
@@ -94,7 +173,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               top: underlayRect.y,
               width: underlayRect.width,
               height: underlayRect.height,
-              cursor: movingUnderlayRect ? 'grabbing' : 'grab'
+              cursor: movingUnderlayRect ? 'grabbing' : 'grab',
+              zIndex: 10
             }}
             onClick={(e) => {
               if (!resizingUnderlayRect && !movingUnderlayRect) {
@@ -119,45 +199,8 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
           </div>
         )}
         
-        {/* If image is uploaded, place it in the underlay rect and make it movable/resizable */}
-        {underlayRect && underlayImage && (
-          <div 
-            className="absolute border-2 border-blue-400 flex items-center justify-center overflow-hidden group"
-            style={{
-              left: underlayRect.x,
-              top: underlayRect.y,
-              width: underlayRect.width,
-              height: underlayRect.height,
-              cursor: movingUnderlayRect ? 'grabbing' : 'grab'
-            }}
-            onMouseDown={(e) => {
-              console.log("Image container onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
-              e.stopPropagation();
-              e.preventDefault();
-              // Only handle movement if it's not a resize operation
-              if (!resizingUnderlayRect) {
-                console.log("Starting to move image container");
-                startMovingUnderlayRect(e);
-              }
-            }}
-          >
-            <img 
-              src={underlayImage.src}
-              alt="Underlay"
-              className="object-contain w-full h-full"
-              style={{
-                opacity: 0.5, // Use the opacity setting
-                pointerEvents: 'none'
-              }}
-            />
-            <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Move size={20} className="text-blue-600" />
-            </div>
-          </div>
-        )}
-        
-        {/* Resize Handles - show for both placeholder and image */}
-        {underlayRect && !resizingUnderlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
+        {/* Resize Handles - only show for positioning (not when confirmed) */}
+        {!imageConfirmed && underlayRect && !resizingUnderlayRect && !movingUnderlayRect && resizeHandles.map((handle) => (
           <div
             key={handle.position}
             className="absolute w-5 h-5 bg-white border-2 border-blue-500 rounded-full hover:bg-blue-200 flex items-center justify-center"
@@ -167,7 +210,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               cursor: handle.position === "nw" || handle.position === "se" 
                 ? "nwse-resize" 
                 : "nesw-resize",
-              zIndex: 10
+              zIndex: 15 // Always on top
             }}
             onMouseDown={(e) => {
               console.log(`Resize handle ${handle.position} onMouseDown triggered`, { clientX: e.clientX, clientY: e.clientY });

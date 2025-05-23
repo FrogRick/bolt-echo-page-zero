@@ -40,6 +40,9 @@ const Canvas: React.FC = () => {
     height: number;
   } | null>(null);
   
+  // Add state for tracking if image is confirmed
+  const [imageConfirmed, setImageConfirmed] = useState(false);
+  
   const {
     canvasRef,
     activeTool,
@@ -67,7 +70,7 @@ const Canvas: React.FC = () => {
     // Underlay image controls
     underlayImage,
     addUnderlayImage,
-    removeUnderlayImage,
+    removeUnderlayImage: hookRemoveUnderlayImage,
     underlayScale,
     adjustUnderlayScale,
     underlayOpacity,
@@ -88,17 +91,22 @@ const Canvas: React.FC = () => {
     }
   }, [canvasSize, underlayRect]);
   
-  // Reset underlay rectangle if image is removed
+  // Reset underlay rectangle and confirmed state if image is removed
   useEffect(() => {
-    if (!underlayImage && !underlayRect) {
-      // Reinitialize the rectangle
-      const width = canvasSize.width * 0.5;
-      const height = canvasSize.height * 0.5;
-      const x = (canvasSize.width - width) / 2;
-      const y = (canvasSize.height - height) / 2;
+    if (!underlayImage) {
+      // Reset confirmed state
+      setImageConfirmed(false);
       
-      setUnderlayRect({ x, y, width, height });
-      console.log("Reinitializing underlayRect after image removal:", { x, y, width, height });
+      if (!underlayRect) {
+        // Reinitialize the rectangle
+        const width = canvasSize.width * 0.5;
+        const height = canvasSize.height * 0.5;
+        const x = (canvasSize.width - width) / 2;
+        const y = (canvasSize.height - height) / 2;
+        
+        setUnderlayRect({ x, y, width, height });
+        console.log("Reinitializing underlayRect after image removal:", { x, y, width, height });
+      }
     }
   }, [underlayImage, underlayRect, canvasSize]);
 
@@ -107,9 +115,10 @@ const Canvas: React.FC = () => {
       const file = e.target.files[0];
       console.log("File selected:", file.name);
       addUnderlayImage(file);
+      setImageConfirmed(false); // Reset confirmed state for new image
       toast({
         title: "Image uploaded",
-        description: "You can now resize and move the image",
+        description: "Position and resize the image, then click the green checkmark to confirm.",
       });
     }
   };
@@ -124,6 +133,21 @@ const Canvas: React.FC = () => {
     if (!underlayImage) {
       handleUploadClick();
     }
+  };
+  
+  // New function to confirm image placement
+  const confirmImagePlacement = () => {
+    setImageConfirmed(true);
+    toast({
+      title: "Image placement confirmed",
+      description: "You can now draw on top of the image.",
+    });
+  };
+  
+  // Wrap the removeUnderlayImage function to also reset our state
+  const handleRemoveUnderlayImage = () => {
+    hookRemoveUnderlayImage();
+    setImageConfirmed(false);
   };
   
   // Handle mouse move during resize
@@ -539,14 +563,13 @@ const Canvas: React.FC = () => {
         handleUploadClick={handleUploadClick}
         fileInputRef={fileInputRef}
         underlayImage={underlayImage !== null}
-        removeUnderlayImage={() => {
-          removeUnderlayImage();
-          // Don't reset underlayRect here, it will be recreated by the effect
-        }}
+        removeUnderlayImage={handleRemoveUnderlayImage}
         underlayOpacity={underlayOpacity}
         adjustUnderlayOpacity={adjustUnderlayOpacity}
         underlayScale={underlayScale}
         adjustUnderlayScale={adjustUnderlayScale}
+        confirmImagePlacement={confirmImagePlacement}
+        imageConfirmed={imageConfirmed}
       />
       
       <input 
@@ -572,6 +595,9 @@ const Canvas: React.FC = () => {
         startResizingUnderlayRect={startResizingUnderlayRect}
         movingUnderlayRect={movingUnderlayRect}
         startMovingUnderlayRect={startMovingUnderlayRect}
+        confirmImagePlacement={confirmImagePlacement}
+        removeUnderlayImage={handleRemoveUnderlayImage}
+        imageConfirmed={imageConfirmed}
       />
     </div>
   );
