@@ -54,8 +54,6 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   imageConfirmed,
   reactivateImagePositioning
 }) => {
-  const predefinedColors = ["#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#FFA500", "#800080", "#FFC0CB"];
-  
   // Determine which sections to show based on active tool
   const isFloorPlanOrSymbolTool = activeTool !== "select";
   const showOrientationControls = !underlayImage;
@@ -86,18 +84,6 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
               onChange={e => setFillColor(e.target.value)} 
               className="w-8 h-8 border border-gray-300 rounded cursor-pointer" 
             />
-          </div>
-
-          {/* Predefined Colors */}
-          <div className="flex items-center gap-1">
-            {predefinedColors.map(color => (
-              <button 
-                key={color} 
-                className="w-6 h-6 border border-gray-300 rounded cursor-pointer" 
-                style={{ backgroundColor: color }} 
-                onClick={() => setCurrentColor(color)} 
-              />
-            ))}
           </div>
 
           <Separator orientation="vertical" className="h-8" />
