@@ -12,6 +12,9 @@ export const useCanvasEditor = () => {
   const [selectedShape, setSelectedShape] = useState<Shape | null>(null);
   const [currentColor, setCurrentColor] = useState("#000000");
   const [fillColor, setFillColor] = useState("#ffffff");
+  const [fillOpacity, setFillOpacity] = useState(100);
+  const [strokeOpacity, setStrokeOpacity] = useState(100);
+  const [strokeWidth, setStrokeWidth] = useState(2);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   
   // Drawing state
@@ -60,10 +63,17 @@ export const useCanvasEditor = () => {
 
     // Handle drawing tools
     if (['line', 'rectangle', 'circle', 'free-line', 'text'].includes(activeTool)) {
-      const newDrawingState = handleStartDrawing(activeTool, point, currentColor, fillColor, 50);
+      const newDrawingState = handleStartDrawing(
+        activeTool, 
+        point, 
+        currentColor, 
+        fillColor, 
+        fillOpacity,
+        strokeWidth
+      );
       setDrawingState(newDrawingState);
     }
-  }, [activeTool, getMousePos, findShapeAtPoint, shapes, handleStartDrawing, currentColor, fillColor]);
+  }, [activeTool, getMousePos, findShapeAtPoint, shapes, handleStartDrawing, currentColor, fillColor, fillOpacity, strokeWidth]);
 
   // Continue drawing
   const draw = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -143,8 +153,8 @@ export const useCanvasEditor = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    renderCanvas(ctx, shapes, drawingState.currentShape, 50);
-  }, [shapes, drawingState.currentShape]);
+    renderCanvas(ctx, shapes, drawingState.currentShape, fillOpacity, strokeOpacity);
+  }, [shapes, drawingState.currentShape, fillOpacity, strokeOpacity]);
 
   return {
     canvasRef,
@@ -154,6 +164,12 @@ export const useCanvasEditor = () => {
     setCurrentColor,
     fillColor,
     setFillColor,
+    fillOpacity,
+    setFillOpacity: (opacity: number) => setFillOpacity(opacity),
+    strokeOpacity,
+    setStrokeOpacity: (opacity: number) => setStrokeOpacity(opacity),
+    strokeWidth,
+    setStrokeWidth: (width: number) => setStrokeWidth(width),
     startDrawing,
     draw,
     endDrawing,

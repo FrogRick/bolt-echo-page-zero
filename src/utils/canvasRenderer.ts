@@ -1,20 +1,21 @@
 
 import { Shape } from "@/types/canvas";
 
-export const drawShape = (ctx: CanvasRenderingContext2D, shape: Shape, fillOpacity: number = 50) => {
+export const drawShape = (ctx: CanvasRenderingContext2D, shape: Shape, fillOpacity: number = 50, strokeOpacity: number = 100) => {
   if (!ctx) return;
 
   ctx.save();
   
-  // Set common properties
-  ctx.strokeStyle = shape.strokeColor || shape.color || '#000000';
+  // Set stroke properties
+  const strokeColor = shape.strokeColor || shape.color || '#000000';
+  const strokeAlpha = Math.round((strokeOpacity / 100) * 255).toString(16).padStart(2, '0');
+  ctx.strokeStyle = strokeColor + strokeAlpha;
   ctx.lineWidth = shape.lineWidth || 2;
   
+  // Set fill properties if fillColor exists
   if (shape.fillColor) {
-    // Convert fillOpacity percentage to alpha
-    const alpha = fillOpacity / 100;
-    const fillColorWithAlpha = shape.fillColor + Math.round(alpha * 255).toString(16).padStart(2, '0');
-    ctx.fillStyle = fillColorWithAlpha;
+    const fillAlpha = Math.round((fillOpacity / 100) * 255).toString(16).padStart(2, '0');
+    ctx.fillStyle = shape.fillColor + fillAlpha;
   }
 
   switch (shape.type) {
@@ -71,7 +72,16 @@ export const drawShape = (ctx: CanvasRenderingContext2D, shape: Shape, fillOpaci
     case 'text':
       if (shape.start && shape.text) {
         ctx.font = `${shape.fontSize || 16}px Arial`;
-        ctx.fillStyle = shape.strokeColor || shape.color || '#000000';
+        
+        // Draw background fill if fillColor exists
+        if (shape.fillColor) {
+          const textMetrics = ctx.measureText(shape.text);
+          const textHeight = shape.fontSize || 16;
+          ctx.fillRect(shape.start.x, shape.start.y - textHeight, textMetrics.width, textHeight);
+        }
+        
+        // Draw text stroke
+        ctx.fillStyle = strokeColor + strokeAlpha;
         ctx.fillText(shape.text, shape.start.x, shape.start.y);
       }
       break;
@@ -101,7 +111,8 @@ export const renderCanvas = (
   ctx: CanvasRenderingContext2D, 
   shapes: Shape[], 
   currentShape: Shape | null,
-  fillOpacity: number = 50
+  fillOpacity: number = 50,
+  strokeOpacity: number = 100
 ) => {
   if (!ctx) return;
 
@@ -109,10 +120,10 @@ export const renderCanvas = (
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
   // Draw all completed shapes
-  shapes.forEach(shape => drawShape(ctx, shape, fillOpacity));
+  shapes.forEach(shape => drawShape(ctx, shape, fillOpacity, strokeOpacity));
 
   // Draw the current shape being drawn
   if (currentShape) {
-    drawShape(ctx, currentShape, fillOpacity);
+    drawShape(ctx, currentShape, fillOpacity, strokeOpacity);
   }
 };

@@ -14,14 +14,15 @@ export const useCanvasDrawingLogic = () => {
     point: Point,
     currentColor: string,
     fillColor: string,
-    fillOpacity: number
+    fillOpacity: number,
+    strokeWidth: number = 2
   ): DrawingState => {
     const baseShape = {
       id: Date.now().toString(),
       strokeColor: currentColor,
       fillColor: fillColor,
       color: currentColor,
-      lineWidth: 2,
+      lineWidth: strokeWidth,
     };
 
     switch (tool) {
@@ -33,6 +34,7 @@ export const useCanvasDrawingLogic = () => {
             type: 'line',
             start: point,
             end: point,
+            fillColor: undefined, // Lines don't have fill
           },
           startPoint: point,
           currentPoints: [],
@@ -46,6 +48,8 @@ export const useCanvasDrawingLogic = () => {
             type: 'rectangle',
             start: point,
             end: point,
+            strokeColor: '#000000', // Default black stroke
+            fillColor: '#ffffff', // Default white fill
           },
           startPoint: point,
           currentPoints: [],
@@ -60,6 +64,8 @@ export const useCanvasDrawingLogic = () => {
             start: point,
             end: point,
             radius: 0,
+            strokeColor: '#000000', // Default black stroke
+            fillColor: '#ffffff', // Default white fill
           },
           startPoint: point,
           currentPoints: [],
@@ -72,6 +78,7 @@ export const useCanvasDrawingLogic = () => {
             ...baseShape,
             type: 'free-line',
             points: [point],
+            fillColor: undefined, // Free lines don't have fill
           },
           startPoint: point,
           currentPoints: [point],
