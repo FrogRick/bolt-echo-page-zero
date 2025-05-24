@@ -77,12 +77,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           >
             {activeToolInGroup ? (
               <>
-                <activeToolInGroup.icon className="h-4 w-4" />
+                {React.createElement(activeToolInGroup.icon, { className: "h-4 w-4" })}
                 <span className="hidden sm:inline">{activeToolInGroup.label}</span>
               </>
             ) : (
               <>
-                <tools[0].icon className="h-4 w-4" />
+                {React.createElement(tools[0].icon, { className: "h-4 w-4" })}
                 <span className="hidden sm:inline">{groupLabel}</span>
               </>
             )}
@@ -96,7 +96,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               onClick={() => onToolChange(tool.id as Tool)}
               className="flex items-center gap-2 cursor-pointer hover:bg-gray-100"
             >
-              <tool.icon className="h-4 w-4" />
+              {React.createElement(tool.icon, { className: "h-4 w-4" })}
               <span>{tool.label}</span>
             </DropdownMenuItem>
           ))}
