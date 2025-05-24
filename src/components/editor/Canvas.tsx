@@ -53,6 +53,12 @@ const Canvas: React.FC = () => {
     setCurrentColor,
     fillColor,
     setFillColor,
+    fillOpacity,
+    setFillOpacity,
+    strokeOpacity,
+    setStrokeOpacity,
+    strokeWidth,
+    setStrokeWidth,
     startDrawing,
     draw,
     endDrawing,
@@ -704,6 +710,10 @@ const Canvas: React.FC = () => {
         setFillColor={setFillColor}
         fillOpacity={fillOpacity}
         setFillOpacity={setFillOpacity}
+        strokeOpacity={strokeOpacity}
+        setStrokeOpacity={setStrokeOpacity}
+        strokeWidth={strokeWidth}
+        setStrokeWidth={setStrokeWidth}
         orientation={orientation}
         setOrientation={setOrientation}
         snapToEndpoints={snapToEndpoints}
