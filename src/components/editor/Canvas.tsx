@@ -7,6 +7,7 @@ import CanvasContainer from "./CanvasContainer";
 import { calculateScaleFactor, calculateCanvasSize, INITIAL_SCALE_FACTOR } from "./CanvasUtils";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
+import { InlineTextEditor } from "./InlineTextEditor";
 
 const Canvas: React.FC = () => {
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
@@ -60,12 +61,10 @@ const Canvas: React.FC = () => {
     setStrokeWidth,
     fontSize,
     setFontSize,
-    textInput,
-    setTextInput,
-    isTextInputVisible,
-    textPosition,
-    confirmTextInput,
-    cancelTextInput,
+    editingText,
+    updateTextContent,
+    updateTextPosition,
+    finishTextEditing,
     startDrawing,
     draw,
     endDrawing,
@@ -750,53 +749,43 @@ const Canvas: React.FC = () => {
         className="hidden"
       />
       
-      <CanvasContainer
-        canvasRef={canvasRef}
-        canvasSize={canvasSize}
-        startDrawing={startDrawing}
-        draw={draw}
-        endDrawing={endDrawing}
-        activeTool={activeTool}
-        underlayImage={underlayImage}
-        containerRef={containerRef}
-        underlayRect={underlayRect}
-        handleUnderlayRectClick={handleUnderlayRectClick}
-        resizingUnderlayRect={resizingUnderlayRect}
-        startResizingUnderlayRect={startResizingUnderlayRect}
-        movingUnderlayRect={movingUnderlayRect}
-        startMovingUnderlayRect={startMovingUnderlayRect}
-        confirmImagePlacement={confirmImagePlacement}
-        removeUnderlayImage={handleRemoveUnderlayImage}
-        imageConfirmed={imageConfirmed}
-        reactivateImagePositioning={reactivateImagePositioning}
-        underlayOpacity={underlayOpacity}
-        adjustUnderlayOpacity={adjustUnderlayOpacity}
-        fillOpacity={fillOpacity}
-      />
-      
-      {/* Text Input Modal */}
-      {isTextInputVisible && textPosition && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-            <h3 className="text-lg font-semibold mb-4">Enter Text</h3>
-            <textarea
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Type your text here..."
-              className="w-full h-32 p-3 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={cancelTextInput}>
-                Cancel
-              </Button>
-              <Button onClick={confirmTextInput} disabled={!textInput.trim()}>
-                Add Text
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="relative flex-1">
+        <CanvasContainer
+          canvasRef={canvasRef}
+          canvasSize={canvasSize}
+          startDrawing={startDrawing}
+          draw={draw}
+          endDrawing={endDrawing}
+          activeTool={activeTool}
+          underlayImage={underlayImage}
+          containerRef={containerRef}
+          underlayRect={underlayRect}
+          handleUnderlayRectClick={handleUnderlayRectClick}
+          resizingUnderlayRect={resizingUnderlayRect}
+          startResizingUnderlayRect={startResizingUnderlayRect}
+          movingUnderlayRect={movingUnderlayRect}
+          startMovingUnderlayRect={startMovingUnderlayRect}
+          confirmImagePlacement={confirmImagePlacement}
+          removeUnderlayImage={handleRemoveUnderlayImage}
+          imageConfirmed={imageConfirmed}
+          reactivateImagePositioning={reactivateImagePositioning}
+          underlayOpacity={underlayOpacity}
+          adjustUnderlayOpacity={adjustUnderlayOpacity}
+          fillOpacity={fillOpacity}
+        />
+        
+        {/* Inline Text Editor */}
+        {editingText && (
+          <InlineTextEditor
+            text={editingText}
+            onTextChange={updateTextContent}
+            onPositionChange={updateTextPosition}
+            onFinish={finishTextEditing}
+            fontSize={fontSize}
+            color={currentColor}
+          />
+        )}
+      </div>
     </div>
   );
 };
