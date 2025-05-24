@@ -71,16 +71,25 @@ export const drawShape = (ctx: CanvasRenderingContext2D, shape: Shape, fillOpaci
 
     case 'text':
       if (shape.start && shape.text) {
-        ctx.font = `${shape.fontSize || 16}px Arial`;
+        const fontSize = shape.fontSize || 16;
+        ctx.font = `${fontSize}px Arial`;
+        
+        // Measure text for background
+        const textMetrics = ctx.measureText(shape.text);
+        const textHeight = fontSize;
         
         // Draw background fill if fillColor exists
         if (shape.fillColor) {
-          const textMetrics = ctx.measureText(shape.text);
-          const textHeight = shape.fontSize || 16;
-          ctx.fillRect(shape.start.x, shape.start.y - textHeight, textMetrics.width, textHeight);
+          ctx.fillStyle = shape.fillColor + Math.round((fillOpacity / 100) * 255).toString(16).padStart(2, '0');
+          ctx.fillRect(
+            shape.start.x, 
+            shape.start.y - textHeight, 
+            textMetrics.width, 
+            textHeight + 4
+          );
         }
         
-        // Draw text stroke
+        // Draw text with stroke color
         ctx.fillStyle = strokeColor + strokeAlpha;
         ctx.fillText(shape.text, shape.start.x, shape.start.y);
       }

@@ -17,6 +17,12 @@ export const useCanvasEditor = () => {
   const [strokeWidth, setStrokeWidth] = useState(2);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   
+  // Text-specific state
+  const [textInput, setTextInput] = useState("");
+  const [fontSize, setFontSize] = useState(16);
+  const [isTextInputVisible, setIsTextInputVisible] = useState(false);
+  const [textPosition, setTextPosition] = useState<Point | null>(null);
+  
   // Drawing state
   const [drawingState, setDrawingState] = useState<DrawingState>({
     isDrawing: false,
@@ -61,8 +67,16 @@ export const useCanvasEditor = () => {
       return;
     }
 
-    // Handle drawing tools
-    if (['line', 'rectangle', 'circle', 'free-line', 'text'].includes(activeTool)) {
+    if (activeTool === "text") {
+      // Show text input at clicked position
+      setTextPosition(point);
+      setIsTextInputVisible(true);
+      setTextInput("");
+      return;
+    }
+
+    // Handle other drawing tools
+    if (['line', 'rectangle', 'circle', 'free-line'].includes(activeTool)) {
       const newDrawingState = handleStartDrawing(
         activeTool, 
         point, 
@@ -92,6 +106,37 @@ export const useCanvasEditor = () => {
     setShapes(result.shapes);
     setDrawingState(result.drawingState);
   }, [drawingState, activeTool, shapes, handleEndDrawing]);
+
+  // Handle text input confirmation
+  const confirmTextInput = useCallback(() => {
+    if (!textPosition || !textInput.trim()) {
+      setIsTextInputVisible(false);
+      return;
+    }
+
+    const newShape: Shape = {
+      id: crypto.randomUUID(),
+      type: 'text',
+      start: textPosition,
+      text: textInput,
+      fontSize,
+      strokeColor: currentColor,
+      fillColor: fillColor,
+      lineWidth: strokeWidth,
+    };
+
+    setShapes(prev => [...prev, newShape]);
+    setIsTextInputVisible(false);
+    setTextInput("");
+    setTextPosition(null);
+  }, [textPosition, textInput, fontSize, currentColor, fillColor, strokeWidth]);
+
+  // Cancel text input
+  const cancelTextInput = useCallback(() => {
+    setIsTextInputVisible(false);
+    setTextInput("");
+    setTextPosition(null);
+  }, []);
 
   // Delete selected shape
   const deleteSelected = useCallback(() => {
@@ -170,6 +215,14 @@ export const useCanvasEditor = () => {
     setStrokeOpacity: (opacity: number) => setStrokeOpacity(opacity),
     strokeWidth,
     setStrokeWidth: (width: number) => setStrokeWidth(width),
+    fontSize,
+    setFontSize: (size: number) => setFontSize(size),
+    textInput,
+    setTextInput,
+    isTextInputVisible,
+    textPosition,
+    confirmTextInput,
+    cancelTextInput,
     startDrawing,
     draw,
     endDrawing,

@@ -18,6 +18,8 @@ interface CanvasToolbarProps {
   setStrokeOpacity: (opacity: number) => void;
   strokeWidth: number;
   setStrokeWidth: (width: number) => void;
+  fontSize?: number;
+  setFontSize?: (size: number) => void;
   orientation: "portrait" | "landscape";
   setOrientation: (orientation: "portrait" | "landscape") => void;
   snapToEndpoints: boolean;
@@ -49,6 +51,8 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   setStrokeOpacity,
   strokeWidth,
   setStrokeWidth,
+  fontSize = 16,
+  setFontSize,
   orientation,
   setOrientation,
   snapToEndpoints,
@@ -70,10 +74,11 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   // Determine which sections to show based on active tool
   const isFloorPlanOrSymbolTool = activeTool !== "select";
   const showOrientationControls = !underlayImage;
-  const showSnapControls = isFloorPlanOrSymbolTool && !['free-line', 'line'].includes(activeTool);
+  const showSnapControls = isFloorPlanOrSymbolTool && !['free-line', 'line', 'text'].includes(activeTool);
   const showColorControls = isFloorPlanOrSymbolTool;
   const showFillControls = ['rectangle', 'circle', 'text'].includes(activeTool);
   const showStrokeWidth = ['free-line', 'line', 'rectangle', 'circle', 'text'].includes(activeTool);
+  const showTextControls = activeTool === 'text';
 
   return (
     <div className="p-3 bg-white border-b flex flex-wrap items-center gap-3">
@@ -149,6 +154,24 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
             </div>
           )}
 
+          {/* Text Size - Only show for text tool */}
+          {showTextControls && setFontSize && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Size:</span>
+              <div className="w-20">
+                <Slider
+                  value={[fontSize]}
+                  onValueChange={(value) => setFontSize(value[0])}
+                  max={72}
+                  min={8}
+                  step={2}
+                  className="w-full"
+                />
+              </div>
+              <span className="text-xs text-gray-600 w-8">{fontSize}px</span>
+            </div>
+          )}
+
           <Separator orientation="vertical" className="h-8" />
         </>
       )}
@@ -182,7 +205,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         </>
       )}
 
-      {/* Snap Controls - Only show when floor plan or symbol tool is active and not free-line/line */}
+      {/* Snap Controls - Only show when floor plan or symbol tool is active and not free-line/line/text */}
       {showSnapControls && (
         <>
           <div className="flex items-center gap-2">
