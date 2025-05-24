@@ -30,6 +30,7 @@ interface CanvasContainerProps {
   reactivateImagePositioning: () => void;
   underlayOpacity: number;
   adjustUnderlayOpacity: (opacity: number) => void;
+  fillOpacity: number;
 }
 
 const CanvasContainer: React.FC<CanvasContainerProps> = ({
