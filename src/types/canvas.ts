@@ -16,12 +16,14 @@ export type Tool =
   | 'green-polygon'
   | 'free-line'
   | 'rectangle'
-  | 'text';
+  | 'text'
+  | 'circle'
+  | 'line';
 
 // Shape types for drawing
 export type Shape = {
   id: string;
-  type: 'line' | 'rectangle' | 'polygon' | 'free-line' | 'text';
+  type: 'line' | 'rectangle' | 'polygon' | 'free-line' | 'text' | 'circle';
   start?: Point;  // Optional for polygon type
   end?: Point;    // Optional for polygon type
   points?: Point[];  // Required for polygon type and free-line
@@ -31,6 +33,7 @@ export type Shape = {
   lineWidth?: number;
   text?: string;  // For text shapes
   fontSize?: number;  // For text shapes
+  radius?: number;  // For circle shapes
 };
 
 // Preview line for drawing guidance
