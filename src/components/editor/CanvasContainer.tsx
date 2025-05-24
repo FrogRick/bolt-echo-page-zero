@@ -58,8 +58,15 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   const [justFinishedDrag, setJustFinishedDrag] = React.useState(false);
   // Track if we're starting a drag from a confirmed image
   const [startingDragFromConfirmed, setStartingDragFromConfirmed] = React.useState(false);
-  // Track mouse down state for distinguishing click vs drag
+  // Track mouse down state for distinguishing click vs drag on confirmed image
   const [mouseDownOnConfirmed, setMouseDownOnConfirmed] = React.useState<{
+    x: number;
+    y: number;
+    timestamp: number;
+  } | null>(null);
+  
+  // Track mouse down state for distinguishing click vs drag on placeholder
+  const [mouseDownOnPlaceholder, setMouseDownOnPlaceholder] = React.useState<{
     x: number;
     y: number;
     timestamp: number;
@@ -210,6 +217,61 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       
       // Clear the mouse down state
       setMouseDownOnConfirmed(null);
+    }
+  };
+
+  // Handle mousedown on placeholder
+  const handlePlaceholderMouseDown = (e: React.MouseEvent) => {
+    console.log("Placeholder onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
+    e.stopPropagation();
+    e.preventDefault();
+    
+    // Record the mouse down position and time
+    setMouseDownOnPlaceholder({
+      x: e.clientX,
+      y: e.clientY,
+      timestamp: Date.now()
+    });
+    
+    // Only handle movement if it's not a resize operation
+    if (!resizingUnderlayRect) {
+      console.log("Starting to move placeholder");
+      startMovingUnderlayRect(e);
+    }
+  };
+
+  // Handle mousemove on placeholder
+  const handlePlaceholderMouseMove = (e: React.MouseEvent) => {
+    if (mouseDownOnPlaceholder) {
+      const deltaX = Math.abs(e.clientX - mouseDownOnPlaceholder.x);
+      const deltaY = Math.abs(e.clientY - mouseDownOnPlaceholder.y);
+      const dragThreshold = 5; // pixels
+      
+      // If mouse moved enough, we're dragging - clear the mouse down state to prevent upload
+      if (deltaX > dragThreshold || deltaY > dragThreshold) {
+        console.log("Drag detected on placeholder, clearing click state");
+        setMouseDownOnPlaceholder(null);
+      }
+    }
+  };
+
+  // Handle mouseup on placeholder
+  const handlePlaceholderMouseUp = (e: React.MouseEvent) => {
+    if (mouseDownOnPlaceholder) {
+      const deltaX = Math.abs(e.clientX - mouseDownOnPlaceholder.x);
+      const deltaY = Math.abs(e.clientY - mouseDownOnPlaceholder.y);
+      const timeDelta = Date.now() - mouseDownOnPlaceholder.timestamp;
+      const dragThreshold = 5; // pixels
+      const clickTimeThreshold = 300; // milliseconds
+      
+      // If it was a simple click (small movement, short time), trigger upload
+      if (deltaX <= dragThreshold && deltaY <= dragThreshold && timeDelta <= clickTimeThreshold && !resizingUnderlayRect && !movingUnderlayRect) {
+        console.log("Simple click on placeholder, triggering upload");
+        handleUnderlayRectClick();
+      }
+      
+      // Clear the mouse down state
+      setMouseDownOnPlaceholder(null);
     }
   };
 
@@ -385,21 +447,9 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
               cursor: movingUnderlayRect ? 'grabbing' : 'grab',
               zIndex: 10
             }}
-            onClick={(e) => {
-              if (!resizingUnderlayRect && !movingUnderlayRect) {
-                handleUnderlayRectClick();
-              }
-            }}
-            onMouseDown={(e) => {
-              console.log("Placeholder onMouseDown triggered", { clientX: e.clientX, clientY: e.clientY });
-              e.stopPropagation();
-              e.preventDefault();
-              // Only handle movement if it's not a resize operation
-              if (!resizingUnderlayRect) {
-                console.log("Starting to move placeholder");
-                startMovingUnderlayRect(e);
-              }
-            }}
+            onMouseDown={handlePlaceholderMouseDown}
+            onMouseMove={handlePlaceholderMouseMove}
+            onMouseUp={handlePlaceholderMouseUp}
           >
             <div className="flex flex-col items-center justify-center opacity-70 group-hover:opacity-100">
               <Upload size={32} className="text-blue-500 mb-2" />
