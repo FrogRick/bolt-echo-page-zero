@@ -65,7 +65,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   const renderDropdownGroup = (tools: typeof floorPlanTools, groupLabel: string) => {
     const isAnyToolActive = tools.some(tool => activeTool === tool.id);
-    const activeTool_in_group = tools.find(tool => activeTool === tool.id);
+    const activeToolInGroup = tools.find(tool => activeTool === tool.id);
     
     return (
       <DropdownMenu>
@@ -75,10 +75,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             size="sm"
             className="flex items-center gap-1 px-3"
           >
-            {activeTool_in_group ? (
+            {activeToolInGroup ? (
               <>
-                <activeTool_in_group.icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{activeTool_in_group.label}</span>
+                <activeToolInGroup.icon className="h-4 w-4" />
+                <span className="hidden sm:inline">{activeToolInGroup.label}</span>
               </>
             ) : (
               <>
