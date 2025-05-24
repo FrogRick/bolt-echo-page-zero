@@ -233,11 +233,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       timestamp: Date.now()
     });
     
-    // Only handle movement if it's not a resize operation
-    if (!resizingUnderlayRect) {
-      console.log("Starting to move placeholder");
-      startMovingUnderlayRect(e);
-    }
+    // DON'T start moving here - wait for mouse move to detect drag
   };
 
   // Handle mousemove on placeholder
@@ -247,10 +243,26 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
       const deltaY = Math.abs(e.clientY - mouseDownOnPlaceholder.y);
       const dragThreshold = 5; // pixels
       
-      // If mouse moved enough, we're dragging - clear the mouse down state to prevent upload
+      // If mouse moved enough, start drag operation
       if (deltaX > dragThreshold || deltaY > dragThreshold) {
-        console.log("Drag detected on placeholder, clearing click state");
+        console.log("Drag detected on placeholder, starting move");
+        
+        // Start moving with the original mouse down position
+        const syntheticEvent = {
+          ...e,
+          clientX: mouseDownOnPlaceholder.x,
+          clientY: mouseDownOnPlaceholder.y,
+          stopPropagation: () => {},
+          preventDefault: () => {}
+        } as React.MouseEvent;
+        
+        // Clear the mouse down state to prevent upload
         setMouseDownOnPlaceholder(null);
+        
+        // Start moving if not resizing
+        if (!resizingUnderlayRect) {
+          startMovingUnderlayRect(syntheticEvent);
+        }
       }
     }
   };
