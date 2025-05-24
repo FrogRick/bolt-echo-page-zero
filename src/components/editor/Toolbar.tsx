@@ -2,7 +2,7 @@
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Button } from "@/components/ui/button";
-import { MousePointer, Square, Triangle, Save, Trash2, X, ChevronDown } from "lucide-react";
+import { MousePointer, Square, Triangle, Save, Trash2, X, ChevronDown, Pen, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -41,6 +41,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     { id: "yellow-polygon", icon: Triangle, label: "Yellow Polygon" },
     { id: "green-rectangle", icon: Square, label: "Green Rectangle" },
     { id: "green-polygon", icon: Triangle, label: "Green Polygon" }
+  ];
+
+  const extraTools = [
+    { id: "free-line", icon: Pen, label: "Free Line" },
+    { id: "rectangle", icon: Square, label: "Rectangle" },
+    { id: "text", icon: Type, label: "Text" }
   ];
 
   const handleSave = () => {
@@ -119,6 +125,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       
       {/* Symbol Tools Dropdown */}
       {renderDropdownGroup(symbolTools, "Symbols")}
+      
+      <Separator orientation="vertical" className="h-8" />
+      
+      {/* Extras Tools Dropdown */}
+      {renderDropdownGroup(extraTools, "Extras")}
       
       <div className="ml-auto flex items-center gap-2">
         <Button

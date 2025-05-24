@@ -13,19 +13,24 @@ export type Tool =
   | 'yellow-polygon'
   | 'wall-polygon'
   | 'green-rectangle'
-  | 'green-polygon';
+  | 'green-polygon'
+  | 'free-line'
+  | 'rectangle'
+  | 'text';
 
 // Shape types for drawing
 export type Shape = {
   id: string;
-  type: 'line' | 'rectangle' | 'polygon';
+  type: 'line' | 'rectangle' | 'polygon' | 'free-line' | 'text';
   start?: Point;  // Optional for polygon type
   end?: Point;    // Optional for polygon type
-  points?: Point[];  // Required for polygon type
+  points?: Point[];  // Required for polygon type and free-line
   fillColor?: string;
   strokeColor?: string;
   color?: string; // For backward compatibility
   lineWidth?: number;
+  text?: string;  // For text shapes
+  fontSize?: number;  // For text shapes
 };
 
 // Preview line for drawing guidance
