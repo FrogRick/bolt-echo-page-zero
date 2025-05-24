@@ -2,9 +2,15 @@
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Button } from "@/components/ui/button";
-import { MousePointer, Square, Triangle, Save, Trash2, X } from "lucide-react";
+import { MousePointer, Square, Triangle, Save, Trash2, X, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ToolbarProps {
   activeTool: Tool;
@@ -44,40 +50,75 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     });
   };
 
-  const renderToolGroup = (tools: typeof selectTool, groupLabel?: string) => (
-    <div className="flex items-center gap-1">
-      {groupLabel && (
-        <span className="text-xs text-gray-500 mr-2 font-medium">{groupLabel}:</span>
-      )}
-      {tools.map((tool) => (
-        <Button
-          key={tool.id}
-          variant={activeTool === tool.id as Tool ? "default" : "outline"}
-          size="sm"
-          onClick={() => onToolChange(tool.id as Tool)}
-          className="flex items-center gap-1 px-3"
-        >
-          <tool.icon className="h-4 w-4" />
-          <span className="hidden sm:inline">{tool.label}</span>
-        </Button>
-      ))}
-    </div>
+  const renderSingleTool = (tool: typeof selectTool[0]) => (
+    <Button
+      key={tool.id}
+      variant={activeTool === tool.id as Tool ? "default" : "outline"}
+      size="sm"
+      onClick={() => onToolChange(tool.id as Tool)}
+      className="flex items-center gap-1 px-3"
+    >
+      <tool.icon className="h-4 w-4" />
+      <span className="hidden sm:inline">{tool.label}</span>
+    </Button>
   );
+
+  const renderDropdownGroup = (tools: typeof floorPlanTools, groupLabel: string) => {
+    const isAnyToolActive = tools.some(tool => activeTool === tool.id);
+    const activeTool_in_group = tools.find(tool => activeTool === tool.id);
+    
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant={isAnyToolActive ? "default" : "outline"}
+            size="sm"
+            className="flex items-center gap-1 px-3"
+          >
+            {activeTool_in_group ? (
+              <>
+                <activeTool_in_group.icon className="h-4 w-4" />
+                <span className="hidden sm:inline">{activeTool_in_group.label}</span>
+              </>
+            ) : (
+              <>
+                <tools[0].icon className="h-4 w-4" />
+                <span className="hidden sm:inline">{groupLabel}</span>
+              </>
+            )}
+            <ChevronDown className="h-3 w-3 ml-1" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="bg-white border shadow-md z-50">
+          {tools.map((tool) => (
+            <DropdownMenuItem
+              key={tool.id}
+              onClick={() => onToolChange(tool.id as Tool)}
+              className="flex items-center gap-2 cursor-pointer hover:bg-gray-100"
+            >
+              <tool.icon className="h-4 w-4" />
+              <span>{tool.label}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
 
   return (
     <div className="p-2 bg-white border-b flex items-center gap-3 flex-wrap">
       {/* Select Tool */}
-      {renderToolGroup(selectTool)}
+      {renderSingleTool(selectTool[0])}
       
       <Separator orientation="vertical" className="h-8" />
       
-      {/* Floor Plan Tools */}
-      {renderToolGroup(floorPlanTools, "Floor Plan")}
+      {/* Floor Plan Tools Dropdown */}
+      {renderDropdownGroup(floorPlanTools, "Floor Plan")}
       
       <Separator orientation="vertical" className="h-8" />
       
-      {/* Symbol Tools */}
-      {renderToolGroup(symbolTools, "Symbols")}
+      {/* Symbol Tools Dropdown */}
+      {renderDropdownGroup(symbolTools, "Symbols")}
       
       <div className="ml-auto flex items-center gap-2">
         <Button
