@@ -6,6 +6,7 @@ import CanvasToolbar from "./CanvasToolbar";
 import CanvasContainer from "./CanvasContainer";
 import { calculateScaleFactor, calculateCanvasSize, INITIAL_SCALE_FACTOR } from "./CanvasUtils";
 import { toast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
 
 const Canvas: React.FC = () => {
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
