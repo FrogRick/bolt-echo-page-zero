@@ -408,7 +408,8 @@ export const drawShapes = (
   ctx: CanvasRenderingContext2D, 
   shapes: Shape[], 
   selectedShapeId: string | null, 
-  defaultFillColor: string
+  defaultFillColor: string,
+  fillOpacity: number = 50
 ): void => {
   // Sort shapes to ensure rectangles and polygons are drawn first (below lines)
   const sortedShapes = [...shapes].sort((a, b) => {
@@ -421,15 +422,43 @@ export const drawShapes = (
   // Clear the canvas with a normal composite operation
   ctx.globalCompositeOperation = 'source-over';
   
+  // Helper function to convert color to rgba with opacity
+  const applyOpacity = (color: string, opacity: number): string => {
+    // Handle hex colors
+    if (color.startsWith('#')) {
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
+    }
+    
+    // Handle rgb colors
+    if (color.startsWith('rgb(')) {
+      return color.replace(/rgb\((.+)\)/, `rgba($1, ${opacity / 100})`);
+    }
+    
+    // Handle rgba colors - replace the alpha value
+    if (color.startsWith('rgba(')) {
+      return color.replace(/rgba\((.+),\s*[\d.]+\)/, `rgba($1, ${opacity / 100})`);
+    }
+    
+    // Fallback
+    return color;
+  };
+  
   // STEP 1: Draw all fills for rectangles and polygons first
   sortedShapes.forEach(shape => {
     if (shape.type !== 'line') {
       // Save context state
       ctx.save();
       
-      // Draw only fills in this pass - using full opacity (100%) for completed shapes
+      // Get the fill color and apply opacity
+      const shapeColor = 'fillColor' in shape ? shape.fillColor : defaultFillColor;
+      const fillColorWithOpacity = applyOpacity(shapeColor, fillOpacity);
+      
+      // Draw only fills in this pass - using the specified opacity
       if (shape.type === 'rectangle') {
-        ctx.fillStyle = 'fillColor' in shape ? shape.fillColor : defaultFillColor;
+        ctx.fillStyle = fillColorWithOpacity;
         ctx.beginPath();
         ctx.rect(
           shape.start.x,
@@ -439,7 +468,7 @@ export const drawShapes = (
         );
         ctx.fill();
       } else if (shape.type === 'polygon') {
-        ctx.fillStyle = 'fillColor' in shape ? shape.fillColor : defaultFillColor;
+        ctx.fillStyle = fillColorWithOpacity;
         
         if (shape.points.length > 0) {
           ctx.beginPath();
@@ -584,7 +613,8 @@ export const drawInProgressPolygon = (
   strokeColor: string,
   fillColor: string,
   isWallPolygon: boolean = false,
-  showStartPoint: boolean = true  // Changed default to true to fix the red dot issue
+  showStartPoint: boolean = true,
+  fillOpacity: number = 50
 ): void => {
   if (polygonPoints.length === 0) return;
   
@@ -633,9 +663,8 @@ export const drawInProgressPolygon = (
     // Regular polygon style
     ctx.strokeStyle = strokeColor;
     
-    // Apply 50% opacity for in-progress polygons
+    // Apply the specified opacity for in-progress polygons
     const baseColor = fillColor;
-    // Extract the RGB components and create a semi-transparent version
     let semiTransparentColor = baseColor;
     
     // Handle both hex and rgb formats
@@ -644,10 +673,13 @@ export const drawInProgressPolygon = (
       const r = parseInt(baseColor.slice(1, 3), 16);
       const g = parseInt(baseColor.slice(3, 5), 16);
       const b = parseInt(baseColor.slice(5, 7), 16);
-      semiTransparentColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+      semiTransparentColor = `rgba(${r}, ${g}, ${b}, ${fillOpacity / 100})`;
     } else if (baseColor.startsWith('rgb(')) {
       // Convert rgb to rgba
-      semiTransparentColor = baseColor.replace(/rgb\((.+)\)/, 'rgba($1, 0.5)');
+      semiTransparentColor = baseColor.replace(/rgb\((.+)\)/, `rgba($1, ${fillOpacity / 100})`);
+    } else if (baseColor.startsWith('rgba(')) {
+      // Update existing rgba opacity
+      semiTransparentColor = baseColor.replace(/rgba\((.+),\s*[\d.]+\)/, `rgba($1, ${fillOpacity / 100})`);
     }
     
     ctx.fillStyle = semiTransparentColor;

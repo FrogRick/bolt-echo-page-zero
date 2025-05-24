@@ -2,6 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { Monitor, Smartphone, Upload, Image, Trash2, Check, Edit3 } from "lucide-react";
 import { Tool } from "@/types/canvas";
 
@@ -11,6 +12,8 @@ interface CanvasToolbarProps {
   setCurrentColor: (color: string) => void;
   fillColor: string;
   setFillColor: (color: string) => void;
+  fillOpacity: number;
+  setFillOpacity: (opacity: number) => void;
   orientation: "portrait" | "landscape";
   setOrientation: (orientation: "portrait" | "landscape") => void;
   snapToEndpoints: boolean;
@@ -36,6 +39,8 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   setCurrentColor,
   fillColor,
   setFillColor,
+  fillOpacity,
+  setFillOpacity,
   orientation,
   setOrientation,
   snapToEndpoints,
@@ -75,7 +80,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
             />
           </div>
 
-          {/* Fill Colors */}
+          {/* Fill Colors with Opacity */}
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Fill:</span>
             <input 
@@ -84,6 +89,20 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
               onChange={e => setFillColor(e.target.value)} 
               className="w-8 h-8 border border-gray-300 rounded cursor-pointer" 
             />
+            <div className="flex items-center gap-2 ml-2">
+              <span className="text-xs text-gray-600">Opacity:</span>
+              <div className="w-20">
+                <Slider
+                  value={[fillOpacity]}
+                  onValueChange={(value) => setFillOpacity(value[0])}
+                  max={100}
+                  min={0}
+                  step={5}
+                  className="w-full"
+                />
+              </div>
+              <span className="text-xs text-gray-600 w-8">{fillOpacity}%</span>
+            </div>
           </div>
 
           <Separator orientation="vertical" className="h-8" />

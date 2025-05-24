@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/use-toast";
 const Canvas: React.FC = () => {
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
   const [scaleFactor, setScaleFactor] = useState(INITIAL_SCALE_FACTOR);
+  const [fillOpacity, setFillOpacity] = useState(50); // Default 50% opacity
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -701,6 +702,8 @@ const Canvas: React.FC = () => {
         setCurrentColor={setCurrentColor}
         fillColor={fillColor}
         setFillColor={setFillColor}
+        fillOpacity={fillOpacity}
+        setFillOpacity={setFillOpacity}
         orientation={orientation}
         setOrientation={setOrientation}
         snapToEndpoints={snapToEndpoints}
@@ -749,6 +752,7 @@ const Canvas: React.FC = () => {
         reactivateImagePositioning={reactivateImagePositioning}
         underlayOpacity={underlayOpacity}
         adjustUnderlayOpacity={adjustUnderlayOpacity}
+        fillOpacity={fillOpacity}
       />
     </div>
   );
