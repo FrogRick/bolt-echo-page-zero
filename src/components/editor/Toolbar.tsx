@@ -4,6 +4,7 @@ import { Tool } from "@/types/canvas";
 import { Button } from "@/components/ui/button";
 import { MousePointer, Square, Triangle, Save, Trash2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
 
 interface ToolbarProps {
   activeTool: Tool;
@@ -20,14 +21,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const { toast } = useToast();
   
-  const tools = [
-    { id: "select", icon: MousePointer, label: "Select" },
+  const selectTool = [
+    { id: "select", icon: MousePointer, label: "Select" }
+  ];
+
+  const floorPlanTools = [
     { id: "wall", icon: Square, label: "Wall" },
+    { id: "wall-polygon", icon: Square, label: "Wall Polygon" }
+  ];
+
+  const symbolTools = [
     { id: "yellow-rectangle", icon: Square, label: "Yellow Rectangle" },
     { id: "yellow-polygon", icon: Triangle, label: "Yellow Polygon" },
-    { id: "wall-polygon", icon: Square, label: "Wall Polygon" },
     { id: "green-rectangle", icon: Square, label: "Green Rectangle" },
-    { id: "green-polygon", icon: Triangle, label: "Green Polygon" },
+    { id: "green-polygon", icon: Triangle, label: "Green Polygon" }
   ];
 
   const handleSave = () => {
@@ -37,22 +44,40 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     });
   };
 
+  const renderToolGroup = (tools: typeof selectTool, groupLabel?: string) => (
+    <div className="flex items-center gap-1">
+      {groupLabel && (
+        <span className="text-xs text-gray-500 mr-2 font-medium">{groupLabel}:</span>
+      )}
+      {tools.map((tool) => (
+        <Button
+          key={tool.id}
+          variant={activeTool === tool.id as Tool ? "default" : "outline"}
+          size="sm"
+          onClick={() => onToolChange(tool.id as Tool)}
+          className="flex items-center gap-1 px-3"
+        >
+          <tool.icon className="h-4 w-4" />
+          <span className="hidden sm:inline">{tool.label}</span>
+        </Button>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="p-2 bg-white border-b flex items-center gap-2">
-      <div className="flex items-center gap-1">
-        {tools.map((tool) => (
-          <Button
-            key={tool.id}
-            variant={activeTool === tool.id as Tool ? "default" : "outline"}
-            size="sm"
-            onClick={() => onToolChange(tool.id as Tool)}
-            className="flex items-center gap-1 px-3"
-          >
-            <tool.icon className="h-4 w-4" />
-            <span className="hidden sm:inline">{tool.label}</span>
-          </Button>
-        ))}
-      </div>
+    <div className="p-2 bg-white border-b flex items-center gap-3 flex-wrap">
+      {/* Select Tool */}
+      {renderToolGroup(selectTool)}
+      
+      <Separator orientation="vertical" className="h-8" />
+      
+      {/* Floor Plan Tools */}
+      {renderToolGroup(floorPlanTools, "Floor Plan")}
+      
+      <Separator orientation="vertical" className="h-8" />
+      
+      {/* Symbol Tools */}
+      {renderToolGroup(symbolTools, "Symbols")}
       
       <div className="ml-auto flex items-center gap-2">
         <Button
