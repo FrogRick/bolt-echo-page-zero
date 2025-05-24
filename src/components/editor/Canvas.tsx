@@ -110,6 +110,44 @@ const Canvas: React.FC = () => {
     }
   }, [underlayImage, underlayRect, canvasSize]);
 
+  // Adjust underlay rectangle to match image dimensions when image is loaded
+  useEffect(() => {
+    if (underlayImage && underlayRect && !imageConfirmed) {
+      console.log("Adjusting underlay rect to match image dimensions");
+      
+      // Calculate the scale to fit the image within the canvas while maintaining aspect ratio
+      const imageAspectRatio = underlayImage.width / underlayImage.height;
+      const maxWidth = canvasSize.width * 0.8; // Use 80% of canvas width as max
+      const maxHeight = canvasSize.height * 0.8; // Use 80% of canvas height as max
+      
+      let newWidth, newHeight;
+      
+      if (imageAspectRatio > maxWidth / maxHeight) {
+        // Image is wider relative to canvas
+        newWidth = Math.min(maxWidth, underlayImage.width);
+        newHeight = newWidth / imageAspectRatio;
+      } else {
+        // Image is taller relative to canvas
+        newHeight = Math.min(maxHeight, underlayImage.height);
+        newWidth = newHeight * imageAspectRatio;
+      }
+      
+      // Center the rectangle
+      const newX = (canvasSize.width - newWidth) / 2;
+      const newY = (canvasSize.height - newHeight) / 2;
+      
+      const newRect = {
+        x: newX,
+        y: newY,
+        width: newWidth,
+        height: newHeight
+      };
+      
+      console.log("New rect based on image dimensions:", newRect);
+      setUnderlayRect(newRect);
+    }
+  }, [underlayImage, canvasSize, imageConfirmed]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -156,7 +194,7 @@ const Canvas: React.FC = () => {
     setImageConfirmed(false);
   };
   
-  // Handle mouse move during resize
+  // Handle mouse move during resize with aspect ratio preservation
   const handleResizeMove = useCallback((e: MouseEvent) => {
     if (!resizingUnderlayRect || !resizeStartPos || !resizeStartRect || !resizeCorner) {
       console.log("Missing state for resize", { 
@@ -175,70 +213,116 @@ const Canvas: React.FC = () => {
     
     const newRect = { ...resizeStartRect };
     
+    // Calculate new dimensions based on corner being dragged
+    let newWidth = resizeStartRect.width;
+    let newHeight = resizeStartRect.height;
+    
     switch (resizeCorner) {
       case 'nw':
-        newRect.x = resizeStartRect.x + deltaX;
-        newRect.y = resizeStartRect.y + deltaY;
-        newRect.width = resizeStartRect.width - deltaX;
-        newRect.height = resizeStartRect.height - deltaY;
+        newWidth = resizeStartRect.width - deltaX;
+        newHeight = resizeStartRect.height - deltaY;
         break;
       case 'ne':
-        newRect.y = resizeStartRect.y + deltaY;
-        newRect.width = resizeStartRect.width + deltaX;
-        newRect.height = resizeStartRect.height - deltaY;
+        newWidth = resizeStartRect.width + deltaX;
+        newHeight = resizeStartRect.height - deltaY;
         break;
       case 'se':
-        newRect.width = resizeStartRect.width + deltaX;
-        newRect.height = resizeStartRect.height + deltaY;
+        newWidth = resizeStartRect.width + deltaX;
+        newHeight = resizeStartRect.height + deltaY;
         break;
       case 'sw':
-        newRect.x = resizeStartRect.x + deltaX;
-        newRect.width = resizeStartRect.width - deltaX;
-        newRect.height = resizeStartRect.height + deltaY;
+        newWidth = resizeStartRect.width - deltaX;
+        newHeight = resizeStartRect.height + deltaY;
         break;
+    }
+    
+    // Preserve aspect ratio if we have an image
+    if (underlayImage) {
+      const imageAspectRatio = underlayImage.width / underlayImage.height;
+      
+      // Use the dimension that changed the most to determine the scale
+      const widthChange = Math.abs(newWidth - resizeStartRect.width);
+      const heightChange = Math.abs(newHeight - resizeStartRect.height);
+      
+      if (widthChange > heightChange) {
+        // Width changed more, adjust height
+        newHeight = newWidth / imageAspectRatio;
+      } else {
+        // Height changed more, adjust width
+        newWidth = newHeight * imageAspectRatio;
+      }
     }
     
     // Ensure minimum dimensions
     const minSize = 50;
-    if (newRect.width < minSize) {
-      if (['nw', 'sw'].includes(resizeCorner)) {
-        newRect.x = resizeStartRect.x + resizeStartRect.width - minSize;
+    if (newWidth < minSize) {
+      newWidth = minSize;
+      if (underlayImage) {
+        newHeight = newWidth / (underlayImage.width / underlayImage.height);
       }
-      newRect.width = minSize;
+    }
+    if (newHeight < minSize) {
+      newHeight = minSize;
+      if (underlayImage) {
+        newWidth = newHeight * (underlayImage.width / underlayImage.height);
+      }
     }
     
-    if (newRect.height < minSize) {
-      if (['nw', 'ne'].includes(resizeCorner)) {
-        newRect.y = resizeStartRect.y + resizeStartRect.height - minSize;
-      }
-      newRect.height = minSize;
+    // Adjust position based on which corner is being resized
+    switch (resizeCorner) {
+      case 'nw':
+        newRect.x = resizeStartRect.x + resizeStartRect.width - newWidth;
+        newRect.y = resizeStartRect.y + resizeStartRect.height - newHeight;
+        break;
+      case 'ne':
+        newRect.y = resizeStartRect.y + resizeStartRect.height - newHeight;
+        break;
+      case 'sw':
+        newRect.x = resizeStartRect.x + resizeStartRect.width - newWidth;
+        break;
+      case 'se':
+        // No position adjustment needed
+        break;
     }
+    
+    newRect.width = newWidth;
+    newRect.height = newHeight;
     
     // Constrain to canvas boundaries
     if (newRect.x < 0) {
-      if (['nw', 'sw'].includes(resizeCorner)) {
-        newRect.width += newRect.x;
-        newRect.x = 0;
+      const overflow = -newRect.x;
+      newRect.x = 0;
+      newRect.width -= overflow;
+      if (underlayImage) {
+        newRect.height = newRect.width / (underlayImage.width / underlayImage.height);
       }
     }
     if (newRect.y < 0) {
-      if (['nw', 'ne'].includes(resizeCorner)) {
-        newRect.height += newRect.y;
-        newRect.y = 0;
+      const overflow = -newRect.y;
+      newRect.y = 0;
+      newRect.height -= overflow;
+      if (underlayImage) {
+        newRect.width = newRect.height * (underlayImage.width / underlayImage.height);
       }
     }
     if (newRect.x + newRect.width > canvasSize.width) {
       newRect.width = canvasSize.width - newRect.x;
+      if (underlayImage) {
+        newRect.height = newRect.width / (underlayImage.width / underlayImage.height);
+      }
     }
     if (newRect.y + newRect.height > canvasSize.height) {
       newRect.height = canvasSize.height - newRect.y;
+      if (underlayImage) {
+        newRect.width = newRect.height * (underlayImage.width / underlayImage.height);
+      }
     }
     
     console.log("New rect after resize:", newRect);
     
     // Update rectangle
     setUnderlayRect(newRect);
-  }, [resizingUnderlayRect, resizeStartPos, resizeStartRect, resizeCorner, canvasSize.width, canvasSize.height]);
+  }, [resizingUnderlayRect, resizeStartPos, resizeStartRect, resizeCorner, canvasSize.width, canvasSize.height, underlayImage]);
   
   // Handle resize end
   const handleResizeEnd = useCallback((e: MouseEvent) => {
@@ -278,65 +362,111 @@ const Canvas: React.FC = () => {
       
       console.log("Resize move (direct):", { deltaX, deltaY, corner });
       
-      const newRect = { ...newResizeStartRect };
+      let newWidth = newResizeStartRect.width;
+      let newHeight = newResizeStartRect.height;
       
+      // Calculate new dimensions based on corner being dragged
       switch (corner) {
         case 'nw':
-          newRect.x = newResizeStartRect.x + deltaX;
-          newRect.y = newResizeStartRect.y + deltaY;
-          newRect.width = newResizeStartRect.width - deltaX;
-          newRect.height = newResizeStartRect.height - deltaY;
+          newWidth = newResizeStartRect.width - deltaX;
+          newHeight = newResizeStartRect.height - deltaY;
           break;
         case 'ne':
-          newRect.y = newResizeStartRect.y + deltaY;
-          newRect.width = newResizeStartRect.width + deltaX;
-          newRect.height = newResizeStartRect.height - deltaY;
+          newWidth = newResizeStartRect.width + deltaX;
+          newHeight = newResizeStartRect.height - deltaY;
           break;
         case 'se':
-          newRect.width = newResizeStartRect.width + deltaX;
-          newRect.height = newResizeStartRect.height + deltaY;
+          newWidth = newResizeStartRect.width + deltaX;
+          newHeight = newResizeStartRect.height + deltaY;
           break;
         case 'sw':
-          newRect.x = newResizeStartRect.x + deltaX;
-          newRect.width = newResizeStartRect.width - deltaX;
-          newRect.height = newResizeStartRect.height + deltaY;
+          newWidth = newResizeStartRect.width - deltaX;
+          newHeight = newResizeStartRect.height + deltaY;
           break;
       }
+      
+      // Preserve aspect ratio if we have an image
+      if (underlayImage) {
+        const imageAspectRatio = underlayImage.width / underlayImage.height;
+        
+        // Use the dimension that changed the most to determine the scale
+        const widthChange = Math.abs(newWidth - newResizeStartRect.width);
+        const heightChange = Math.abs(newHeight - newResizeStartRect.height);
+        
+        if (widthChange > heightChange) {
+          // Width changed more, adjust height
+          newHeight = newWidth / imageAspectRatio;
+        } else {
+          // Height changed more, adjust width
+          newWidth = newHeight * imageAspectRatio;
+        }
+      }
+      
+      const newRect = { ...newResizeStartRect };
       
       // Ensure minimum dimensions
       const minSize = 50;
-      if (newRect.width < minSize) {
-        if (['nw', 'sw'].includes(corner)) {
-          newRect.x = newResizeStartRect.x + newResizeStartRect.width - minSize;
+      if (newWidth < minSize) {
+        newWidth = minSize;
+        if (underlayImage) {
+          newHeight = newWidth / (underlayImage.width / underlayImage.height);
         }
-        newRect.width = minSize;
+      }
+      if (newHeight < minSize) {
+        newHeight = minSize;
+        if (underlayImage) {
+          newWidth = newHeight * (underlayImage.width / underlayImage.height);
+        }
       }
       
-      if (newRect.height < minSize) {
-        if (['nw', 'ne'].includes(corner)) {
-          newRect.y = newResizeStartRect.y + newResizeStartRect.height - minSize;
-        }
-        newRect.height = minSize;
+      // Adjust position based on which corner is being resized
+      switch (corner) {
+        case 'nw':
+          newRect.x = newResizeStartRect.x + newResizeStartRect.width - newWidth;
+          newRect.y = newResizeStartRect.y + newResizeStartRect.height - newHeight;
+          break;
+        case 'ne':
+          newRect.y = newResizeStartRect.y + newResizeStartRect.height - newHeight;
+          break;
+        case 'sw':
+          newRect.x = newResizeStartRect.x + newResizeStartRect.width - newWidth;
+          break;
+        case 'se':
+          // No position adjustment needed
+          break;
       }
+      
+      newRect.width = newWidth;
+      newRect.height = newHeight;
       
       // Constrain to canvas boundaries
       if (newRect.x < 0) {
-        if (['nw', 'sw'].includes(corner)) {
-          newRect.width += newRect.x;
-          newRect.x = 0;
+        const overflow = -newRect.x;
+        newRect.x = 0;
+        newRect.width -= overflow;
+        if (underlayImage) {
+          newRect.height = newRect.width / (underlayImage.width / underlayImage.height);
         }
       }
       if (newRect.y < 0) {
-        if (['nw', 'ne'].includes(corner)) {
-          newRect.height += newRect.y;
-          newRect.y = 0;
+        const overflow = -newRect.y;
+        newRect.y = 0;
+        newRect.height -= overflow;
+        if (underlayImage) {
+          newRect.width = newRect.height * (underlayImage.width / underlayImage.height);
         }
       }
       if (newRect.x + newRect.width > canvasSize.width) {
         newRect.width = canvasSize.width - newRect.x;
+        if (underlayImage) {
+          newRect.height = newRect.width / (underlayImage.width / underlayImage.height);
+        }
       }
       if (newRect.y + newRect.height > canvasSize.height) {
         newRect.height = canvasSize.height - newRect.y;
+        if (underlayImage) {
+          newRect.width = newRect.height * (underlayImage.width / underlayImage.height);
+        }
       }
       
       console.log("New rect after resize (direct):", newRect);
@@ -359,7 +489,7 @@ const Canvas: React.FC = () => {
     // Attach these handlers directly
     document.addEventListener('mousemove', moveHandler);
     document.addEventListener('mouseup', endHandler);
-  }, [underlayRect, canvasSize.width, canvasSize.height]);
+  }, [underlayRect, canvasSize.width, canvasSize.height, underlayImage]);
   
   // Handle rectangle movement
   const handleMoveRect = useCallback((e: MouseEvent) => {
