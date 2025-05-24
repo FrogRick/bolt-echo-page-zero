@@ -113,38 +113,51 @@ const Canvas: React.FC = () => {
   // Adjust underlay rectangle to match image dimensions when image is loaded
   useEffect(() => {
     if (underlayImage && underlayRect && !imageConfirmed) {
-      console.log("Adjusting underlay rect to match image dimensions");
+      // Only auto-adjust if this is a newly loaded image, not a reactivated one
+      // We can detect this by checking if the rectangle is still at default position/size
+      const isDefaultRect = (
+        Math.abs(underlayRect.x - (canvasSize.width - canvasSize.width * 0.5) / 2) < 1 &&
+        Math.abs(underlayRect.y - (canvasSize.height - canvasSize.height * 0.5) / 2) < 1 &&
+        Math.abs(underlayRect.width - canvasSize.width * 0.5) < 1 &&
+        Math.abs(underlayRect.height - canvasSize.height * 0.5) < 1
+      );
       
-      // Calculate the scale to fit the image within the canvas while maintaining aspect ratio
-      const imageAspectRatio = underlayImage.width / underlayImage.height;
-      const maxWidth = canvasSize.width * 0.8; // Use 80% of canvas width as max
-      const maxHeight = canvasSize.height * 0.8; // Use 80% of canvas height as max
-      
-      let newWidth, newHeight;
-      
-      if (imageAspectRatio > maxWidth / maxHeight) {
-        // Image is wider relative to canvas
-        newWidth = Math.min(maxWidth, underlayImage.width);
-        newHeight = newWidth / imageAspectRatio;
+      if (isDefaultRect) {
+        console.log("Adjusting underlay rect to match image dimensions");
+        
+        // Calculate the scale to fit the image within the canvas while maintaining aspect ratio
+        const imageAspectRatio = underlayImage.width / underlayImage.height;
+        const maxWidth = canvasSize.width * 0.8; // Use 80% of canvas width as max
+        const maxHeight = canvasSize.height * 0.8; // Use 80% of canvas height as max
+        
+        let newWidth, newHeight;
+        
+        if (imageAspectRatio > maxWidth / maxHeight) {
+          // Image is wider relative to canvas
+          newWidth = Math.min(maxWidth, underlayImage.width);
+          newHeight = newWidth / imageAspectRatio;
+        } else {
+          // Image is taller relative to canvas
+          newHeight = Math.min(maxHeight, underlayImage.height);
+          newWidth = newHeight * imageAspectRatio;
+        }
+        
+        // Center the rectangle
+        const newX = (canvasSize.width - newWidth) / 2;
+        const newY = (canvasSize.height - newHeight) / 2;
+        
+        const newRect = {
+          x: newX,
+          y: newY,
+          width: newWidth,
+          height: newHeight
+        };
+        
+        console.log("New rect based on image dimensions:", newRect);
+        setUnderlayRect(newRect);
       } else {
-        // Image is taller relative to canvas
-        newHeight = Math.min(maxHeight, underlayImage.height);
-        newWidth = newHeight * imageAspectRatio;
+        console.log("Image reactivated, keeping current position");
       }
-      
-      // Center the rectangle
-      const newX = (canvasSize.width - newWidth) / 2;
-      const newY = (canvasSize.height - newHeight) / 2;
-      
-      const newRect = {
-        x: newX,
-        y: newY,
-        width: newWidth,
-        height: newHeight
-      };
-      
-      console.log("New rect based on image dimensions:", newRect);
-      setUnderlayRect(newRect);
     }
   }, [underlayImage, canvasSize, imageConfirmed]);
 
