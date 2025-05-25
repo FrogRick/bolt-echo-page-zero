@@ -1,4 +1,3 @@
-
 import { Point, Shape, PreviewLine, ExtensionLine } from '@/types/canvas';
 
 // Helper function to check if two points are close enough to be considered connected
@@ -653,9 +652,6 @@ export const drawShapes = (
       ctx.font = `${fontSize}px Arial, sans-serif`;
       ctx.fillStyle = textColor;
       ctx.textBaseline = 'top';
-      
-      // Enable text anti-aliasing
-      ctx.textRenderingOptimization = 'optimizeQuality';
       
       ctx.fillText(shape.text, shape.start.x, shape.start.y);
       
