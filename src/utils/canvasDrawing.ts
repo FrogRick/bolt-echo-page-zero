@@ -404,26 +404,6 @@ const findLineExtensionPoint = (
   return findPerpendicularExtension(startPoint, currentPoint, shapes, threshold);
 };
 
-// Helper function to setup high-DPI canvas
-const setupHighDPICanvas = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
-  const devicePixelRatio = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  
-  // Set the internal size to the display size scaled by device pixel ratio
-  canvas.width = rect.width * devicePixelRatio;
-  canvas.height = rect.height * devicePixelRatio;
-  
-  // Scale the context to ensure correct drawing operations
-  ctx.scale(devicePixelRatio, devicePixelRatio);
-  
-  // Set the display size
-  canvas.style.width = rect.width + 'px';
-  canvas.style.height = rect.height + 'px';
-  
-  return devicePixelRatio;
-};
-
-// Enhanced drawing function with high-DPI support and vector-like quality
 export const drawShapes = (
   ctx: CanvasRenderingContext2D, 
   shapes: Shape[], 
@@ -431,14 +411,6 @@ export const drawShapes = (
   defaultFillColor: string,
   fillOpacity: number = 50
 ): void => {
-  // Setup high-DPI rendering
-  const canvas = ctx.canvas;
-  const devicePixelRatio = setupHighDPICanvas(canvas, ctx);
-  
-  // Enable anti-aliasing for smoother lines
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  
   // Sort shapes to ensure rectangles and polygons are drawn first (below lines)
   const sortedShapes = [...shapes].sort((a, b) => {
     // Lines should be drawn last (on top)
@@ -476,7 +448,7 @@ export const drawShapes = (
   
   // STEP 1: Draw all fills for rectangles and polygons first
   sortedShapes.forEach(shape => {
-    if (shape.type !== 'line' && shape.type !== 'text') {
+    if (shape.type !== 'line') {
       // Save context state
       ctx.save();
       
@@ -498,21 +470,7 @@ export const drawShapes = (
       } else if (shape.type === 'polygon') {
         ctx.fillStyle = fillColorWithOpacity;
         
-        if (shape.points && shape.points.length > 0) {
-          ctx.beginPath();
-          ctx.moveTo(shape.points[0].x, shape.points[0].y);
-          
-          for (let i = 1; i < shape.points.length; i++) {
-            ctx.lineTo(shape.points[i].x, shape.points[i].y);
-          }
-          
-          ctx.closePath();
-          ctx.fill();
-        }
-      } else if (shape.type === 'free-line') {
-        // For free-line, we can create a filled path if needed
-        if (shape.points && shape.points.length > 2) {
-          ctx.fillStyle = fillColorWithOpacity;
+        if (shape.points.length > 0) {
           ctx.beginPath();
           ctx.moveTo(shape.points[0].x, shape.points[0].y);
           
@@ -547,7 +505,7 @@ export const drawShapes = (
       }
     });
     
-    // Stroke all borders at once with enhanced quality
+    // Stroke all borders at once
     ctx.lineWidth = 10;
     ctx.strokeStyle = '#000000';
     ctx.lineCap = 'round';
@@ -571,7 +529,7 @@ export const drawShapes = (
       }
     });
     
-    // Stroke all inner lines at once with enhanced quality
+    // Stroke all inner lines at once
     ctx.lineWidth = 8;
     ctx.strokeStyle = '#8E9196';
     ctx.lineCap = 'round';
@@ -581,85 +539,7 @@ export const drawShapes = (
     ctx.restore();
   }
 
-  // STEP 4: Draw non-line shapes with enhanced stroke quality
-  sortedShapes.forEach(shape => {
-    if (shape.type !== 'line' && shape.type !== 'text') {
-      ctx.save();
-      
-      // Get stroke color
-      const strokeColor = shape.strokeColor || shape.color || '#000000';
-      
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = shape.lineWidth || 2;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      
-      if (shape.type === 'rectangle') {
-        ctx.strokeRect(
-          shape.start.x,
-          shape.start.y,
-          shape.end.x - shape.start.x,
-          shape.end.y - shape.start.y
-        );
-      } else if (shape.type === 'polygon') {
-        if (shape.points && shape.points.length > 0) {
-          ctx.beginPath();
-          ctx.moveTo(shape.points[0].x, shape.points[0].y);
-          
-          for (let i = 1; i < shape.points.length; i++) {
-            ctx.lineTo(shape.points[i].x, shape.points[i].y);
-          }
-          
-          ctx.closePath();
-          ctx.stroke();
-        }
-      } else if (shape.type === 'free-line') {
-        if (shape.points && shape.points.length > 1) {
-          ctx.beginPath();
-          ctx.moveTo(shape.points[0].x, shape.points[0].y);
-          
-          // Use quadratic curves for smoother free-line drawing
-          for (let i = 1; i < shape.points.length - 1; i++) {
-            const cp = {
-              x: (shape.points[i].x + shape.points[i + 1].x) / 2,
-              y: (shape.points[i].y + shape.points[i + 1].y) / 2
-            };
-            ctx.quadraticCurveTo(shape.points[i].x, shape.points[i].y, cp.x, cp.y);
-          }
-          
-          // Draw to the last point
-          if (shape.points.length > 1) {
-            const lastPoint = shape.points[shape.points.length - 1];
-            ctx.lineTo(lastPoint.x, lastPoint.y);
-          }
-          
-          ctx.stroke();
-        }
-      }
-      
-      ctx.restore();
-    }
-  });
-
-  // STEP 5: Draw text shapes with enhanced quality
-  sortedShapes.forEach(shape => {
-    if (shape.type === 'text' && shape.text && shape.start) {
-      ctx.save();
-      
-      const fontSize = shape.fontSize || 16;
-      const textColor = shape.color || '#000000';
-      
-      ctx.font = `${fontSize}px Arial, sans-serif`;
-      ctx.fillStyle = textColor;
-      ctx.textBaseline = 'top';
-      
-      ctx.fillText(shape.text, shape.start.x, shape.start.y);
-      
-      ctx.restore();
-    }
-  });
-
-  // STEP 6: Highlight selected shape - always on top
+  // STEP 4: Highlight selected shape - always on top
   if (selectedShapeId) {
     const selectedShape = shapes.find(shape => shape.id === selectedShapeId);
     if (selectedShape) {
@@ -667,8 +547,6 @@ export const drawShapes = (
       ctx.globalCompositeOperation = 'source-over';
       ctx.strokeStyle = '#0000FF';
       ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
       
       if (selectedShape.type === 'line') {
         ctx.beginPath();
@@ -684,7 +562,7 @@ export const drawShapes = (
           selectedShape.end.y - selectedShape.start.y
         );
       } else if (selectedShape.type === 'polygon') {
-        if (selectedShape.points && selectedShape.points.length > 0) {
+        if (selectedShape.points.length > 0) {
           ctx.beginPath();
           ctx.moveTo(selectedShape.points[0].x, selectedShape.points[0].y);
           
@@ -695,31 +573,6 @@ export const drawShapes = (
           ctx.closePath();
           ctx.stroke();
         }
-      } else if (selectedShape.type === 'free-line') {
-        if (selectedShape.points && selectedShape.points.length > 1) {
-          ctx.beginPath();
-          ctx.moveTo(selectedShape.points[0].x, selectedShape.points[0].y);
-          
-          for (let i = 1; i < selectedShape.points.length; i++) {
-            ctx.lineTo(selectedShape.points[i].x, selectedShape.points[i].y);
-          }
-          
-          ctx.stroke();
-        }
-      } else if (selectedShape.type === 'text') {
-        // Draw a selection box around text
-        const fontSize = selectedShape.fontSize || 16;
-        ctx.font = `${fontSize}px Arial, sans-serif`;
-        const textMetrics = ctx.measureText(selectedShape.text || '');
-        const textWidth = textMetrics.width;
-        const textHeight = fontSize;
-        
-        ctx.strokeRect(
-          selectedShape.start.x - 2,
-          selectedShape.start.y - 2,
-          textWidth + 4,
-          textHeight + 4
-        );
       }
       
       ctx.restore();
@@ -767,10 +620,6 @@ export const drawInProgressPolygon = (
   
   // Save original context state
   ctx.save();
-
-  // Enable high-quality rendering
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
 
   // Different styling based on polygon type
   if (isWallPolygon) {
@@ -835,8 +684,6 @@ export const drawInProgressPolygon = (
     
     ctx.fillStyle = semiTransparentColor;
     ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
     
     // Draw the polygon lines
     ctx.beginPath();
@@ -855,7 +702,7 @@ export const drawInProgressPolygon = (
       ctx.lineTo(polygonPoints[0].x, polygonPoints[0].y);
     }
     
-    // Fill with the correct color at specified opacity
+    // Fill with the correct color at 50% opacity
     ctx.fill();
     
     // Then stroke the shape
@@ -887,10 +734,6 @@ export const drawPreviewLine = (
   // Save the current state
   ctx.save();
   
-  // Enable high-quality rendering
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  
   // Draw the black border first with round caps for a better look
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
@@ -913,7 +756,7 @@ export const drawPreviewLine = (
   ctx.restore();
 };
 
-// Updated extension line drawing with enhanced quality
+// Updated extension line drawing - removed "blocked" status since we won't suggest blocked lines at all
 export const drawExtensionLine = (
   ctx: CanvasRenderingContext2D,
   start: Point,
@@ -922,15 +765,11 @@ export const drawExtensionLine = (
   // Save the current state
   ctx.save();
   
-  // Enable high-quality rendering
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  
   // Setup for dashed line (5px dash, 5px gap)
   ctx.setLineDash([5, 5]);
   ctx.lineDashOffset = 0;
   
-  // Green color for valid extensions
+  // Green color for valid extensions (we won't draw blocked ones anymore)
   const lineColor = '#22c55e'; 
   
   // Draw a dashed line
@@ -939,7 +778,6 @@ export const drawExtensionLine = (
   ctx.lineTo(end.x, end.y);
   ctx.lineWidth = 2; 
   ctx.strokeStyle = lineColor;
-  ctx.lineCap = 'round';
   ctx.stroke();
   
   // Draw a small X at the starting point to show where the extension is from
@@ -951,7 +789,6 @@ export const drawExtensionLine = (
   ctx.lineTo(start.x - crossSize, start.y + crossSize);
   ctx.strokeStyle = lineColor;
   ctx.lineWidth = 1.5;
-  ctx.lineCap = 'round';
   ctx.stroke();
   
   // Restore previous context settings
