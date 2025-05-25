@@ -2,7 +2,7 @@
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Button } from "@/components/ui/button";
-import { MousePointer, Square, Triangle, Save, Trash2, X, ChevronDown, Pen, Type, Circle, Minus } from "lucide-react";
+import { MousePointer, Square, Triangle, Save, Trash2, X, ChevronDown, Pen, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -45,9 +45,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   const extraTools = [
     { id: "free-line", icon: Pen, label: "Free Line" },
-    { id: "line", icon: Minus, label: "Line" },
     { id: "rectangle", icon: Square, label: "Rectangle" },
-    { id: "circle", icon: Circle, label: "Circle" },
     { id: "text", icon: Type, label: "Text" }
   ];
 

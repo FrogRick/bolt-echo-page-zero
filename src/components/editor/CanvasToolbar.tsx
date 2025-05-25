@@ -14,10 +14,6 @@ interface CanvasToolbarProps {
   setFillColor: (color: string) => void;
   fillOpacity: number;
   setFillOpacity: (opacity: number) => void;
-  strokeOpacity: number;
-  setStrokeOpacity: (opacity: number) => void;
-  strokeWidth: number;
-  setStrokeWidth: (width: number) => void;
   orientation: "portrait" | "landscape";
   setOrientation: (orientation: "portrait" | "landscape") => void;
   snapToEndpoints: boolean;
@@ -45,10 +41,6 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   setFillColor,
   fillOpacity,
   setFillOpacity,
-  strokeOpacity,
-  setStrokeOpacity,
-  strokeWidth,
-  setStrokeWidth,
   orientation,
   setOrientation,
   snapToEndpoints,
@@ -70,10 +62,8 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   // Determine which sections to show based on active tool
   const isFloorPlanOrSymbolTool = activeTool !== "select";
   const showOrientationControls = !underlayImage;
-  const showSnapControls = isFloorPlanOrSymbolTool && !['free-line', 'line'].includes(activeTool);
+  const showSnapControls = isFloorPlanOrSymbolTool;
   const showColorControls = isFloorPlanOrSymbolTool;
-  const showFillControls = ['rectangle', 'circle', 'text'].includes(activeTool);
-  const showStrokeWidth = ['free-line', 'line', 'rectangle', 'circle', 'text'].includes(activeTool);
 
   return (
     <div className="p-3 bg-white border-b flex flex-wrap items-center gap-3">
@@ -88,66 +78,32 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
               onChange={e => setCurrentColor(e.target.value)} 
               className="w-8 h-8 border border-gray-300 rounded cursor-pointer" 
             />
+          </div>
+
+          {/* Fill Colors with Opacity */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Fill:</span>
+            <input 
+              type="color" 
+              value={fillColor} 
+              onChange={e => setFillColor(e.target.value)} 
+              className="w-8 h-8 border border-gray-300 rounded cursor-pointer" 
+            />
             <div className="flex items-center gap-2 ml-2">
               <span className="text-xs text-gray-600">Opacity:</span>
-              <div className="w-16">
+              <div className="w-20">
                 <Slider
-                  value={[strokeOpacity]}
-                  onValueChange={(value) => setStrokeOpacity(value[0])}
+                  value={[fillOpacity]}
+                  onValueChange={(value) => setFillOpacity(value[0])}
                   max={100}
                   min={0}
                   step={5}
                   className="w-full"
                 />
               </div>
-              <span className="text-xs text-gray-600 w-8">{strokeOpacity}%</span>
+              <span className="text-xs text-gray-600 w-8">{fillOpacity}%</span>
             </div>
           </div>
-
-          {/* Stroke Width */}
-          {showStrokeWidth && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Width:</span>
-              <div className="w-20">
-                <Slider
-                  value={[strokeWidth]}
-                  onValueChange={(value) => setStrokeWidth(value[0])}
-                  max={10}
-                  min={1}
-                  step={1}
-                  className="w-full"
-                />
-              </div>
-              <span className="text-xs text-gray-600 w-6">{strokeWidth}px</span>
-            </div>
-          )}
-
-          {/* Fill Colors with Opacity - Only show for shapes that support fill */}
-          {showFillControls && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Fill:</span>
-              <input 
-                type="color" 
-                value={fillColor} 
-                onChange={e => setFillColor(e.target.value)} 
-                className="w-8 h-8 border border-gray-300 rounded cursor-pointer" 
-              />
-              <div className="flex items-center gap-2 ml-2">
-                <span className="text-xs text-gray-600">Opacity:</span>
-                <div className="w-20">
-                  <Slider
-                    value={[fillOpacity]}
-                    onValueChange={(value) => setFillOpacity(value[0])}
-                    max={100}
-                    min={0}
-                    step={5}
-                    className="w-full"
-                  />
-                </div>
-                <span className="text-xs text-gray-600 w-8">{fillOpacity}%</span>
-              </div>
-            </div>
-          )}
 
           <Separator orientation="vertical" className="h-8" />
         </>
@@ -182,7 +138,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         </>
       )}
 
-      {/* Snap Controls - Only show when floor plan or symbol tool is active and not free-line/line */}
+      {/* Snap Controls - Only show when floor plan or symbol tool is active */}
       {showSnapControls && (
         <>
           <div className="flex items-center gap-2">
@@ -218,6 +174,9 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
           </div>
         </>
       )}
+
+      {/* Underlay Image Controls */}
+      
     </div>
   );
 };
