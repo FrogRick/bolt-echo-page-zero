@@ -17,9 +17,11 @@ export const useCanvasEditor = () => {
   const [strokeWidth, setStrokeWidth] = useState(2);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   
-  // Text-specific state - modified for inline editing
-  const [editingText, setEditingText] = useState<Shape | null>(null);
+  // Text-specific state
+  const [textInput, setTextInput] = useState("");
   const [fontSize, setFontSize] = useState(16);
+  const [isTextInputVisible, setIsTextInputVisible] = useState(false);
+  const [textPosition, setTextPosition] = useState<Point | null>(null);
   
   // Drawing state
   const [drawingState, setDrawingState] = useState<DrawingState>({
@@ -62,40 +64,19 @@ export const useCanvasEditor = () => {
     if (activeTool === "select") {
       const shape = findShapeAtPoint(point, shapes);
       setSelectedShape(shape);
-      setEditingText(null);
       return;
     }
 
     if (activeTool === "text") {
-      // Check if clicking on existing text
-      const existingText = findShapeAtPoint(point, shapes);
-      if (existingText && existingText.type === 'text') {
-        setEditingText(existingText);
-        setSelectedShape(existingText);
-        return;
-      }
-      
-      // Create new text at clicked position
-      const newShape: Shape = {
-        id: crypto.randomUUID(),
-        type: 'text',
-        start: point,
-        text: '',
-        fontSize,
-        strokeColor: currentColor,
-        fillColor: fillColor,
-        lineWidth: strokeWidth,
-      };
-      
-      setShapes(prev => [...prev, newShape]);
-      setEditingText(newShape);
-      setSelectedShape(newShape);
+      // Show text input at clicked position
+      setTextPosition(point);
+      setIsTextInputVisible(true);
+      setTextInput("");
       return;
     }
 
     // Handle other drawing tools
     if (['line', 'rectangle', 'circle', 'free-line'].includes(activeTool)) {
-      setEditingText(null);
       const newDrawingState = handleStartDrawing(
         activeTool, 
         point, 
@@ -106,7 +87,7 @@ export const useCanvasEditor = () => {
       );
       setDrawingState(newDrawingState);
     }
-  }, [activeTool, getMousePos, findShapeAtPoint, shapes, handleStartDrawing, currentColor, fillColor, fillOpacity, strokeWidth, fontSize]);
+  }, [activeTool, getMousePos, findShapeAtPoint, shapes, handleStartDrawing, currentColor, fillColor, fillOpacity, strokeWidth]);
 
   // Continue drawing
   const draw = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -126,47 +107,42 @@ export const useCanvasEditor = () => {
     setDrawingState(result.drawingState);
   }, [drawingState, activeTool, shapes, handleEndDrawing]);
 
-  // Update text content
-  const updateTextContent = useCallback((newText: string) => {
-    if (!editingText) return;
-    
-    setShapes(prev => prev.map(shape => 
-      shape.id === editingText.id 
-        ? { ...shape, text: newText }
-        : shape
-    ));
-    
-    setEditingText(prev => prev ? { ...prev, text: newText } : null);
-  }, [editingText]);
-
-  // Update text position
-  const updateTextPosition = useCallback((newPosition: Point) => {
-    if (!editingText) return;
-    
-    setShapes(prev => prev.map(shape => 
-      shape.id === editingText.id 
-        ? { ...shape, start: newPosition }
-        : shape
-    ));
-    
-    setEditingText(prev => prev ? { ...prev, start: newPosition } : null);
-  }, [editingText]);
-
-  // Finish text editing
-  const finishTextEditing = useCallback(() => {
-    if (editingText && editingText.text?.trim() === '') {
-      // Remove empty text
-      setShapes(prev => prev.filter(shape => shape.id !== editingText.id));
+  // Handle text input confirmation
+  const confirmTextInput = useCallback(() => {
+    if (!textPosition || !textInput.trim()) {
+      setIsTextInputVisible(false);
+      return;
     }
-    setEditingText(null);
-  }, [editingText]);
+
+    const newShape: Shape = {
+      id: crypto.randomUUID(),
+      type: 'text',
+      start: textPosition,
+      text: textInput,
+      fontSize,
+      strokeColor: currentColor,
+      fillColor: fillColor,
+      lineWidth: strokeWidth,
+    };
+
+    setShapes(prev => [...prev, newShape]);
+    setIsTextInputVisible(false);
+    setTextInput("");
+    setTextPosition(null);
+  }, [textPosition, textInput, fontSize, currentColor, fillColor, strokeWidth]);
+
+  // Cancel text input
+  const cancelTextInput = useCallback(() => {
+    setIsTextInputVisible(false);
+    setTextInput("");
+    setTextPosition(null);
+  }, []);
 
   // Delete selected shape
   const deleteSelected = useCallback(() => {
     if (selectedShape) {
       setShapes(prev => prev.filter(shape => shape.id !== selectedShape.id));
       setSelectedShape(null);
-      setEditingText(null);
     }
   }, [selectedShape]);
 
@@ -174,7 +150,6 @@ export const useCanvasEditor = () => {
   const clearCanvas = useCallback(() => {
     setShapes([]);
     setSelectedShape(null);
-    setEditingText(null);
     setDrawingState({
       isDrawing: false,
       currentShape: null,
@@ -242,10 +217,12 @@ export const useCanvasEditor = () => {
     setStrokeWidth: (width: number) => setStrokeWidth(width),
     fontSize,
     setFontSize: (size: number) => setFontSize(size),
-    editingText,
-    updateTextContent,
-    updateTextPosition,
-    finishTextEditing,
+    textInput,
+    setTextInput,
+    isTextInputVisible,
+    textPosition,
+    confirmTextInput,
+    cancelTextInput,
     startDrawing,
     draw,
     endDrawing,
