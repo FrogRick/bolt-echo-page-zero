@@ -97,14 +97,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <ChevronDown className="h-3 w-3 ml-1" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuContent className="bg-white border shadow-md z-50">
           {tools.map((tool) => (
             <DropdownMenuItem
               key={tool.id}
               onClick={() => onToolChange(tool.id as Tool)}
-              className="flex items-center gap-2 cursor-pointer"
+              className="flex items-center gap-2 cursor-pointer hover:bg-gray-100"
             >
-              <tool.icon className="h-4 w-4" />
+              {React.createElement(tool.icon, { className: "h-4 w-4" })}
               <span>{tool.label}</span>
             </DropdownMenuItem>
           ))}
@@ -114,55 +114,54 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded-lg shadow-sm">
+    <div className="p-2 bg-white border-b flex items-center gap-3 flex-wrap">
       {/* Select Tool */}
       {renderSingleTool(selectTool[0])}
       
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-8" />
       
-      {/* Floor Plan Tools */}
+      {/* Floor Plan Tools Dropdown */}
       {renderDropdownGroup(floorPlanTools, "Floor Plan")}
       
-      {/* Symbol Tools */}
+      <Separator orientation="vertical" className="h-8" />
+      
+      {/* Symbol Tools Dropdown */}
       {renderDropdownGroup(symbolTools, "Symbols")}
       
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-8" />
       
-      {/* Extra Drawing Tools */}
-      {renderDropdownGroup(extraTools, "Drawing")}
+      {/* Extras Tools Dropdown */}
+      {renderDropdownGroup(extraTools, "Extras")}
       
-      <Separator orientation="vertical" className="h-6" />
-      
-      {/* Action Buttons */}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleSave}
-        className="flex items-center gap-1 px-3"
-      >
-        <Save className="h-4 w-4" />
-        <span className="hidden sm:inline">Save</span>
-      </Button>
-      
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onDelete}
-        className="flex items-center gap-1 px-3"
-      >
-        <Trash2 className="h-4 w-4" />
-        <span className="hidden sm:inline">Delete</span>
-      </Button>
-      
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onClear}
-        className="flex items-center gap-1 px-3 text-red-600 hover:text-red-700"
-      >
-        <X className="h-4 w-4" />
-        <span className="hidden sm:inline">Clear</span>
-      </Button>
+      <div className="ml-auto flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onDelete}
+          className="bg-red-50 hover:bg-red-100 text-red-600 border-red-200 flex items-center gap-1"
+        >
+          <Trash2 className="h-4 w-4" />
+          <span>Delete Selected</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onClear}
+          className="bg-gray-50 hover:bg-gray-100 flex items-center gap-1"
+        >
+          <X className="h-4 w-4" />
+          <span>Clear Canvas</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSave}
+          className="bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200 flex items-center gap-1"
+        >
+          <Save className="h-4 w-4" />
+          <span>Save</span>
+        </Button>
+      </div>
     </div>
   );
 };

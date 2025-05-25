@@ -17,11 +17,9 @@ export const useCanvasEditor = () => {
   const [strokeWidth, setStrokeWidth] = useState(2);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   
-  // Text-specific state
-  const [textInput, setTextInput] = useState("");
+  // Text-specific state - modified for inline editing
+  const [editingText, setEditingText] = useState<Shape | null>(null);
   const [fontSize, setFontSize] = useState(16);
-  const [isTextInputVisible, setIsTextInputVisible] = useState(false);
-  const [textPosition, setTextPosition] = useState<Point | null>(null);
   
   // Drawing state
   const [drawingState, setDrawingState] = useState<DrawingState>({
@@ -43,7 +41,7 @@ export const useCanvasEditor = () => {
   const [underlayOpacity, setUnderlayOpacity] = useState(0.5);
 
   const { findShapeAtPoint } = useShapeDetection();
-  const { handleStartDrawing, handleDrawing, handleEndDrawing, handlePolygonPoint, finishPolygon } = useCanvasDrawingLogic();
+  const { handleStartDrawing, handleDrawing, handleEndDrawing } = useCanvasDrawingLogic();
 
   // Get mouse position relative to canvas
   const getMousePos = useCallback((e: React.MouseEvent<HTMLCanvasElement>): Point => {
@@ -64,40 +62,40 @@ export const useCanvasEditor = () => {
     if (activeTool === "select") {
       const shape = findShapeAtPoint(point, shapes);
       setSelectedShape(shape);
+      setEditingText(null);
       return;
     }
 
     if (activeTool === "text") {
-      // Show text input at clicked position
-      setTextPosition(point);
-      setIsTextInputVisible(true);
-      setTextInput("");
-      return;
-    }
-
-    // Handle polygon tools
-    if (activeTool.includes('polygon')) {
-      if (drawingState.isPolygonMode) {
-        // Add point to existing polygon
-        const newDrawingState = handlePolygonPoint(activeTool, point, drawingState);
-        setDrawingState(newDrawingState);
-      } else {
-        // Start new polygon
-        const newDrawingState = handleStartDrawing(
-          activeTool, 
-          point, 
-          currentColor, 
-          fillColor, 
-          fillOpacity,
-          strokeWidth
-        );
-        setDrawingState(newDrawingState);
+      // Check if clicking on existing text
+      const existingText = findShapeAtPoint(point, shapes);
+      if (existingText && existingText.type === 'text') {
+        setEditingText(existingText);
+        setSelectedShape(existingText);
+        return;
       }
+      
+      // Create new text at clicked position
+      const newShape: Shape = {
+        id: crypto.randomUUID(),
+        type: 'text',
+        start: point,
+        text: '',
+        fontSize,
+        strokeColor: currentColor,
+        fillColor: fillColor,
+        lineWidth: strokeWidth,
+      };
+      
+      setShapes(prev => [...prev, newShape]);
+      setEditingText(newShape);
+      setSelectedShape(newShape);
       return;
     }
 
     // Handle other drawing tools
-    if (['line', 'rectangle', 'circle', 'free-line', 'wall', 'yellow-rectangle', 'green-rectangle'].includes(activeTool)) {
+    if (['line', 'rectangle', 'circle', 'free-line'].includes(activeTool)) {
+      setEditingText(null);
       const newDrawingState = handleStartDrawing(
         activeTool, 
         point, 
@@ -108,7 +106,7 @@ export const useCanvasEditor = () => {
       );
       setDrawingState(newDrawingState);
     }
-  }, [activeTool, getMousePos, findShapeAtPoint, shapes, handleStartDrawing, handlePolygonPoint, currentColor, fillColor, fillOpacity, strokeWidth, drawingState]);
+  }, [activeTool, getMousePos, findShapeAtPoint, shapes, handleStartDrawing, currentColor, fillColor, fillOpacity, strokeWidth, fontSize]);
 
   // Continue drawing
   const draw = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -123,87 +121,52 @@ export const useCanvasEditor = () => {
   const endDrawing = useCallback(() => {
     if (!drawingState.isDrawing) return;
     
-    // Don't end polygon drawing on mouse up - wait for double-click or Enter
-    if (drawingState.isPolygonMode) return;
-    
     const result = handleEndDrawing(activeTool, drawingState, shapes);
     setShapes(result.shapes);
     setDrawingState(result.drawingState);
   }, [drawingState, activeTool, shapes, handleEndDrawing]);
 
-  // Handle double-click for finishing polygons
-  const handleDoubleClick = useCallback(() => {
-    if (drawingState.isPolygonMode) {
-      const result = finishPolygon(activeTool, drawingState, shapes, currentColor, fillColor, strokeWidth);
-      setShapes(result.shapes);
-      setDrawingState(result.drawingState);
+  // Update text content
+  const updateTextContent = useCallback((newText: string) => {
+    if (!editingText) return;
+    
+    setShapes(prev => prev.map(shape => 
+      shape.id === editingText.id 
+        ? { ...shape, text: newText }
+        : shape
+    ));
+    
+    setEditingText(prev => prev ? { ...prev, text: newText } : null);
+  }, [editingText]);
+
+  // Update text position
+  const updateTextPosition = useCallback((newPosition: Point) => {
+    if (!editingText) return;
+    
+    setShapes(prev => prev.map(shape => 
+      shape.id === editingText.id 
+        ? { ...shape, start: newPosition }
+        : shape
+    ));
+    
+    setEditingText(prev => prev ? { ...prev, start: newPosition } : null);
+  }, [editingText]);
+
+  // Finish text editing
+  const finishTextEditing = useCallback(() => {
+    if (editingText && editingText.text?.trim() === '') {
+      // Remove empty text
+      setShapes(prev => prev.filter(shape => shape.id !== editingText.id));
     }
-  }, [drawingState, activeTool, shapes, finishPolygon, currentColor, fillColor, strokeWidth]);
-
-  // Handle key press for finishing polygons
-  const handleKeyPress = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Enter' && drawingState.isPolygonMode) {
-      const result = finishPolygon(activeTool, drawingState, shapes, currentColor, fillColor, strokeWidth);
-      setShapes(result.shapes);
-      setDrawingState(result.drawingState);
-    }
-    if (e.key === 'Escape' && drawingState.isPolygonMode) {
-      // Cancel polygon drawing
-      setDrawingState({
-        isDrawing: false,
-        currentShape: null,
-        startPoint: null,
-        currentPoints: [],
-        polygonPoints: [],
-        isPolygonMode: false
-      });
-    }
-  }, [drawingState, activeTool, shapes, finishPolygon, currentColor, fillColor, strokeWidth]);
-
-  // Add keyboard event listener
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyPress);
-    return () => {
-      document.removeEventListener('keydown', handleKeyPress);
-    };
-  }, [handleKeyPress]);
-
-  // Handle text input confirmation
-  const confirmTextInput = useCallback(() => {
-    if (!textPosition || !textInput.trim()) {
-      setIsTextInputVisible(false);
-      return;
-    }
-
-    const newShape: Shape = {
-      id: crypto.randomUUID(),
-      type: 'text',
-      start: textPosition,
-      text: textInput,
-      fontSize,
-      strokeColor: currentColor,
-      fillColor: fillColor,
-      lineWidth: strokeWidth,
-    };
-
-    setShapes(prev => [...prev, newShape]);
-    setIsTextInputVisible(false);
-    setTextInput("");
-    setTextPosition(null);
-  }, [textPosition, textInput, fontSize, currentColor, fillColor, strokeWidth]);
-
-  // Cancel text input
-  const cancelTextInput = useCallback(() => {
-    setIsTextInputVisible(false);
-    setTextInput("");
-    setTextPosition(null);
-  }, []);
+    setEditingText(null);
+  }, [editingText]);
 
   // Delete selected shape
   const deleteSelected = useCallback(() => {
     if (selectedShape) {
       setShapes(prev => prev.filter(shape => shape.id !== selectedShape.id));
       setSelectedShape(null);
+      setEditingText(null);
     }
   }, [selectedShape]);
 
@@ -211,6 +174,7 @@ export const useCanvasEditor = () => {
   const clearCanvas = useCallback(() => {
     setShapes([]);
     setSelectedShape(null);
+    setEditingText(null);
     setDrawingState({
       isDrawing: false,
       currentShape: null,
@@ -278,49 +242,32 @@ export const useCanvasEditor = () => {
     setStrokeWidth: (width: number) => setStrokeWidth(width),
     fontSize,
     setFontSize: (size: number) => setFontSize(size),
-    textInput,
-    setTextInput,
-    isTextInputVisible,
-    textPosition,
-    confirmTextInput,
-    cancelTextInput,
+    editingText,
+    updateTextContent,
+    updateTextPosition,
+    finishTextEditing,
     startDrawing,
     draw,
     endDrawing,
-    handleDoubleClick,
     deleteSelected,
     clearCanvas,
     canvasSize,
-    adjustCanvasSize: useCallback((width: number, height: number) => {
-      setCanvasSize({ width, height });
-    }, []),
+    adjustCanvasSize,
     snapToAngle,
-    toggleSnapToAngle: useCallback(() => setSnapToAngle(prev => !prev), []),
+    toggleSnapToAngle,
     snapToEndpoints,
-    toggleSnapToEndpoints: useCallback(() => setSnapToEndpoints(prev => !prev), []),
+    toggleSnapToEndpoints,
     snapToLines,
-    toggleSnapToLines: useCallback(() => setSnapToLines(prev => !prev), []),
+    toggleSnapToLines,
     snapToExtensions,
-    toggleSnapToExtensions: useCallback(() => setSnapToExtensions(prev => !prev), []),
+    toggleSnapToExtensions,
     rectangleDrawMode: false, // Legacy property
     underlayImage,
-    addUnderlayImage: useCallback((file: File) => {
-      const img = new Image();
-      img.onload = () => {
-        setUnderlayImage(img);
-      };
-      img.src = URL.createObjectURL(file);
-    }, []),
-    removeUnderlayImage: useCallback(() => {
-      setUnderlayImage(null);
-    }, []),
+    addUnderlayImage,
+    removeUnderlayImage,
     underlayScale,
-    adjustUnderlayScale: useCallback((scale: number) => {
-      setUnderlayScale(scale);
-    }, []),
+    adjustUnderlayScale,
     underlayOpacity,
-    adjustUnderlayOpacity: useCallback((opacity: number) => {
-      setUnderlayOpacity(opacity);
-    }, []),
+    adjustUnderlayOpacity,
   };
 };
