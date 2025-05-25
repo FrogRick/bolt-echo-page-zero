@@ -43,7 +43,7 @@ export const useCanvasEditor = () => {
   const [underlayOpacity, setUnderlayOpacity] = useState(0.5);
 
   const { findShapeAtPoint } = useShapeDetection();
-  const { handleStartDrawing, handleDrawing, handleEndDrawing } = useCanvasDrawingLogic();
+  const { handleStartDrawing, handleDrawing, handleEndDrawing, handlePolygonPoint, finishPolygon } = useCanvasDrawingLogic();
 
   // Get mouse position relative to canvas
   const getMousePos = useCallback((e: React.MouseEvent<HTMLCanvasElement>): Point => {
@@ -75,8 +75,29 @@ export const useCanvasEditor = () => {
       return;
     }
 
+    // Handle polygon tools
+    if (activeTool.includes('polygon')) {
+      if (drawingState.isPolygonMode) {
+        // Add point to existing polygon
+        const newDrawingState = handlePolygonPoint(activeTool, point, drawingState);
+        setDrawingState(newDrawingState);
+      } else {
+        // Start new polygon
+        const newDrawingState = handleStartDrawing(
+          activeTool, 
+          point, 
+          currentColor, 
+          fillColor, 
+          fillOpacity,
+          strokeWidth
+        );
+        setDrawingState(newDrawingState);
+      }
+      return;
+    }
+
     // Handle other drawing tools
-    if (['line', 'rectangle', 'circle', 'free-line'].includes(activeTool)) {
+    if (['line', 'rectangle', 'circle', 'free-line', 'wall', 'yellow-rectangle', 'green-rectangle'].includes(activeTool)) {
       const newDrawingState = handleStartDrawing(
         activeTool, 
         point, 
@@ -87,7 +108,7 @@ export const useCanvasEditor = () => {
       );
       setDrawingState(newDrawingState);
     }
-  }, [activeTool, getMousePos, findShapeAtPoint, shapes, handleStartDrawing, currentColor, fillColor, fillOpacity, strokeWidth]);
+  }, [activeTool, getMousePos, findShapeAtPoint, shapes, handleStartDrawing, handlePolygonPoint, currentColor, fillColor, fillOpacity, strokeWidth, drawingState]);
 
   // Continue drawing
   const draw = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -102,10 +123,50 @@ export const useCanvasEditor = () => {
   const endDrawing = useCallback(() => {
     if (!drawingState.isDrawing) return;
     
+    // Don't end polygon drawing on mouse up - wait for double-click or Enter
+    if (drawingState.isPolygonMode) return;
+    
     const result = handleEndDrawing(activeTool, drawingState, shapes);
     setShapes(result.shapes);
     setDrawingState(result.drawingState);
   }, [drawingState, activeTool, shapes, handleEndDrawing]);
+
+  // Handle double-click for finishing polygons
+  const handleDoubleClick = useCallback(() => {
+    if (drawingState.isPolygonMode) {
+      const result = finishPolygon(activeTool, drawingState, shapes, currentColor, fillColor, strokeWidth);
+      setShapes(result.shapes);
+      setDrawingState(result.drawingState);
+    }
+  }, [drawingState, activeTool, shapes, finishPolygon, currentColor, fillColor, strokeWidth]);
+
+  // Handle key press for finishing polygons
+  const handleKeyPress = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Enter' && drawingState.isPolygonMode) {
+      const result = finishPolygon(activeTool, drawingState, shapes, currentColor, fillColor, strokeWidth);
+      setShapes(result.shapes);
+      setDrawingState(result.drawingState);
+    }
+    if (e.key === 'Escape' && drawingState.isPolygonMode) {
+      // Cancel polygon drawing
+      setDrawingState({
+        isDrawing: false,
+        currentShape: null,
+        startPoint: null,
+        currentPoints: [],
+        polygonPoints: [],
+        isPolygonMode: false
+      });
+    }
+  }, [drawingState, activeTool, shapes, finishPolygon, currentColor, fillColor, strokeWidth]);
+
+  // Add keyboard event listener
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyPress);
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [handleKeyPress]);
 
   // Handle text input confirmation
   const confirmTextInput = useCallback(() => {
@@ -226,25 +287,40 @@ export const useCanvasEditor = () => {
     startDrawing,
     draw,
     endDrawing,
+    handleDoubleClick,
     deleteSelected,
     clearCanvas,
     canvasSize,
-    adjustCanvasSize,
+    adjustCanvasSize: useCallback((width: number, height: number) => {
+      setCanvasSize({ width, height });
+    }, []),
     snapToAngle,
-    toggleSnapToAngle,
+    toggleSnapToAngle: useCallback(() => setSnapToAngle(prev => !prev), []),
     snapToEndpoints,
-    toggleSnapToEndpoints,
+    toggleSnapToEndpoints: useCallback(() => setSnapToEndpoints(prev => !prev), []),
     snapToLines,
-    toggleSnapToLines,
+    toggleSnapToLines: useCallback(() => setSnapToLines(prev => !prev), []),
     snapToExtensions,
-    toggleSnapToExtensions,
+    toggleSnapToExtensions: useCallback(() => setSnapToExtensions(prev => !prev), []),
     rectangleDrawMode: false, // Legacy property
     underlayImage,
-    addUnderlayImage,
-    removeUnderlayImage,
+    addUnderlayImage: useCallback((file: File) => {
+      const img = new Image();
+      img.onload = () => {
+        setUnderlayImage(img);
+      };
+      img.src = URL.createObjectURL(file);
+    }, []),
+    removeUnderlayImage: useCallback(() => {
+      setUnderlayImage(null);
+    }, []),
     underlayScale,
-    adjustUnderlayScale,
+    adjustUnderlayScale: useCallback((scale: number) => {
+      setUnderlayScale(scale);
+    }, []),
     underlayOpacity,
-    adjustUnderlayOpacity,
+    adjustUnderlayOpacity: useCallback((opacity: number) => {
+      setUnderlayOpacity(opacity);
+    }, []),
   };
 };

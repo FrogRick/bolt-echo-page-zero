@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import { Tool, Shape, Point } from "@/types/canvas";
 
 export interface DrawingState {
@@ -6,107 +7,64 @@ export interface DrawingState {
   currentShape: Shape | null;
   startPoint: Point | null;
   currentPoints: Point[];
+  polygonPoints?: Point[];
+  isPolygonMode?: boolean;
 }
 
 export const useCanvasDrawingLogic = () => {
   const handleStartDrawing = (
     tool: Tool,
     point: Point,
-    currentColor: string,
+    strokeColor: string,
     fillColor: string,
     fillOpacity: number,
-    strokeWidth: number = 2
+    strokeWidth: number
   ): DrawingState => {
-    const baseShape = {
-      id: Date.now().toString(),
-      strokeColor: currentColor,
-      fillColor: fillColor,
-      color: currentColor,
+    
+    // Handle polygon tools (wall-polygon, yellow-polygon, green-polygon)
+    if (tool.includes('polygon')) {
+      return {
+        isDrawing: true,
+        currentShape: null,
+        startPoint: point,
+        currentPoints: [],
+        polygonPoints: [point],
+        isPolygonMode: true
+      };
+    }
+    
+    // Handle other drawing tools
+    const newShape: Shape = {
+      id: crypto.randomUUID(),
+      type: getShapeType(tool),
+      start: point,
+      strokeColor: strokeColor,
+      fillColor: getFillColorForTool(tool, fillColor),
       lineWidth: strokeWidth,
     };
 
-    switch (tool) {
-      case 'line':
-        return {
-          isDrawing: true,
-          currentShape: {
-            ...baseShape,
-            type: 'line',
-            start: point,
-            end: point,
-            fillColor: undefined, // Lines don't have fill
-          },
-          startPoint: point,
-          currentPoints: [],
-        };
-
-      case 'rectangle':
-        return {
-          isDrawing: true,
-          currentShape: {
-            ...baseShape,
-            type: 'rectangle',
-            start: point,
-            end: point,
-            strokeColor: '#000000', // Default black stroke
-            fillColor: '#ffffff', // Default white fill
-          },
-          startPoint: point,
-          currentPoints: [],
-        };
-
-      case 'circle':
-        return {
-          isDrawing: true,
-          currentShape: {
-            ...baseShape,
-            type: 'circle',
-            start: point,
-            end: point,
-            radius: 0,
-            strokeColor: '#000000', // Default black stroke
-            fillColor: '#ffffff', // Default white fill
-          },
-          startPoint: point,
-          currentPoints: [],
-        };
-
-      case 'free-line':
-        return {
-          isDrawing: true,
-          currentShape: {
-            ...baseShape,
-            type: 'free-line',
-            points: [point],
-            fillColor: undefined, // Free lines don't have fill
-          },
-          startPoint: point,
-          currentPoints: [point],
-        };
-
-      case 'text':
-        return {
-          isDrawing: true,
-          currentShape: {
-            ...baseShape,
-            type: 'text',
-            start: point,
-            end: point,
-            text: 'Sample Text',
-            fontSize: 16,
-          },
-          startPoint: point,
-          currentPoints: [],
-        };
-
-      default:
-        return {
-          isDrawing: false,
-          currentShape: null,
-          startPoint: null,
-          currentPoints: [],
-        };
+    // For tools that need an end point
+    if (['line', 'rectangle', 'circle', 'wall'].includes(tool)) {
+      newShape.end = point;
     }
+
+    // For circle, set initial radius
+    if (tool === 'circle') {
+      newShape.radius = 0;
+    }
+
+    // For free-line, initialize points array
+    if (tool === 'free-line') {
+      newShape.points = [point];
+    }
+
+    return {
+      isDrawing: true,
+      currentShape: newShape,
+      startPoint: point,
+      currentPoints: tool === 'free-line' ? [point] : [],
+      isPolygonMode: false
+    };
   };
 
   const handleDrawing = (
@@ -114,62 +72,129 @@ export const useCanvasDrawingLogic = () => {
     point: Point,
     drawingState: DrawingState
   ): DrawingState => {
-    if (!drawingState.isDrawing || !drawingState.currentShape) {
-      return drawingState;
+    if (!drawingState.isDrawing) return drawingState;
+
+    // Handle polygon mode
+    if (drawingState.isPolygonMode && drawingState.polygonPoints) {
+      return {
+        ...drawingState,
+        currentPoints: [...drawingState.polygonPoints, point]
+      };
     }
+
+    // Handle current shape drawing
+    if (!drawingState.currentShape) return drawingState;
 
     const updatedShape = { ...drawingState.currentShape };
 
-    switch (tool) {
-      case 'line':
-      case 'rectangle':
-      case 'text':
-        updatedShape.end = point;
-        break;
+    if (tool === 'free-line') {
+      updatedShape.points = [...(drawingState.currentPoints || []), point];
+      return {
+        ...drawingState,
+        currentShape: updatedShape,
+        currentPoints: updatedShape.points
+      };
+    }
 
-      case 'circle':
-        if (drawingState.startPoint) {
-          const dx = point.x - drawingState.startPoint.x;
-          const dy = point.y - drawingState.startPoint.y;
-          const radius = Math.sqrt(dx * dx + dy * dy);
-          updatedShape.end = point;
-          updatedShape.radius = radius;
-        }
-        break;
+    // For other tools, update end point
+    updatedShape.end = point;
 
-      case 'free-line':
-        if (updatedShape.points) {
-          updatedShape.points = [...updatedShape.points, point];
-        }
-        break;
+    // For circle, calculate radius
+    if (tool === 'circle' && updatedShape.start) {
+      const dx = point.x - updatedShape.start.x;
+      const dy = point.y - updatedShape.start.y;
+      updatedShape.radius = Math.sqrt(dx * dx + dy * dy);
     }
 
     return {
       ...drawingState,
-      currentShape: updatedShape,
+      currentShape: updatedShape
     };
   };
 
   const handleEndDrawing = (
     tool: Tool,
     drawingState: DrawingState,
-    shapes: Shape[]
-  ): { shapes: Shape[]; drawingState: DrawingState } => {
-    if (!drawingState.isDrawing || !drawingState.currentShape) {
+    existingShapes: Shape[]
+  ): { shapes: Shape[], drawingState: DrawingState } => {
+    if (!drawingState.isDrawing) {
+      return { shapes: existingShapes, drawingState };
+    }
+
+    // Handle polygon mode - don't end on single click, wait for double-click or Enter
+    if (drawingState.isPolygonMode) {
+      return { shapes: existingShapes, drawingState };
+    }
+
+    // Add completed shape to shapes array
+    if (drawingState.currentShape) {
+      const newShapes = [...existingShapes, drawingState.currentShape];
+      
       return {
-        shapes,
+        shapes: newShapes,
         drawingState: {
           isDrawing: false,
           currentShape: null,
           startPoint: null,
           currentPoints: [],
-        },
+          isPolygonMode: false
+        }
       };
     }
 
-    // Add the completed shape to the shapes array
-    const newShapes = [...shapes, drawingState.currentShape];
+    return {
+      shapes: existingShapes,
+      drawingState: {
+        isDrawing: false,
+        currentShape: null,
+        startPoint: null,
+        currentPoints: [],
+        isPolygonMode: false
+      }
+    };
+  };
 
+  const handlePolygonPoint = (
+    tool: Tool,
+    point: Point,
+    drawingState: DrawingState
+  ): DrawingState => {
+    if (!drawingState.isPolygonMode || !drawingState.polygonPoints) {
+      return drawingState;
+    }
+
+    const newPolygonPoints = [...drawingState.polygonPoints, point];
+    
+    return {
+      ...drawingState,
+      polygonPoints: newPolygonPoints,
+      currentPoints: newPolygonPoints
+    };
+  };
+
+  const finishPolygon = (
+    tool: Tool,
+    drawingState: DrawingState,
+    existingShapes: Shape[],
+    strokeColor: string,
+    fillColor: string,
+    strokeWidth: number
+  ): { shapes: Shape[], drawingState: DrawingState } => {
+    if (!drawingState.isPolygonMode || !drawingState.polygonPoints || drawingState.polygonPoints.length < 3) {
+      return { shapes: existingShapes, drawingState };
+    }
+
+    const newShape: Shape = {
+      id: crypto.randomUUID(),
+      type: 'polygon',
+      points: drawingState.polygonPoints,
+      strokeColor: strokeColor,
+      fillColor: getFillColorForTool(tool, fillColor),
+      lineWidth: strokeWidth,
+    };
+
+    const newShapes = [...existingShapes, newShape];
+    
     return {
       shapes: newShapes,
       drawingState: {
@@ -177,7 +202,9 @@ export const useCanvasDrawingLogic = () => {
         currentShape: null,
         startPoint: null,
         currentPoints: [],
-      },
+        polygonPoints: [],
+        isPolygonMode: false
+      }
     };
   };
 
@@ -185,5 +212,48 @@ export const useCanvasDrawingLogic = () => {
     handleStartDrawing,
     handleDrawing,
     handleEndDrawing,
+    handlePolygonPoint,
+    finishPolygon
   };
+};
+
+// Helper functions
+const getShapeType = (tool: Tool): Shape['type'] => {
+  switch (tool) {
+    case 'wall':
+    case 'line':
+      return 'line';
+    case 'rectangle':
+    case 'yellow-rectangle':
+    case 'green-rectangle':
+      return 'rectangle';
+    case 'circle':
+      return 'circle';
+    case 'free-line':
+      return 'free-line';
+    case 'text':
+      return 'text';
+    case 'wall-polygon':
+    case 'yellow-polygon':
+    case 'green-polygon':
+      return 'polygon';
+    default:
+      return 'line';
+  }
+};
+
+const getFillColorForTool = (tool: Tool, defaultFillColor: string): string => {
+  switch (tool) {
+    case 'yellow-rectangle':
+    case 'yellow-polygon':
+      return '#fbbf24'; // Yellow
+    case 'green-rectangle':
+    case 'green-polygon':
+      return '#10b981'; // Green
+    case 'wall':
+    case 'wall-polygon':
+      return '#6b7280'; // Gray for walls
+    default:
+      return defaultFillColor;
+  }
 };

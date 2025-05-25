@@ -69,6 +69,7 @@ const Canvas: React.FC = () => {
     startDrawing,
     draw,
     endDrawing,
+    handleDoubleClick,
     deleteSelected,
     clearCanvas,
     canvasSize,
@@ -756,6 +757,7 @@ const Canvas: React.FC = () => {
         startDrawing={startDrawing}
         draw={draw}
         endDrawing={endDrawing}
+        onDoubleClick={handleDoubleClick}
         activeTool={activeTool}
         underlayImage={underlayImage}
         containerRef={containerRef}
