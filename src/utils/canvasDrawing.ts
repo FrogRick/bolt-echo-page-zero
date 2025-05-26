@@ -491,52 +491,55 @@ export const drawShapes = (
   // STEP 2: Draw all line borders at once first to ensure seamless connections
   const lineShapes = sortedShapes.filter(shape => shape.type === 'line');
   if (lineShapes.length > 0) {
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-over';
+    // Group lines by thickness for high-quality rendering
+    const linesByThickness: { [thickness: number]: Shape[] } = {};
     
-    // Start a new path for all borders at once
-    ctx.beginPath();
-    
-    // Add all lines to the path
     lineShapes.forEach(shape => {
-      if (shape.type === 'line') {
-        ctx.moveTo(shape.start.x, shape.start.y);
-        ctx.lineTo(shape.end.x, shape.end.y);
+      const thickness = shape.lineWidth || 8; // Default to 8 if not specified
+      if (!linesByThickness[thickness]) {
+        linesByThickness[thickness] = [];
       }
+      linesByThickness[thickness].push(shape);
     });
     
-    // Stroke all borders at once
-    ctx.lineWidth = 10;
-    ctx.strokeStyle = '#000000';
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-    
-    ctx.restore();
-    
-    // STEP 3: Draw all line fills at once to ensure seamless connections
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-over';
-    
-    // Start a new path for all fills
-    ctx.beginPath();
-    
-    // Add all lines to the path
-    lineShapes.forEach(shape => {
-      if (shape.type === 'line') {
+    // Draw each thickness group separately
+    Object.entries(linesByThickness).forEach(([thicknessStr, lines]) => {
+      const thickness = parseInt(thicknessStr);
+      
+      // Draw outer borders (black)
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.beginPath();
+      
+      lines.forEach(shape => {
         ctx.moveTo(shape.start.x, shape.start.y);
         ctx.lineTo(shape.end.x, shape.end.y);
-      }
+      });
+      
+      ctx.lineWidth = thickness + 2; // Slightly wider for border
+      ctx.strokeStyle = '#000000';
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.restore();
+      
+      // Draw inner fill (gray)
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.beginPath();
+      
+      lines.forEach(shape => {
+        ctx.moveTo(shape.start.x, shape.start.y);
+        ctx.lineTo(shape.end.x, shape.end.y);
+      });
+      
+      ctx.lineWidth = thickness;
+      ctx.strokeStyle = '#8E9196';
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.restore();
     });
-    
-    // Stroke all inner lines at once
-    ctx.lineWidth = 8;
-    ctx.strokeStyle = '#8E9196';
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-    
-    ctx.restore();
   }
 
   // STEP 4: Highlight selected shape - always on top
@@ -703,7 +706,8 @@ export const drawPreviewLine = (
   ctx: CanvasRenderingContext2D,
   start: Point,
   end: Point,
-  color: string
+  color: string,
+  thickness: number = 8
 ): void => {
   // Save the current state
   ctx.save();
@@ -712,7 +716,7 @@ export const drawPreviewLine = (
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
-  ctx.lineWidth = 10; // Slightly wider than inner line
+  ctx.lineWidth = thickness + 2; // Slightly wider than inner line
   ctx.strokeStyle = '#000000'; // Black border
   ctx.lineCap = 'round';
   ctx.stroke();
@@ -721,7 +725,7 @@ export const drawPreviewLine = (
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
-  ctx.lineWidth = 8;
+  ctx.lineWidth = thickness;
   ctx.strokeStyle = '#8E9196'; // Gray color for the main line
   ctx.lineCap = 'round';
   ctx.stroke();

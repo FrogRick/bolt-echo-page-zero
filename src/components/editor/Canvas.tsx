@@ -46,6 +46,9 @@ const Canvas: React.FC = () => {
   // Add state for tracking if image is confirmed
   const [imageConfirmed, setImageConfirmed] = useState(false);
   
+  // Wall thickness state
+  const [wallThickness, setWallThickness] = useState(8); // Default wall thickness
+  
   const {
     canvasRef,
     activeTool,
@@ -227,12 +230,10 @@ const Canvas: React.FC = () => {
     
     console.log("Resize move:", { deltaX, deltaY, corner: resizeCorner });
     
-    const newRect = { ...resizeStartRect };
-    
-    // Calculate new dimensions based on corner being dragged
     let newWidth = resizeStartRect.width;
     let newHeight = resizeStartRect.height;
     
+    // Calculate new dimensions based on corner being dragged
     switch (resizeCorner) {
       case 'nw':
         newWidth = resizeStartRect.width - deltaX;
@@ -285,6 +286,7 @@ const Canvas: React.FC = () => {
     }
     
     // Adjust position based on which corner is being resized
+    const newRect = { ...resizeStartRect };
     switch (resizeCorner) {
       case 'nw':
         newRect.x = resizeStartRect.x + resizeStartRect.width - newWidth;
@@ -418,6 +420,8 @@ const Canvas: React.FC = () => {
         }
       }
       
+      const newRect = { ...newResizeStartRect };
+      
       // Ensure minimum dimensions
       const minSize = 50;
       if (newWidth < minSize) {
@@ -434,7 +438,6 @@ const Canvas: React.FC = () => {
       }
       
       // Adjust position based on which corner is being resized
-      const newRect = { ...newResizeStartRect };
       switch (corner) {
         case 'nw':
           newRect.x = newResizeStartRect.x + newResizeStartRect.width - newWidth;
@@ -687,6 +690,9 @@ const Canvas: React.FC = () => {
     console.log("UnderlayRect updated:", underlayRect);
   }, [underlayRect]);
 
+  // Show wall thickness slider when wall tool is active
+  const isWallToolActive = activeTool === 'wall' || activeTool === 'wall-polygon';
+
   return (
     <div className="flex flex-col h-full">
       <Toolbar 
@@ -721,6 +727,9 @@ const Canvas: React.FC = () => {
         confirmImagePlacement={confirmImagePlacement}
         imageConfirmed={imageConfirmed}
         reactivateImagePositioning={reactivateImagePositioning}
+        wallThickness={wallThickness}
+        setWallThickness={setWallThickness}
+        isWallToolActive={isWallToolActive}
       />
       
       <input 
@@ -754,6 +763,7 @@ const Canvas: React.FC = () => {
           underlayOpacity={underlayOpacity}
           adjustUnderlayOpacity={adjustUnderlayOpacity}
           fillOpacity={fillOpacity}
+          wallThickness={wallThickness}
         />
         
         <div className="absolute bottom-4 right-4 z-10">

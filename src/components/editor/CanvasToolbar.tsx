@@ -30,6 +30,9 @@ interface CanvasToolbarProps {
   confirmImagePlacement: () => void;
   imageConfirmed: boolean;
   reactivateImagePositioning: () => void;
+  wallThickness: number;
+  setWallThickness: (thickness: number) => void;
+  isWallToolActive: boolean;
 }
 
 export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
@@ -56,7 +59,10 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   removeUnderlayImage,
   confirmImagePlacement,
   imageConfirmed,
-  reactivateImagePositioning
+  reactivateImagePositioning,
+  wallThickness,
+  setWallThickness,
+  isWallToolActive
 }) => {
   // Determine which sections to show based on active tool
   const isFloorPlanOrSymbolTool = activeTool !== "select";
@@ -104,6 +110,27 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
             </div>
           </div>
 
+          <Separator orientation="vertical" className="h-8" />
+        </>
+      )}
+
+      {/* Wall Thickness Slider - Only show when wall tool is active */}
+      {isWallToolActive && (
+        <>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Wall Thickness:</span>
+            <div className="w-32">
+              <Slider
+                value={[wallThickness]}
+                onValueChange={(value) => setWallThickness(value[0])}
+                max={20}
+                min={2}
+                step={1}
+                className="w-full"
+              />
+            </div>
+            <span className="text-xs text-gray-600 w-8">{wallThickness}px</span>
+          </div>
           <Separator orientation="vertical" className="h-8" />
         </>
       )}

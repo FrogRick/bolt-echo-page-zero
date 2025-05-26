@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Tool } from "@/types/canvas";
 import { Upload, Move, Check, X, Image } from "lucide-react";
@@ -31,6 +30,7 @@ interface CanvasContainerProps {
   underlayOpacity: number;
   adjustUnderlayOpacity: (opacity: number) => void;
   fillOpacity: number;
+  wallThickness?: number;
 }
 
 const CanvasContainer: React.FC<CanvasContainerProps> = ({
@@ -54,6 +54,7 @@ const CanvasContainer: React.FC<CanvasContainerProps> = ({
   reactivateImagePositioning,
   underlayOpacity,
   adjustUnderlayOpacity,
+  wallThickness = 8
 }) => {
   // Track if we just finished a drag operation
   const [justFinishedDrag, setJustFinishedDrag] = React.useState(false);
