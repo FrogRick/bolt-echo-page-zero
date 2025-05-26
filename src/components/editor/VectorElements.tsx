@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { EditorSymbol, WallSymbol } from '@/types/editor';
 import { Trash2, RotateCcw, Move, Square } from 'lucide-react';

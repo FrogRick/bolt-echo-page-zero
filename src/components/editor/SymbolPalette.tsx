@@ -1,6 +1,5 @@
-
 import { Button } from "@/components/ui/button";
-import { Circle, Plus, Square, Triangle, DoorClosed, StepForward } from "lucide-react";
+import { FireExtIcon, FireHoseIcon, FirstAidIcon, AssemblyPointIcon, DoorIcon, StairsIcon, WindowIcon, WallIcon } from "./SafetyIcons";
 import { FloorplanDetection } from "./FloorplanDetection";
 import { LayersPanel } from "./LayersPanel";
 import { Layer } from "@/hooks/useEditorState";
@@ -42,7 +41,7 @@ export const SymbolPalette = ({
             className={`h-16 flex-col symbol-item ${selectedSymbol === "exit" ? "ring-2 ring-primary" : ""}`}
             onClick={() => onSymbolSelect("exit")}
           >
-            <Square className="h-6 w-6 text-green-600 mb-1" />
+            <DoorIcon />
             <span className="text-xs">Exit</span>
           </Button>
           <Button
@@ -50,24 +49,32 @@ export const SymbolPalette = ({
             className={`h-16 flex-col symbol-item ${selectedSymbol === "fireExt" ? "ring-2 ring-primary" : ""}`}
             onClick={() => onSymbolSelect("fireExt")}
           >
-            <Triangle className="h-6 w-6 text-red-600 mb-1" />
+            <FireExtIcon />
             <span className="text-xs">Fire Ext.</span>
           </Button>
           <Button
-            variant={selectedSymbol === "fireAlarm" ? "default" : "outline"}
-            className={`h-16 flex-col symbol-item ${selectedSymbol === "fireAlarm" ? "ring-2 ring-primary" : ""}`}
-            onClick={() => onSymbolSelect("fireAlarm")}
+            variant={selectedSymbol === "fireHose" ? "default" : "outline"}
+            className={`h-16 flex-col symbol-item ${selectedSymbol === "fireHose" ? "ring-2 ring-primary" : ""}`}
+            onClick={() => onSymbolSelect("fireHose")}
           >
-            <Circle className="h-6 w-6 text-red-600 mb-1" />
-            <span className="text-xs">Fire Alarm</span>
+            <FireHoseIcon />
+            <span className="text-xs">Fire Hose</span>
           </Button>
           <Button
             variant={selectedSymbol === "firstAid" ? "default" : "outline"}
             className={`h-16 flex-col symbol-item ${selectedSymbol === "firstAid" ? "ring-2 ring-primary" : ""}`}
             onClick={() => onSymbolSelect("firstAid")}
           >
-            <Plus className="h-6 w-6 text-blue-600 mb-1" />
+            <FirstAidIcon />
             <span className="text-xs">First Aid</span>
+          </Button>
+          <Button
+            variant={selectedSymbol === "assembly" ? "default" : "outline"}
+            className={`h-16 flex-col symbol-item ${selectedSymbol === "assembly" ? "ring-2 ring-primary" : ""}`}
+            onClick={() => onSymbolSelect("assembly")}
+          >
+            <AssemblyPointIcon />
+            <span className="text-xs">Assembly</span>
           </Button>
         </div>
       </div>
@@ -80,7 +87,7 @@ export const SymbolPalette = ({
             className={`h-16 flex-col symbol-item ${selectedSymbol === "wall" ? "ring-2 ring-primary" : ""}`}
             onClick={() => onSymbolSelect("wall")}
           >
-            <Square className="h-6 w-6 text-gray-600 mb-1" />
+            <WallIcon />
             <span className="text-xs">Wall</span>
           </Button>
           <Button
@@ -88,7 +95,7 @@ export const SymbolPalette = ({
             className={`h-16 flex-col symbol-item ${selectedSymbol === "door" ? "ring-2 ring-primary" : ""}`}
             onClick={() => onSymbolSelect("door")}
           >
-            <DoorClosed className="h-6 w-6 text-brown-600 mb-1" />
+            <DoorIcon />
             <span className="text-xs">Door</span>
           </Button>
           <Button
@@ -96,8 +103,16 @@ export const SymbolPalette = ({
             className={`h-16 flex-col symbol-item ${selectedSymbol === "stairs" ? "ring-2 ring-primary" : ""}`}
             onClick={() => onSymbolSelect("stairs")}
           >
-            <StepForward className="h-6 w-6 text-blue-600 mb-1" />
+            <StairsIcon />
             <span className="text-xs">Stairs</span>
+          </Button>
+          <Button
+            variant={selectedSymbol === "window" ? "default" : "outline"}
+            className={`h-16 flex-col symbol-item ${selectedSymbol === "window" ? "ring-2 ring-primary" : ""}`}
+            onClick={() => onSymbolSelect("window")}
+          >
+            <WindowIcon />
+            <span className="text-xs">Window</span>
           </Button>
         </div>
       </div>

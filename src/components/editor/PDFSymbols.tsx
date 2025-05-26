@@ -1,7 +1,6 @@
-
+import React, { useState } from 'react';
 import { Symbol } from "@/types/editor";
-import { FireExtIcon, FireHoseIcon, FirstAidIcon, AssemblyPointIcon, WallIcon, DoorIcon, StairsIcon } from "./SafetyIcons";
-import { useState } from "react";
+import { FireExtIcon, FireHoseIcon, FirstAidIcon, AssemblyPointIcon, WallIcon, DoorIcon, StairsIcon, WindowIcon } from "./SafetyIcons";
 import { Trash2 } from "lucide-react";
 
 interface PDFSymbolsProps {
@@ -13,8 +12,10 @@ interface PDFSymbolsProps {
   onSymbolDelete: (symbolId: string) => void;
 }
 
-const renderSymbolIcon = (type: string) => {
+const renderSymbolIcon = (type: string, size: number = 24) => {
   switch (type) {
+    case 'exit':
+      return <DoorIcon />;
     case 'fireExt':
       return <FireExtIcon />;
     case 'fireHose':
@@ -29,6 +30,8 @@ const renderSymbolIcon = (type: string) => {
       return <DoorIcon />;
     case 'stairs':
       return <StairsIcon />;
+    case 'window':
+      return <WindowIcon />;
     default:
       return null;
   }

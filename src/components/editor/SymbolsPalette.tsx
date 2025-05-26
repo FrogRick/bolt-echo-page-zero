@@ -1,6 +1,5 @@
-
 import { Button } from "@/components/ui/button";
-import { Circle, Plus, Square, Triangle } from "lucide-react";
+import { FireExtIcon, FireHoseIcon, FirstAidIcon, AssemblyPointIcon, DoorIcon, StairsIcon, WindowIcon } from "./SafetyIcons";
 
 interface SymbolsPaletteProps {
   onSelectSymbol: (symbolType: string) => void;
@@ -20,7 +19,7 @@ const SymbolsPalette = ({ onSelectSymbol }: SymbolsPaletteProps) => {
           }}
           onClick={() => onSelectSymbol("exit")}
         >
-          <Square className="h-6 w-6 text-green-600 mb-1" />
+          <DoorIcon />
           <span className="text-xs">Exit</span>
         </Button>
         <Button
@@ -32,7 +31,7 @@ const SymbolsPalette = ({ onSelectSymbol }: SymbolsPaletteProps) => {
           }}
           onClick={() => onSelectSymbol("fireExt")}
         >
-          <Triangle className="h-6 w-6 text-red-600 mb-1" />
+          <FireExtIcon />
           <span className="text-xs">Fire Ext.</span>
         </Button>
         <Button
@@ -40,12 +39,12 @@ const SymbolsPalette = ({ onSelectSymbol }: SymbolsPaletteProps) => {
           className="h-16 flex-col symbol-item"
           draggable
           onDragStart={(e) => {
-            e.dataTransfer.setData("text/plain", "fireAlarm");
+            e.dataTransfer.setData("text/plain", "fireHose");
           }}
-          onClick={() => onSelectSymbol("fireAlarm")}
+          onClick={() => onSelectSymbol("fireHose")}
         >
-          <Circle className="h-6 w-6 text-red-600 mb-1" />
-          <span className="text-xs">Fire Alarm</span>
+          <FireHoseIcon />
+          <span className="text-xs">Fire Hose</span>
         </Button>
         <Button
           variant="outline"
@@ -56,8 +55,32 @@ const SymbolsPalette = ({ onSelectSymbol }: SymbolsPaletteProps) => {
           }}
           onClick={() => onSelectSymbol("firstAid")}
         >
-          <Plus className="h-6 w-6 text-blue-600 mb-1" />
+          <FirstAidIcon />
           <span className="text-xs">First Aid</span>
+        </Button>
+        <Button
+          variant="outline"
+          className="h-16 flex-col symbol-item"
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData("text/plain", "assembly");
+          }}
+          onClick={() => onSelectSymbol("assembly")}
+        >
+          <AssemblyPointIcon />
+          <span className="text-xs">Assembly</span>
+        </Button>
+        <Button
+          variant="outline"
+          className="h-16 flex-col symbol-item"
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData("text/plain", "stairs");
+          }}
+          onClick={() => onSelectSymbol("stairs")}
+        >
+          <StairsIcon />
+          <span className="text-xs">Stairs</span>
         </Button>
       </div>
     </div>
