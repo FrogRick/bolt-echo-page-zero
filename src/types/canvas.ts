@@ -1,4 +1,3 @@
-
 // Basic point type for coordinates
 export type Point = {
   x: number;

@@ -580,32 +580,6 @@ export const drawShapes = (
   }
 };
 
-// Helper function to find intersection point of two lines if they intersect
-const findLineIntersection = (line1: Shape, line2: Shape): Point | null => {
-  if (line1.type !== 'line' || line2.type !== 'line') return null;
-
-  const x1 = line1.start.x, y1 = line1.start.y;
-  const x2 = line1.end.x, y2 = line1.end.y;
-  const x3 = line2.start.x, y3 = line2.start.y;
-  const x4 = line2.end.x, y4 = line2.end.y;
-
-  // Calculate denominators
-  const den = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
-  if (den === 0) return null; // Lines are parallel
-
-  const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / den;
-  const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / den;
-
-  // Check if intersection is within both line segments
-  if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
-    const x = x1 + ua * (x2 - x1);
-    const y = y1 + ua * (y2 - y1);
-    return { x, y };
-  }
-
-  return null;
-};
-
 export const drawInProgressPolygon = (
   ctx: CanvasRenderingContext2D,
   polygonPoints: Point[],
