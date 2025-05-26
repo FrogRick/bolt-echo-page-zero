@@ -1,9 +1,8 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { Monitor, Smartphone, Upload, Image, Trash2, Check, Edit3 } from "lucide-react";
+import { Monitor, Smartphone, Upload, Image, Trash2, Check, Edit3, Download } from "lucide-react";
 import { Tool } from "@/types/canvas";
 
 interface CanvasToolbarProps {
@@ -176,7 +175,52 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
       )}
 
       {/* Underlay Image Controls */}
-      
+      <div className="ml-auto flex items-center gap-2">
+        {underlayImage ? (
+          <>
+            {imageConfirmed ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={reactivateImagePositioning}
+                className="flex items-center gap-1"
+              >
+                <Edit3 className="h-4 w-4" />
+                Edit Image
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={confirmImagePlacement}
+                className="flex items-center gap-1 bg-green-50 text-green-600 border-green-200 hover:bg-green-100"
+              >
+                <Check className="h-4 w-4" />
+                Confirm Image
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={removeUnderlayImage}
+              className="flex items-center gap-1 bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+            >
+              <Trash2 className="h-4 w-4" />
+              Remove Image
+            </Button>
+          </>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleUploadClick}
+            className="flex items-center gap-1"
+          >
+            <Upload className="h-4 w-4" />
+            Upload Image
+          </Button>
+        )}
+      </div>
     </div>
   );
 };

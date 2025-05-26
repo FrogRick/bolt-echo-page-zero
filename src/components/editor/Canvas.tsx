@@ -1,14 +1,15 @@
-
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { useCanvasEditor } from "@/hooks/useCanvasEditor";
 import { Tool } from "@/types/canvas";
 import { Toolbar } from "./Toolbar";
 import CanvasToolbar from "./CanvasToolbar";
 import CanvasContainer from "./CanvasContainer";
 import { calculateScaleFactor, calculateCanvasSize, INITIAL_SCALE_FACTOR } from "./CanvasUtils";
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { DownloadPDFButton } from "./DownloadPDFButton";
 
 const Canvas: React.FC = () => {
+  const { toast } = useToast();
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
   const [scaleFactor, setScaleFactor] = useState(INITIAL_SCALE_FACTOR);
   const [fillOpacity, setFillOpacity] = useState(50); // Default 50% opacity
@@ -417,8 +418,6 @@ const Canvas: React.FC = () => {
         }
       }
       
-      const newRect = { ...newResizeStartRect };
-      
       // Ensure minimum dimensions
       const minSize = 50;
       if (newWidth < minSize) {
@@ -435,6 +434,7 @@ const Canvas: React.FC = () => {
       }
       
       // Adjust position based on which corner is being resized
+      const newRect = { ...newResizeStartRect };
       switch (corner) {
         case 'nw':
           newRect.x = newResizeStartRect.x + newResizeStartRect.width - newWidth;
@@ -522,7 +522,7 @@ const Canvas: React.FC = () => {
     
     console.log("Move rect:", { deltaX, deltaY });
     
-    // Create new position
+    // Create a new position
     const newRect = {
       ...moveStartRect,
       x: moveStartRect.x + deltaX,
@@ -731,29 +731,39 @@ const Canvas: React.FC = () => {
         className="hidden"
       />
       
-      <CanvasContainer
-        canvasRef={canvasRef}
-        canvasSize={canvasSize}
-        startDrawing={startDrawing}
-        draw={draw}
-        endDrawing={endDrawing}
-        activeTool={activeTool}
-        underlayImage={underlayImage}
-        containerRef={containerRef}
-        underlayRect={underlayRect}
-        handleUnderlayRectClick={handleUnderlayRectClick}
-        resizingUnderlayRect={resizingUnderlayRect}
-        startResizingUnderlayRect={startResizingUnderlayRect}
-        movingUnderlayRect={movingUnderlayRect}
-        startMovingUnderlayRect={startMovingUnderlayRect}
-        confirmImagePlacement={confirmImagePlacement}
-        removeUnderlayImage={handleRemoveUnderlayImage}
-        imageConfirmed={imageConfirmed}
-        reactivateImagePositioning={reactivateImagePositioning}
-        underlayOpacity={underlayOpacity}
-        adjustUnderlayOpacity={adjustUnderlayOpacity}
-        fillOpacity={fillOpacity}
-      />
+      <div className="flex-1 flex items-center justify-center bg-gray-50 overflow-auto relative">
+        <CanvasContainer
+          canvasRef={canvasRef}
+          canvasSize={canvasSize}
+          startDrawing={startDrawing}
+          draw={draw}
+          endDrawing={endDrawing}
+          activeTool={activeTool}
+          underlayImage={underlayImage}
+          containerRef={containerRef}
+          underlayRect={underlayRect}
+          handleUnderlayRectClick={handleUnderlayRectClick}
+          resizingUnderlayRect={resizingUnderlayRect}
+          startResizingUnderlayRect={startResizingUnderlayRect}
+          movingUnderlayRect={movingUnderlayRect}
+          startMovingUnderlayRect={startMovingUnderlayRect}
+          confirmImagePlacement={confirmImagePlacement}
+          removeUnderlayImage={handleRemoveUnderlayImage}
+          imageConfirmed={imageConfirmed}
+          reactivateImagePositioning={reactivateImagePositioning}
+          underlayOpacity={underlayOpacity}
+          adjustUnderlayOpacity={adjustUnderlayOpacity}
+          fillOpacity={fillOpacity}
+        />
+        
+        <div className="absolute bottom-4 right-4 z-10">
+          <DownloadPDFButton 
+            canvasRef={canvasRef} 
+            orientation={orientation}
+            canvasSize={canvasSize}
+          />
+        </div>
+      </div>
     </div>
   );
 };
